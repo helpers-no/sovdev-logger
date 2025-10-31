@@ -202,7 +202,7 @@ Edit /Users/terje.christensen/learn/redcross-public/sovdev-logger/typescript/src
 | **Go** | (install required) | `go version` | `.devcontainer/additions/install-dev-golang.sh` |
 | **Java** | (install required) | `java -version` | `.devcontainer/additions/install-dev-java.sh` |
 | **PHP** | (install required) | `php --version` | `.devcontainer/additions/install-dev-php.sh` |
-| **C#/.NET** | (install required) | `dotnet --version` | `.devcontainer/additions/install-dev-dotnet.sh` |
+| **C#/.NET** | (install required) | `dotnet --version` | `.devcontainer/additions/install-dev-csharp.sh` |
 | **Rust** | (install required) | `rustc --version` | `.devcontainer/additions/install-dev-rust.sh` |
 
 #### Installation Process (LLMs: Required Before Implementation)

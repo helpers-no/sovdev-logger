@@ -660,7 +660,8 @@ Every language implementation MUST follow the standardized directory structure d
 - **Quick start guide**: [`06-test-scenarios.md`](./06-test-scenarios.md) - "Quick Start: Testing Your Implementation"
 
 **👨‍💻 For LLM implementers**:
-- **Systematic checklist**: [`11-llm-checklist-template.md`](./11-llm-checklist-template.md) - Phase 4 (E2E Test Implementation) & Phase 5 (Validation)
+- **Systematic workflow**: [`llm-work-templates/ROADMAP-template.md`](./llm-work-templates/ROADMAP-template.md) - Task 9 (E2E Test Implementation)
+- **Validation guide**: [`llm-work-templates/validation-sequence.md`](./llm-work-templates/validation-sequence.md) - 8-step validation sequence
 
 **Quick validation workflow for company-lookup**:
 

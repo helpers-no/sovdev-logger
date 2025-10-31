@@ -14,6 +14,52 @@ These tools abstract away the complexity of:
 
 ---
 
+## Two-Level Validation Strategy
+
+When implementing sovdev-logger in any programming language, use this approach:
+
+### Level 1: System-Wide Health Check (TypeScript Baseline)
+
+**ALWAYS verify TypeScript works before starting new language implementation**
+
+TypeScript is the reference implementation that proves the observability stack is healthy.
+
+```bash
+# Verify observability stack health (Phase 0, Task 2)
+./in-devcontainer.sh -e "cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh"
+./in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-typescript"
+./in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-prometheus.sh sovdev-test-company-lookup-typescript"
+./in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-typescript"
+```
+
+**Result interpretation**:
+- TypeScript fails → Infrastructure problem (fix Docker, Loki, Prometheus, Tempo)
+- TypeScript passes → Infrastructure is healthy (new language issues are code-specific)
+
+### Level 2: Continuous Language-Specific Validation
+
+Validate your implementation at these checkpoints:
+
+1. **File Format Validation** - After implementing file logging and running test
+   - Run test → Check log files created → Run `validate-log-format.sh`
+
+2. **OTLP Connectivity Test** - After implementing OTLP exporters
+   - Create simple test with SDK functions → Send test data → Verify in backends
+
+3. **Complete Backend Validation** - After E2E test runs successfully
+   - Run E2E test → Wait 10s → Run `run-full-validation.sh` → Check all backends
+
+4. **Grafana Visual Validation** - After automated validation passes
+   - Open Grafana → Verify ALL panels show data
+
+**Key Principle**: TypeScript validates the system. Your language validates its integration with the system.
+
+**Important**: Validation tools check the OUTPUT of your implementation. Build and run your code FIRST, then validate.
+
+**See complete workflow**: `specification/09-development-loop.md` → "Validation-First Development" section
+
+---
+
 ## Prerequisites
 
 Before using these tools, ensure:
@@ -45,7 +91,35 @@ Before using these tools, ensure:
 
 ## 🔢 Validation Sequence (Step-by-Step)
 
-**CRITICAL:** Always validate in this order. Do NOT skip steps or jump ahead to Grafana.
+**WHEN TO USE THIS:** After you have implemented all code and run your E2E test successfully.
+
+**Prerequisites before validation:**
+1. ✅ All code implemented (OTLP exporters, file logging, API functions)
+2. ✅ E2E test created and runs without errors
+3. ✅ E2E test has generated log files in `{language}/test/e2e/company-lookup/logs/`
+4. ✅ Wait 10 seconds for OTLP data to propagate to backends
+
+**CRITICAL:** These validation tools check the OUTPUT of your implementation. They won't work if you haven't implemented and run your code first.
+
+---
+
+### The 8-Step Validation Sequence
+
+**You MUST follow these 8 steps in order.** Do NOT skip steps. Do NOT jump to Grafana (Step 8) unless Steps 1-7 all pass.
+
+**Option 1: Automated (Recommended)**
+```bash
+# Run Steps 1-7 automatically
+./in-devcontainer.sh run-full-validation {language}
+
+# If exit code is 0, proceed to Step 8 (Grafana visual)
+# If exit code is non-zero, fix the failing step and re-run
+```
+
+**Option 2: Manual (For troubleshooting)**
+Run each step individually (documented below) to identify which step is failing.
+
+---
 
 ### Step 1: Validate Log Files (INSTANT - 0 seconds) ⚡
 
@@ -127,7 +201,7 @@ sleep 10  # Wait for OTLP propagation
 **If FAIL:**
 - Metrics not exported
 - Check OTEL SDK metric configuration
-- See `specification/10-otel-sdk.md` for label issues
+- See `specification/llm-work-templates/research-otel-sdk-guide.md` for label issues
 
 **⛔ DO NOT PROCEED to Step 4 until metrics are in Prometheus with correct labels**
 
@@ -240,7 +314,12 @@ sleep 10  # Wait for OTLP propagation
 
 **Tool:** Manual browser check
 
-**Purpose:** Verify dashboard actually displays data correctly
+**Prerequisites:**
+- ✅ Your E2E test ran successfully
+- ✅ Steps 1-7 all passed (either via `run-full-validation.sh` or manually)
+- ✅ No errors in any of the previous steps
+
+**Purpose:** Verify dashboard actually displays data correctly in the UI
 
 **Steps:**
 1. Open http://grafana.localhost
@@ -251,51 +330,34 @@ sleep 10  # Wait for OTLP propagation
 - [ ] **Panel 1: Total Operations**
   - TypeScript shows "Last" and "Max" values
   - {language} shows "Last" and "Max" values
-  
+
 - [ ] **Panel 2: Error Rate**
   - TypeScript shows "Last %" and "Max %" values
   - {language} shows "Last %" and "Max %" values
-  
+
 - [ ] **Panel 3: Average Operation Duration**
   - TypeScript shows entries for all peer services
   - {language} shows entries for all peer services
   - Values in milliseconds (e.g., 0.538 ms, NOT 0.000538)
 
 **If ANY panel is empty:**
-- Something from Steps 1-7 failed
-- Go back and check each step
-- DO NOT claim "implementation complete"
+- ⛔ Steps 1-7 didn't actually pass (even if script said they did)
+- ⛔ Go back and run `run-full-validation.sh {language}` again
+- ⛔ Manually verify each step if automated script passed but Grafana is empty
+- ⛔ DO NOT claim "implementation complete"
 
-**✅ VALIDATION COMPLETE when ALL 8 steps pass**
+**✅ VALIDATION COMPLETE when:**
+1. All Steps 1-7 passed
+2. ALL 3 Grafana panels show data for {language}
+3. Data looks similar to TypeScript reference implementation
+
+**Remember:** This is the FINAL step in the 8-step sequence. You cannot skip Steps 1-7 and jump here.
 
 ---
 
-## ⚡ Quick Validation (Automated)
-
-**Don't want to run all 8 steps manually?**
-
-Use `run-full-validation.sh` - it runs Steps 1-7 automatically:
-
-```bash
-sleep 10  # Wait for OTLP propagation
-./in-devcontainer.sh run-full-validation {language}
-```
-
-**What it does:**
-- ✅ Step 1: Validates file logs
-- ✅ Step 2: Queries Loki (validates schema + consistency)
-- ✅ Step 3: Queries Prometheus (validates schema + consistency)
-- ✅ Step 4: Queries Tempo (validates schema + consistency)
-- ✅ Step 5: Queries Grafana-Loki proxy
-- ✅ Step 6: Queries Grafana-Prometheus proxy
-- ✅ Step 7: Queries Grafana-Tempo proxy
-
-**You still MUST do Step 8 manually:**
-- Open Grafana dashboard
-- Verify ALL 3 panels show data
-- Check metric labels in Prometheus query
-
-**This is the recommended approach for complete validation.**
+**Summary of 8-Step Validation Sequence:**
+- Steps 1-7: Automated via `run-full-validation.sh` (or run manually for troubleshooting)
+- Step 8: Manual visual check in Grafana (MUST do this even if Steps 1-7 pass)
 
 ---
 
@@ -554,9 +616,4 @@ python3 ../tests/validate-loki-response.py /tmp/loki-response.json
 ---
 
 
-**Last Updated:** 2025-10-24
-**Maintainer:** Claude Code / Terje Christensen
-
-**Version History:**
-- v2.0.0 (2025-10-24): Added numbered validation sequence (Steps 1-8) with blocking points to enforce stepwise validation
-- v1.0.0 (2025-10-16): Initial version with tool reference tables
+**Last Updated:** 2025-10-31

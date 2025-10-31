@@ -550,7 +550,7 @@ For each language implementation, verify:
 - **Reference Implementation:** `typescript/.eslintrc.json` - Study this first
 - **TypeScript Documentation:** `typescript/package.json` - See lint scripts
 - **Development Loop:** `specification/09-development-loop.md` - Step 2: Lint
-- **LLM Checklist:** `specification/11-llm-checklist-template.md` - Linting requirements
+- **Implementation Workflow:** `specification/llm-work-templates/ROADMAP-template.md` - Task 5 (linting setup) & Task 8 (linting validation)
 
 ---
 
