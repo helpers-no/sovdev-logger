@@ -465,6 +465,14 @@ This includes:
 
 ## 🎓 Key Principles
 
+**Always use latest stable versions:**
+- **Policy**: Always check for and use the latest stable (or latest RC if critical fixes needed) version of OpenTelemetry SDK
+- **Rationale**: Bug fixes accumulate in newer versions; using outdated versions means debugging already-fixed issues
+- **Example**: C# Session 4 used 1.13.1, but 1.14.0-rc.1 had critical histogram export fixes
+- **How to check**: See Phase 0, Task 1 for package repository links; record version selection in documentation
+- **Never**: Use versions older than 6 months without documented rationale; skip version checking
+- **Enforcement**: Task 1 now includes mandatory version check before proceeding
+
 **TypeScript is the reference implementation:**
 - TypeScript defines the correct behavior
 - Your implementation must match TypeScript output exactly

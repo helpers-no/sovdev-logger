@@ -78,14 +78,66 @@ Logs:    [Stable/Beta/Development]
 
 ---
 
+### 1.5 Check Latest Stable Version
+
+**CRITICAL**: Always use the latest stable (or latest RC if needed) version.
+
+- [ ] Visit package repository for [LANGUAGE]:
+  - **C#**: https://www.nuget.org/packages/OpenTelemetry
+  - **Python**: https://pypi.org/project/opentelemetry-api/
+  - **Go**: https://pkg.go.dev/go.opentelemetry.io/otel
+  - **Rust**: https://crates.io/crates/opentelemetry
+  - **Java**: https://mvnrepository.com/artifact/io.opentelemetry
+  - **JavaScript/TypeScript**: https://www.npmjs.com/package/@opentelemetry/api
+  - **PHP**: https://packagist.org/packages/open-telemetry/api
+- [ ] Record latest STABLE version: _________________
+- [ ] Record latest RC/Beta version (if any): _________________
+- [ ] Check release date of latest version: _________________
+- [ ] Document version selection rationale:
+  ```
+  Selected version: [X.Y.Z]
+  Reason: [Latest stable | Latest RC for critical fixes | Specific reason]
+  Release date: [DATE]
+  ```
+
+**Decision criteria**:
+- ✅ **Prefer latest stable** - Use this by default
+- ⚠️ **Use latest RC only if**:
+  - Critical bug fix needed (e.g., histogram serialization in OpenTelemetry .NET 1.14.0-rc.1)
+  - Stable version has known blocking issue
+  - RC is close to stable release (within 1-2 weeks)
+- ❌ **Never use**:
+  - Alpha versions
+  - Versions older than 6 months (unless language-specific reason)
+  - Versions with known security issues
+
+**Why this matters**:
+- Bug fixes accumulate in newer versions
+- Using outdated versions = debugging already-fixed issues
+- Saves hours of troubleshooting time
+
+**Example documentation**:
+```
+Language: C#
+Package: OpenTelemetry
+Latest stable: 1.13.1 (released 2025-09-15)
+Latest RC: 1.14.0-rc.1 (released 2025-10-21)
+Selected: 1.14.0-rc.1
+Reason: Includes histogram serialization fixes for OTLP (addresses known issue #4797)
+```
+
+---
+
 ## Success Criteria
 
 **This task is complete when:**
 
-- [ ] All subtasks checked off
+- [ ] All subtasks checked off (including 1.5 - latest version)
 - [ ] SDK maturity verified for all 3 signals (Traces, Metrics, Logs)
 - [ ] All signals are "Stable" or "Beta" (no "Development")
 - [ ] GitHub repository URL recorded
+- [ ] **Latest version checked and documented**
+- [ ] **Version selection rationale provided**
 - [ ] Any limitations documented
 - [ ] Ready to proceed to Task 2
 
@@ -93,6 +145,8 @@ Logs:    [Stable/Beta/Development]
 - ❌ Any signal is missing or "Development"
 - ❌ Cannot find [LANGUAGE] in OpenTelemetry documentation
 - ❌ GitHub repository doesn't exist or is abandoned
+- ❌ **Latest version not checked**
+- ❌ **Using version older than 6 months without rationale**
 
 ---
 
@@ -133,8 +187,9 @@ Logs:    [Stable/Beta/Development]
 - Subtask 1.2: 2 minutes (check status)
 - Subtask 1.3: 1 minute (document)
 - Subtask 1.4: 1 minute (verify GitHub)
+- Subtask 1.5: 3 minutes (check latest version)
 
-**Total**: ~5 minutes
+**Total**: ~8 minutes
 
 ---
 

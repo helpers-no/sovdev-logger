@@ -145,7 +145,57 @@ counter.Add(1, new KeyValuePair<string, object>("peer.service", "db"));
 
 ---
 
-### 3.6 Compare with TypeScript SDK
+### 3.6 Research Instrument Creation Patterns
+
+**Context**: Different languages have different patterns for when instruments (Counter, Histogram, UpDownCounter) should be created relative to provider initialization.
+
+Research instrument lifecycle in [LANGUAGE].
+
+- [ ] Search GitHub for official examples: `site:github.com/open-telemetry opentelemetry-[language] counter example`
+- [ ] Find example code in official repository (https://github.com/open-telemetry/opentelemetry-[language])
+- [ ] Look for examples showing:
+  - When to create Meter
+  - When to create instruments (Counter, Histogram, UpDownCounter)
+  - When to initialize MeterProvider
+  - Order of operations
+- [ ] Check if instruments must be created BEFORE or AFTER provider initialization
+- [ ] Document the standard pattern for [LANGUAGE]
+
+**Key questions to answer**:
+- Is there a standard initialization order?
+- Do instruments need to be registered before provider.Build()?
+- Are there language-specific lifecycle requirements?
+- What happens if instruments are created in wrong order?
+
+**Example research output**:
+```
+Language: C#
+Pattern: Meter and instruments MUST be created BEFORE MeterProvider.Build()
+Source: https://github.com/open-telemetry/opentelemetry-dotnet/blob/main/examples/metrics/Program.cs
+Order:
+  1. Create Meter
+  2. Create instruments (counter, histogram, updowncounter)
+  3. Build MeterProvider
+  4. Use instruments
+
+Rationale: .NET SDK requires instruments to exist for provider registration
+What breaks: Creating instruments AFTER Build() = instruments won't export
+```
+
+**Why this matters**:
+- Incorrect initialization order = instruments don't appear in OTLP exports
+- Each language has different lifecycle requirements
+- Official examples show the correct pattern
+- Saves hours of "why aren't my metrics showing up" debugging
+
+**Where to search**:
+- Official SDK repository: https://github.com/open-telemetry/opentelemetry-[language]
+- Look for `/examples/` or `/docs/` directories
+- Search for "metrics example" or "counter example"
+
+---
+
+### 3.7 Compare with TypeScript SDK
 
 Read the TypeScript reference implementation: `typescript/src/index.ts`
 
@@ -176,7 +226,7 @@ Key difference: C# uses KeyValuePair, TypeScript uses plain object
 
 ---
 
-### 3.7 Document Findings in otel-sdk-comparison.md
+### 3.8 Document Findings in otel-sdk-comparison.md
 
 Create `[LANGUAGE]/llm-work/otel-sdk-comparison.md` with findings.
 
@@ -231,10 +281,11 @@ Create `[LANGUAGE]/llm-work/otel-sdk-comparison.md` with findings.
 
 **This task is complete when**:
 
-- [ ] All 7 subtasks checked off
+- [ ] All 8 subtasks checked off
 - [ ] SDK maturity verified (all signals Beta or Stable)
 - [ ] HTTP header configuration method documented
 - [ ] Metric attribute pattern documented (underscores!)
+- [ ] Instrument creation pattern documented (initialization order!)
 - [ ] otel-sdk-comparison.md file created
 - [ ] File contains code examples (not just descriptions)
 - [ ] Key differences from TypeScript documented
@@ -300,10 +351,11 @@ grep -i "otlp" [LANGUAGE]/llm-work/otel-sdk-comparison.md
 - Subtask 3.3: 20 minutes (OTLP config)
 - Subtask 3.4: 30 minutes (HTTP headers - critical!)
 - Subtask 3.5: 20 minutes (metric attributes - critical!)
-- Subtask 3.6: 20 minutes (TypeScript comparison)
-- Subtask 3.7: 20 minutes (document findings)
+- Subtask 3.6: 20 minutes (instrument patterns - critical!)
+- Subtask 3.7: 20 minutes (TypeScript comparison)
+- Subtask 3.8: 20 minutes (document findings)
 
-**Total**: ~2 hours
+**Total**: ~2.3 hours
 
 **This time is NOT wasted** - proper research prevents hours of debugging later.
 

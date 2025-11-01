@@ -153,6 +153,84 @@ Create the public API module that exports all 8 functions.
 - ❌ Attributes use dots instead of underscores
 - ❌ Code doesn't compile
 - ❌ Linting fails
+- ❌ **End-to-end validation has not been run and passed**
+
+---
+
+## ⛔ MANDATORY VALIDATION BEFORE CLAIMING COMPLETE
+
+**CRITICAL**: Do NOT mark this task complete without running end-to-end validation.
+
+### Why This Matters
+
+**Evidence from C# Session 3:**
+- LLM claimed "Task 8 complete" without validation
+- 5 user corrections required in next session
+- Issues found: missing attributes, wrong initialization order, metrics not exporting
+- Total debugging time: 3+ hours
+- **Validation would have caught all issues in 2 minutes**
+
+### Required Validation Steps
+
+Before claiming Task 8 is complete, you MUST run the complete end-to-end test:
+
+```bash
+./specification/tools/in-devcontainer.sh -e "cd /workspace/[language]/test/e2e/company-lookup && ./run-test.sh"
+```
+
+**Success criteria:**
+- ✅ All 8 validation steps pass (see `specification/tools/README.md`)
+- ✅ Test script exits with status 0
+- ✅ No errors in console output
+- ✅ Logs appear in Loki with correct format
+- ✅ Metrics appear in Prometheus with underscores in labels
+- ✅ Traces appear in Tempo with correct spans
+
+**If ANY step fails:**
+- ⛔ Task 8 is NOT complete
+- 🔍 Debug using `specification/tools/README.md` → validation tools section
+- 🔁 Fix the issue and re-run full validation
+- ⚠️ Do NOT skip steps - each validates different aspects
+
+### Quick Validation Reference
+
+**For detailed troubleshooting**, see `specification/tools/README.md`.
+
+**Step 1**: File format validation (instant)
+```bash
+./specification/tools/validate-log-format.sh [language]/logs/test-file-logs-[language]-company-lookup.jsonl
+```
+
+**Step 2**: Loki logs validation
+```bash
+./specification/tools/query-loki.sh test-otlp-logs-[language] --json
+```
+
+**Step 3**: Prometheus metrics validation
+```bash
+./specification/tools/query-prometheus.sh test_counter_requests_total --json
+```
+
+**Step 4**: Tempo traces validation
+```bash
+./specification/tools/query-tempo.sh test-otlp-traces-[language]
+```
+
+**Why each step matters:**
+- Step 1: Validates log schema, field naming (snake_case)
+- Step 2: Confirms OTLP logs exporter works, `Host: otel.localhost` header present
+- Step 3: Confirms metrics export, **verifies underscores in labels** (not dots)
+- Step 4: Confirms trace export, span structure
+
+### The "It Compiles" Trap
+
+❌ **WRONG**: "Code compiles and builds → Task 8 complete"
+✅ **CORRECT**: "Code compiles AND validation passes → Task 8 complete"
+
+**Remember**:
+- Compilation = syntax correct
+- Validation = behavior correct
+- We care about **behavior**, not just syntax
 
 ---
 

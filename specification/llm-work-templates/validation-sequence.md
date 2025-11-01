@@ -40,6 +40,56 @@ Before starting validation:
 
 ---
 
+## ⚠️ ALWAYS Verify TypeScript Baseline First
+
+**CRITICAL RULE:** Before debugging [LANGUAGE] issues, ALWAYS verify TypeScript baseline.
+
+### Why This Matters
+
+TypeScript is the **reference implementation** that proves the observability stack is healthy:
+- ✅ **TypeScript passes** → Infrastructure is healthy → [LANGUAGE] issues are code-specific
+- ❌ **TypeScript fails** → Infrastructure is broken → Fix Docker/Loki/Prometheus/Tempo first
+
+**Decision tree:**
+```
+Run TypeScript test
+   ├─ ✅ Passes → Safe to debug [LANGUAGE] code
+   └─ ❌ Fails → Infrastructure problem (fix before debugging code)
+```
+
+### How to Verify TypeScript Baseline
+
+**Command:**
+```bash
+./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh"
+```
+
+**Expected result:** Test exits with status 0, validation steps 1-8 pass
+
+**If TypeScript fails:**
+1. ⛔ DO NOT proceed with [LANGUAGE] debugging
+2. 🔍 Check Docker containers are running
+3. 🔍 Check Loki, Prometheus, Tempo, Grafana accessibility
+4. 📖 See `specification/05-environment-configuration.md`
+5. 🔁 Fix infrastructure, then re-run TypeScript test
+6. ✅ Only proceed to [LANGUAGE] work when TypeScript passes
+
+### Time Saved
+
+**Examples from C# sessions:**
+- **Session 3:** Spent 1 hour debugging C# code → Infrastructure was fine → Time well spent
+- **Session 4 (hypothetical):** If infrastructure broken, would have wasted time debugging code
+
+**Rule:** Always establish baseline before debugging.
+
+**When to check:**
+- Before starting [LANGUAGE] implementation (Phase 0, Task 2)
+- Before debugging OTLP connectivity issues
+- When validation suddenly starts failing
+- After infrastructure changes (Docker restart, config changes)
+
+---
+
 ## The 8-Step Validation Sequence
 
 **CRITICAL:** Follow these steps in order. Do NOT skip ahead. Each step validates a different layer of the telemetry pipeline.

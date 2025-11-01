@@ -30,7 +30,44 @@ Before starting, verify:
 
 ## Subtasks
 
-### 6.1 Install OTLP Exporter Packages
+### 6.1 Check TypeScript Reference Implementation
+
+**CRITICAL**: Before writing ANY code, verify the infrastructure is working.
+
+- [ ] Open `typescript/src/index.ts` in the repository
+- [ ] Verify you understand:
+  - How TypeScript configures OTLP exporters
+  - How TypeScript adds `Host: otel.localhost` header
+  - How TypeScript creates metric attributes with underscores
+  - Exporter initialization order
+- [ ] Run TypeScript validation to verify backends are healthy:
+  ```bash
+  ./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh"
+  ```
+- [ ] If TypeScript test fails → Infrastructure problem, NOT your code
+- [ ] If TypeScript test passes → Safe to proceed with [LANGUAGE] implementation
+
+**Expected result**: TypeScript validation passes, confirming:
+- ✅ Grafana is accessible
+- ✅ Loki is receiving logs via OTLP
+- ✅ Prometheus is receiving metrics via OTLP
+- ✅ Tempo is receiving traces via OTLP
+- ✅ All 8 validation steps pass
+
+**Why this matters**:
+- If TypeScript doesn't work → Infrastructure is broken
+- Debugging [LANGUAGE] code when infrastructure is broken = wasted time
+- Always verify baseline first
+- TypeScript is the reference implementation - if it fails, fix infrastructure before proceeding
+
+**Troubleshooting**:
+- If TypeScript test fails, check docker containers are running
+- See `specification/05-environment-configuration.md` for infrastructure details
+- Do NOT proceed to [LANGUAGE] implementation if baseline fails
+
+---
+
+### 6.2 Install OTLP Exporter Packages
 
 - [ ] Identify required packages from otel-sdk-comparison.md
 - [ ] Add packages to dependency file (package.json, requirements.txt, go.mod, *.csproj, etc.)
@@ -52,7 +89,7 @@ cd [LANGUAGE]
 
 ---
 
-### 6.2 Create OTLP Logs Exporter
+### 6.3 Create OTLP Logs Exporter
 
 Implement OTLP logs exporter with `Host: otel.localhost` header.
 
@@ -90,7 +127,7 @@ registerLogExporter(logExporter)
 
 ---
 
-### 6.3 Create OTLP Metrics Exporter
+### 6.4 Create OTLP Metrics Exporter
 
 Implement OTLP metrics exporter with `Host: otel.localhost` header.
 
@@ -131,7 +168,7 @@ registerMetricExporter(metricExporter)
 
 ---
 
-### 6.4 Create OTLP Traces Exporter
+### 6.5 Create OTLP Traces Exporter
 
 Implement OTLP traces exporter with `Host: otel.localhost` header.
 
@@ -169,7 +206,7 @@ registerTraceExporter(traceExporter)
 
 ---
 
-### 6.5 Configure Resource Attributes
+### 6.6 Configure Resource Attributes
 
 Add common resource attributes to identify this service.
 
@@ -203,7 +240,7 @@ traceProvider.setResource(resource)
 
 ---
 
-### 6.6 Initialize OpenTelemetry SDK
+### 6.7 Initialize OpenTelemetry SDK
 
 Set up SDK initialization that configures all providers.
 
@@ -256,7 +293,7 @@ function initOpenTelemetry() {
 
 ---
 
-### 6.7 **MANDATORY VALIDATION**: Test Logs Exporter Connectivity
+### 6.8 **MANDATORY VALIDATION**: Test Logs Exporter Connectivity
 
 **⛔ BLOCKING STEP**: You MUST verify logs reach Loki before proceeding.
 
@@ -312,7 +349,7 @@ sleep 10
 
 ---
 
-### 6.8 **MANDATORY VALIDATION**: Test Metrics Exporter Connectivity
+### 6.9 **MANDATORY VALIDATION**: Test Metrics Exporter Connectivity
 
 **⛔ BLOCKING STEP**: You MUST verify metrics reach Prometheus before proceeding.
 
@@ -369,7 +406,7 @@ sleep 10
 
 ---
 
-### 6.9 **MANDATORY VALIDATION**: Test Traces Exporter Connectivity
+### 6.10 **MANDATORY VALIDATION**: Test Traces Exporter Connectivity
 
 **⛔ BLOCKING STEP**: You MUST verify traces reach Tempo before proceeding.
 
@@ -428,7 +465,7 @@ sleep 10
 
 ---
 
-### 6.10 Verify HTTP Header Configuration
+### 6.11 Verify HTTP Header Configuration
 
 **Critical validation**: Confirm `Host: otel.localhost` header is being sent.
 
@@ -468,7 +505,7 @@ sleep 10
 
 **This task is complete when**:
 
-- [ ] All 10 subtasks checked off
+- [ ] All 11 subtasks checked off
 - [ ] OTLP packages installed successfully
 - [ ] All three exporters implemented (logs, metrics, traces)
 - [ ] ALL exporters include `Host: otel.localhost` header
@@ -561,18 +598,19 @@ grep -r "operation\.name" [LANGUAGE]/
 
 ## Time Estimate
 
-- Subtask 6.1: 15 minutes (install packages)
-- Subtask 6.2: 30 minutes (logs exporter)
-- Subtask 6.3: 30 minutes (metrics exporter)
-- Subtask 6.4: 30 minutes (traces exporter)
-- Subtask 6.5: 15 minutes (resource attributes)
-- Subtask 6.6: 30 minutes (initialization function)
-- Subtask 6.7: 10 minutes (test logs)
-- Subtask 6.8: 10 minutes (test metrics)
-- Subtask 6.9: 10 minutes (test traces)
-- Subtask 6.10: 20 minutes (verify headers)
+- Subtask 6.1: 10 minutes (check TypeScript reference)
+- Subtask 6.2: 15 minutes (install packages)
+- Subtask 6.3: 30 minutes (logs exporter)
+- Subtask 6.4: 30 minutes (metrics exporter)
+- Subtask 6.5: 30 minutes (traces exporter)
+- Subtask 6.6: 15 minutes (resource attributes)
+- Subtask 6.7: 30 minutes (initialization function)
+- Subtask 6.8: 10 minutes (test logs)
+- Subtask 6.9: 10 minutes (test metrics)
+- Subtask 6.10: 10 minutes (test traces)
+- Subtask 6.11: 20 minutes (verify headers)
 
-**Total**: ~3 hours
+**Total**: ~3.25 hours
 
 ---
 

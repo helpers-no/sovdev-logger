@@ -128,6 +128,80 @@ cat {language}/llm-work/ROADMAP.md
 
 ---
 
+## Step 2.5: Critical Process Rules (DO NOT SKIP)
+
+**Based on lessons from C# implementation sessions 3 & 4.**
+
+These rules prevent the most common mistakes that lead to user corrections:
+
+### Rule 1: Always Check Latest Stable Version First (Phase 0, Task 1)
+
+- **Before starting implementation**, check for latest stable or RC version on package repository
+- Document version selection rationale in your notes
+- **Never** use versions older than 6 months without documented justification
+- **Example mistake**: C# Session 4 used OpenTelemetry 1.13.1, but 1.14.0-rc.1 had critical histogram export fixes
+- **Task 1 now enforces**: Mandatory version check before proceeding to Task 2
+
+### Rule 2: Always Verify TypeScript Baseline Before Debugging (Phase 0, Task 2)
+
+- **Before debugging [LANGUAGE] issues**, run TypeScript test to verify infrastructure health
+- **Decision tree**:
+  - ✅ TypeScript test passes → Infrastructure is healthy → [LANGUAGE] code has a bug
+  - ❌ TypeScript test fails → Infrastructure is broken → Fix Docker/Loki/Prometheus/Tempo first
+- **Never** debug code when infrastructure is broken (wasted time)
+- **Command**: `./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh"`
+- **Task 2 now enforces**: TypeScript baseline verification before proceeding
+
+### Rule 3: Never Claim Completion Without Validation
+
+**Task completion requires PROOF, not just claims:**
+
+- **Task 6 complete** = OTLP exporters implemented AND connectivity verified in Loki/Prometheus/Tempo
+- **Task 7 complete** = File logging implemented AND `validate-log-format.sh` passes
+- **Task 8 complete** = All 8 API functions implemented AND E2E test passes AND full validation passes
+
+**Evidence from C# Session 3:**
+- LLM claimed "Task 8 complete" without validation
+- Result: 5 user corrections required (missing attributes, wrong initialization order, metrics not exporting)
+- Total debugging time: 3+ hours
+- **Validation would have caught all issues in 2 minutes**
+
+**Task 8 now enforces**: Mandatory end-to-end validation section before claiming complete
+
+### Rule 4: Research Official SDK Examples (Phase 0, Task 3)
+
+- **Before implementing**, search GitHub for official SDK examples
+- **Critical for**: Instrument creation order (Counter, Histogram, UpDownCounter)
+- **Example mistake**: C# requires creating instruments BEFORE MeterProvider.Build()
+- Creating instruments AFTER Build() = instruments don't export (hours of debugging)
+- **Task 3 now includes**: Subtask to research instrument lifecycle patterns
+
+### Rule 5: Follow the Development Loop (specification/09-development-loop.md)
+
+**6-step iterative workflow:**
+1. Edit code
+2. **Lint** (MANDATORY - must pass before Step 3)
+3. Build
+4. Run/Test
+5. Validate Logs (fast, local)
+6. Validate OTLP (slow, requires infrastructure)
+
+**Key points:**
+- Linting is **BLOCKING** - if linting fails, you cannot proceed to build
+- Validate logs FIRST (instant feedback), then OTLP SECOND (slower)
+- Make small changes, validate frequently (not one big change at end)
+
+**Complete details**: `specification/09-development-loop.md`
+
+### Rule 6: Consult TypeScript Reference When Unsure
+
+- **TypeScript is the reference implementation** - defines correct behavior
+- When unsure about API behavior, check `typescript/src/index.ts` and `typescript/src/logger.ts`
+- Compare your implementation side-by-side with TypeScript
+- **Task 6 now enforces**: Check TypeScript reference before implementing OTLP exporters
+
+---
+
 ## If You Get Stuck
 
 **Problem:** Don't know what to do next
