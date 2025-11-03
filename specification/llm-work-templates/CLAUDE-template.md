@@ -6,14 +6,76 @@
 
 ---
 
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🛑 MANDATORY FIRST STEPS - DO THESE NOW BEFORE READING FURTHER    ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+**Execute these steps IN ORDER using the Bash and Edit tools:**
+
+### Step 1: Read ROADMAP.md
+```bash
+cat [LANGUAGE]/llm-work/ROADMAP.md
+```
+
+### Step 2: Update ROADMAP.md
+Use the **Edit tool** to:
+1. Find the first uncompleted task: `[ ]`
+2. Change to: `[-] 🏗️ YYYY-MM-DD` (today's date)
+3. Update "Last updated" date at top of file
+
+**Example:**
+```diff
+- [ ] 11. File validation passes
++ [-] 🏗️ 2025-11-03 - 11. File validation passes
+```
+
+### Step 3: Confirm
+- [ ] I have READ ROADMAP.md
+- [ ] I have UPDATED ROADMAP.md to mark task in progress
+- [ ] I have UPDATED "Last updated" date
+
+**Only after completing Steps 1-3 may you continue reading this file.**
+
+---
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 📘 CRITICAL: TypeScript is the Reference Implementation           ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+**Before implementing ANYTHING in [LANGUAGE], check TypeScript FIRST:**
+
+### When to Check TypeScript:
+
+1. **Before implementing** → Check TypeScript for file structure, .env configuration
+2. **When stuck** → Compare your code to TypeScript implementation
+3. **Before claiming complete** → Compare output to TypeScript output
+
+### Key TypeScript Files:
+- `typescript/src/logger.ts` - Main implementation
+- `typescript/test/e2e/company-lookup/` - E2E test structure
+- `typescript/test/e2e/company-lookup/.env` - Configuration pattern
+
+### Critical Patterns to Copy from TypeScript:
+- ✅ .env file structure and variables
+- ✅ OTLP endpoint configuration
+- ✅ File logging structure
+- ✅ Metrics implementation
+- ✅ Test program structure
+
+**Rule: When unsure, copy TypeScript's approach. Do NOT invent your own.**
+
+---
+
 ## 🎯 Primary Directive
 
-**ALWAYS start each session by reading ROADMAP.md**
+**ROADMAP.md is your master checklist**
 
-This is not optional. This is not a suggestion. This is the FIRST thing you do.
+This is not optional. This is not a suggestion. ROADMAP.md is the FIRST thing you read and the LAST thing you update.
 
 ```bash
-# At session start, ALWAYS:
+# At session start: Read it
+# During work: Update it
+# At session end: Mark tasks complete
 Read [LANGUAGE]/llm-work/ROADMAP.md
 ```
 

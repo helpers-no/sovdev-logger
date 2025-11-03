@@ -112,19 +112,64 @@ This creates:
 
 ---
 
-## Step 2: Read Instructions
+## Step 2: Read Instructions and Update ROADMAP (MANDATORY)
 
-**Read these TWO files completely:**
+**🔴 CRITICAL: You MUST execute these steps IN ORDER. Do NOT skip.**
+
+### 2.1: Read ROADMAP.md
+
+Execute this command NOW (use Bash tool):
 
 ```bash
-# 1. Read CLAUDE.md - Workflow instructions
-cat {language}/llm-work/CLAUDE.md
-
-# 2. Read ROADMAP.md - 13-task checklist
 cat {language}/llm-work/ROADMAP.md
 ```
 
-**Then follow the process described in those files.**
+**After reading, you MUST be able to answer:**
+- What is the first uncompleted task marked `[ ]`?
+- What phase is it in?
+- What does the task require?
+
+### 2.2: Update ROADMAP.md - Mark Task In Progress
+
+**Before doing ANY work, update ROADMAP.md:**
+
+Use the Edit tool to:
+1. Find the first uncompleted task: `[ ]`
+2. Change it to: `[-] 🏗️ 2025-11-03` (use today's date)
+3. Update "Last updated" date at the top of ROADMAP.md
+
+**Example edit:**
+```markdown
+BEFORE:
+- [ ] 11. File validation passes
+
+AFTER:
+- [-] 🏗️ 2025-11-03 - 11. File validation passes
+```
+
+**This is NOT optional. If you skip this, you violate the core process.**
+
+### 2.3: Read CLAUDE.md
+
+Execute this command NOW (use Bash tool):
+
+```bash
+cat {language}/llm-work/CLAUDE.md
+```
+
+**This file contains the complete workflow instructions. Read it thoroughly.**
+
+### 2.4: Checkpoint - Confirm You Understand
+
+**Before proceeding, confirm:**
+- [ ] I have READ ROADMAP.md
+- [ ] I have UPDATED ROADMAP.md to mark the current task as in progress `[-]`
+- [ ] I have UPDATED "Last updated" date in ROADMAP.md
+- [ ] I have READ CLAUDE.md
+- [ ] I know which task I'm working on
+- [ ] I know what that task requires
+
+**If ANY answer is NO → STOP and go back to 2.1**
 
 ---
 
