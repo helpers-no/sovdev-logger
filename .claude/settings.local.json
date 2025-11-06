@@ -17,7 +17,9 @@
       "Bash(cat:*)",
       "Bash(for skill in .claude/skills/*/SKILL.md)",
       "Bash(done)",
-      "Bash(./specification/llm-work-templates/enforcement/init-language-workspace.sh:*)"
+      "Bash(./specification/llm-work-templates/enforcement/init-language-workspace.sh:*)",
+      "Bash(./run-full-validation.sh:*)",
+      "WebFetch(domain:www.nuget.org)"
     ],
     "deny": [],
     "ask": []
