@@ -15,6 +15,8 @@
 # Script metadata - must be at the very top of the configuration section
 SCRIPT_NAME="C# Development Tools"
 SCRIPT_DESCRIPTION="Complete .NET 8.0 development environment with Azure Functions, Bicep IaC, storage emulation, and VS Code extensions"
+SCRIPT_CATEGORY="LANGUAGE_DEV"
+CHECK_INSTALLED_COMMAND="command -v dotnet >/dev/null 2>&1"
 
 # Before running installation, we need to add any required repositories
 pre_installation_setup() {

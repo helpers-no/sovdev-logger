@@ -1,201 +1,53 @@
 #!/bin/bash
 # file: dev-template.sh
-# Description: This script is a self-updating template initializer for the Urbalurba Developer Platform.
-#              It automatically fetches the latest version of itself from the repository before running,
-#              ensuring you always have the most up-to-date version.
+# Description: Template initializer for the Urbalurba Developer Platform with dialog menu.
+#              Reads TEMPLATE_INFO from each template for display names and descriptions.
 #
-# Purpose: This script helps developers set up new projects using predefined templates from the
-#          urbalurba-dev-templates repository. It handles template selection, file copying,
-#          and configuration setup.
-#
-# Usage: ./dev-template.sh [template-name] [options]
-#
-# Arguments:
-#   template-name    : Optional. Name of the template to use. If not provided, a list of
-#                     available templates will be shown for selection.
-#
-# Options:
-#   --skip-update    : Skip checking for updates to the script
-#   --force-update   : Force update to the latest version of the script
-#   --version        : Show current version of the script and exit
+# Usage: ./dev-template.sh [template-directory-name]
 #
 # Examples:
-#   # Show available templates and select one interactively
-#   ./dev-template.sh
+#   ./dev-template.sh                      # Show menu
+#   ./dev-template.sh typescript-basic-webserver  # Direct selection
 #
-#   # Use a specific template directly
-#   ./dev-template.sh typescript-basic-webserver
-#
-#   # Skip update check and use a specific template
-#   ./dev-template.sh typescript-basic-webserver --skip-update
-#
-#   # Force update the script to latest version
-#   ./dev-template.sh --force-update
-#
-#   # Show current version
-#   ./dev-template.sh --version
-#
-# Update Mechanism:
-#   - The script checks for updates every time it runs
-#   - It downloads the latest version from the repository
-#   - If a newer version is found, it automatically updates itself
-#   - After updating, it reruns with the same arguments
-#   - The update process includes retry logic for network issues
-#
-# Template Process:
-#   1. Checks for script updates (unless --skip-update is used)
-#   2. Updates devcontainer files if needed
-#   3. Detects GitHub repository information
-#   4. Clones the template repository
-#   5. Selects a template (interactively or from argument)
-#   6. Verifies template structure
-#   7. Copies template files to current directory
-#   8. Sets up GitHub workflows
-#   9. Merges .gitignore files
-#   10. Processes template variables
-#
-# Exit Codes:
-#   0 - Success
-#   1 - Error in script execution
-#   2 - Template not found
-#   3 - Update check failed
-#   4 - Devcontainer update failed
-#
-# Version: 1.0.0
+# Version: 1.3.0
 #------------------------------------------------------------------------------
 set -e
 
-# Script version - increment this when making changes
-SCRIPT_VERSION="1.0.0"
+SCRIPT_VERSION="1.3.0"
 
 #------------------------------------------------------------------------------
-# Fetch and update the script from repository
+# Check if dialog is available
 #------------------------------------------------------------------------------
-function update_script() {
-  # Check if update should be skipped
-  if [[ "$SKIP_UPDATE" == "true" ]]; then
-    echo "ℹ️ Update check skipped"
-    return 0
-  fi
-
-  echo "🔄 Checking for script updates..."
-  
-  # Template variables
-  TEMPLATE_OWNER="terchris"
-  TEMPLATE_REPO_NAME="urbalurba-dev-templates"
-  TEMPLATE_REPO_URL="https://raw.githubusercontent.com/$TEMPLATE_OWNER/$TEMPLATE_REPO_NAME/main/dev-template.sh"
-  
-  # Create temporary file
-  TEMP_SCRIPT=$(mktemp)
-  
-  # Download the latest version with retry logic
-  MAX_RETRIES=3
-  RETRY_COUNT=0
-  DOWNLOAD_SUCCESS=false
-  
-  while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if curl -s "$TEMPLATE_REPO_URL" > "$TEMP_SCRIPT"; then
-      DOWNLOAD_SUCCESS=true
-      break
-    fi
-    RETRY_COUNT=$((RETRY_COUNT + 1))
-    if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-      echo "⚠️ Download failed, retrying ($RETRY_COUNT/$MAX_RETRIES)..."
-      sleep 2
-    fi
-  done
-  
-  if [ "$DOWNLOAD_SUCCESS" = false ]; then
-    echo "❌ Failed to check for updates after $MAX_RETRIES attempts"
-    rm "$TEMP_SCRIPT"
-    return 1
-  fi
-  
-  # Extract version from downloaded script
-  NEW_VERSION=$(grep -m 1 "SCRIPT_VERSION=" "$TEMP_SCRIPT" | cut -d'"' -f2)
-  
-  if [ -z "$NEW_VERSION" ]; then
-    echo "⚠️ Could not determine version of downloaded script"
-    rm "$TEMP_SCRIPT"
-    return 1
-  fi
-  
-  # Compare versions or force update
-  if [ "$FORCE_UPDATE" = true ] || [ "$NEW_VERSION" != "$SCRIPT_VERSION" ]; then
-    echo "📥 New version available ($NEW_VERSION), updating..."
-    # Make the temp file executable
-    chmod +x "$TEMP_SCRIPT"
-    # Replace the current script
-    if mv "$TEMP_SCRIPT" "$0"; then
-      echo "✅ Script updated successfully to version $NEW_VERSION"
-      # Rerun the updated script with original arguments
-      exec "$0" "${ORIGINAL_ARGS[@]}"
-    else
-      echo "❌ Failed to update script"
-      rm "$TEMP_SCRIPT"
-      return 1
-    fi
-  else
-    echo "✅ Script is up to date (version $SCRIPT_VERSION)"
-    rm "$TEMP_SCRIPT"
+function check_dialog() {
+  if ! command -v dialog >/dev/null 2>&1; then
+    echo "❌ Error: dialog is not installed"
+    echo "   sudo apt-get install dialog"
+    exit 2
   fi
 }
 
 #------------------------------------------------------------------------------
-# Display version information
-#------------------------------------------------------------------------------
-function show_version() {
-  echo "dev-template.sh version $SCRIPT_VERSION"
-  exit 0
-}
-
-#------------------------------------------------------------------------------
-# Process command line arguments
-#------------------------------------------------------------------------------
-function process_args() {
-  ORIGINAL_ARGS=("$@")
-  TEMPLATE_NAME=""
-  SKIP_UPDATE=false
-  FORCE_UPDATE=false
-  
-  while [[ $# -gt 0 ]]; do
-    case $1 in
-      --skip-update)
-        SKIP_UPDATE=true
-        shift
-        ;;
-      --force-update)
-        FORCE_UPDATE=true
-        shift
-        ;;
-      --version)
-        show_version
-        ;;
-      *)
-        if [[ "$1" != --* ]]; then
-          TEMPLATE_NAME="$1"
-        fi
-        shift
-        ;;
-    esac
-  done
-}
-
-#------------------------------------------------------------------------------
-# Display banner and intro message
+# Display banner
 #------------------------------------------------------------------------------
 function display_intro() {
   echo ""
-  echo "🛠️  Urbalurba Developer Platform - Project Initializer"
-  echo "This script will set up your project with the necessary files and configurations."
-  echo "-----------------------------------------------------"
+  echo "🛠️  Urbalurba Developer Platform - Project Template Initializer"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
 }
 
 #------------------------------------------------------------------------------
-# Detect GitHub user and repository information
+# Detect GitHub repository info
 #------------------------------------------------------------------------------
 function detect_github_info() {
-  GITHUB_REMOTE=$(git remote get-url origin)
+  echo "🔍 Detecting GitHub repository information..."
+  GITHUB_REMOTE=$(git remote get-url origin 2>/dev/null)
+  
+  if [[ -z "$GITHUB_REMOTE" ]]; then
+    echo "❌ Could not determine GitHub remote"
+    exit 1
+  fi
+  
   GITHUB_USERNAME=$(echo "$GITHUB_REMOTE" | sed -n 's/.*github.com[:/]\(.*\)\/.*/\1/p')
   REPO_NAME=$(basename -s .git "$GITHUB_REMOTE")
 
@@ -205,233 +57,354 @@ function detect_github_info() {
   fi
 
   echo "✅ GitHub user: $GITHUB_USERNAME"
-  echo "✅ Repo name: $REPO_NAME"
+  echo "✅ Repository: $REPO_NAME"
+  echo ""
 }
 
 #------------------------------------------------------------------------------
-# Clone the templates repository
+# Clone templates repository
 #------------------------------------------------------------------------------
 function clone_template_repo() {
-  # Template variables
   TEMPLATE_OWNER="terchris"
   TEMPLATE_REPO_NAME="urbalurba-dev-templates"
   TEMPLATE_REPO_URL="https://github.com/$TEMPLATE_OWNER/$TEMPLATE_REPO_NAME"
 
-  # Create temporary directory
   TEMP_DIR=$(mktemp -d)
-  echo "Cloning template repository to temp folder: $TEMP_DIR"
+  echo "📥 Fetching latest templates from GitHub..."
+  echo "   📁 Download location: $TEMP_DIR"
+  echo ""
   cd "$TEMP_DIR"
 
-  # Clone the template repository
-  echo "Cloning from $TEMPLATE_REPO_URL..."
-  git clone $TEMPLATE_REPO_URL
-
-  # Check if the templates directory exists
-  if [ ! -d "$TEMPLATE_REPO_NAME/templates" ]; then
-    echo "❌ Templates directory not found in repository."
-    echo "Removing template repository folder: $TEMP_DIR"
+  if ! git clone --quiet $TEMPLATE_REPO_URL 2>/dev/null; then
+    echo "❌ Failed to clone template repository"
     rm -rf "$TEMP_DIR"
     exit 1
+  fi
+
+  if [ ! -d "$TEMPLATE_REPO_NAME/templates" ]; then
+    echo "❌ Templates directory not found"
+    rm -rf "$TEMP_DIR"
+    exit 1
+  fi
+  
+  echo "✅ Templates fetched successfully"
+  echo ""
+}
+
+#------------------------------------------------------------------------------
+# Read TEMPLATE_INFO from template directory
+#------------------------------------------------------------------------------
+function read_template_info() {
+  local template_dir="$1"
+  local info_file="$template_dir/TEMPLATE_INFO"
+  
+  # Defaults
+  INFO_NAME=$(basename "$template_dir")
+  INFO_DESCRIPTION="No description"
+  INFO_CATEGORY="UNCATEGORIZED"
+  INFO_PURPOSE=""
+  
+  if [ -f "$info_file" ]; then
+    # Unset variables to avoid pollution
+    unset TEMPLATE_NAME TEMPLATE_DESCRIPTION TEMPLATE_CATEGORY TEMPLATE_PURPOSE
+    
+    source "$info_file"
+    
+    INFO_NAME="${TEMPLATE_NAME:-$INFO_NAME}"
+    INFO_DESCRIPTION="${TEMPLATE_DESCRIPTION:-$INFO_DESCRIPTION}"
+    INFO_CATEGORY="${TEMPLATE_CATEGORY:-$INFO_CATEGORY}"
+    INFO_PURPOSE="${TEMPLATE_PURPOSE:-$INFO_PURPOSE}"
+    
+    # Clean up after sourcing
+    unset TEMPLATE_NAME TEMPLATE_DESCRIPTION TEMPLATE_CATEGORY TEMPLATE_PURPOSE
   fi
 }
 
 #------------------------------------------------------------------------------
-# Get available templates and select one
+# Scan templates and build arrays
 #------------------------------------------------------------------------------
-function select_template() {
-  # Get a list of available templates
-  TEMPLATES=()
+function scan_templates() {
+  TEMPLATE_DIRS=()
+  TEMPLATE_NAMES=()
+  TEMPLATE_DESCRIPTIONS=()
+  TEMPLATE_CATEGORIES=()
+  TEMPLATE_PURPOSES=()
+  
+  # Group by category
+  declare -g -A CATEGORY_WEB_SERVER
+  declare -g -A CATEGORY_WEB_APP
+  declare -g -A CATEGORY_OTHER
+  
+  echo "📋 Scanning available templates..."
   for dir in "$TEMPLATE_REPO_NAME/templates"/*; do
     if [ -d "$dir" ]; then
-      TEMPLATE_NAME=$(basename "$dir")
-      TEMPLATES+=("$TEMPLATE_NAME")
+      read_template_info "$dir"
+      
+      local idx=${#TEMPLATE_DIRS[@]}
+      TEMPLATE_DIRS+=("$(basename "$dir")")
+      TEMPLATE_NAMES+=("$INFO_NAME")
+      TEMPLATE_DESCRIPTIONS+=("$INFO_DESCRIPTION")
+      TEMPLATE_CATEGORIES+=("$INFO_CATEGORY")
+      TEMPLATE_PURPOSES+=("$INFO_PURPOSE")
+      
+      # Group by category for menu display
+      case "$INFO_CATEGORY" in
+        WEB_SERVER)
+          CATEGORY_WEB_SERVER["$(basename "$dir")"]=$idx
+          ;;
+        WEB_APP)
+          CATEGORY_WEB_APP["$(basename "$dir")"]=$idx
+          ;;
+        *)
+          CATEGORY_OTHER["$(basename "$dir")"]=$idx
+          ;;
+      esac
     fi
   done
-
-  if [ ${#TEMPLATES[@]} -eq 0 ]; then
-    echo "❌ No templates found in repository."
-    echo "Removing template repository folder: $TEMP_DIR"
+  
+  if [ ${#TEMPLATE_DIRS[@]} -eq 0 ]; then
+    echo "❌ No templates found"
     rm -rf "$TEMP_DIR"
     exit 1
   fi
+  
+  echo "✅ Found ${#TEMPLATE_DIRS[@]} template(s)"
+  echo ""
+}
 
-  # If a template name is provided as a parameter, use it
-  # Otherwise, list available templates and let the user select one
-  if [ -n "$1" ]; then
-    TEMPLATE_NAME="$1"
-    # Check if the specified template exists
-    if [ ! -d "$TEMPLATE_REPO_NAME/templates/$TEMPLATE_NAME" ]; then
-      echo "❌ Template '$TEMPLATE_NAME' not found in repository."
-      echo "Available templates:"
-      for i in "${!TEMPLATES[@]}"; do
-        echo "  $(($i + 1)). ${TEMPLATES[$i]}"
-      done
-      echo "Removing template repository folder: $TEMP_DIR"
-      rm -rf "$TEMP_DIR"
-      exit 1
-    fi
-  else
-    # No template specified, show list
-    echo "Available templates:"
-    for i in "${!TEMPLATES[@]}"; do
-      echo "  $(($i + 1)). ${TEMPLATES[$i]}"
-    done
-    
-    # Ask user to select a template
-    while true; do
-      echo ""
-      read -p "Select template (1-${#TEMPLATES[@]}): " TEMPLATE_SELECTION
-      
-      # Check if the input is a number
-      if [[ "$TEMPLATE_SELECTION" =~ ^[0-9]+$ ]]; then
-        # Check if the number is in range
-        if [ "$TEMPLATE_SELECTION" -ge 1 ] && [ "$TEMPLATE_SELECTION" -le ${#TEMPLATES[@]} ]; then
-          # Convert selection to array index (0-based)
-          TEMPLATE_INDEX=$(($TEMPLATE_SELECTION - 1))
-          TEMPLATE_NAME="${TEMPLATES[$TEMPLATE_INDEX]}"
-          break
-        fi
-      fi
-      
-      echo "❌ Invalid selection. Please enter a number between 1 and ${#TEMPLATES[@]}."
+#------------------------------------------------------------------------------
+# Show dialog menu grouped by category and get selection
+#------------------------------------------------------------------------------
+function show_template_menu() {
+  local menu_options=()
+  local option_num=1
+  declare -g -A MENU_TO_INDEX
+  
+  # Web Server templates
+  if [ ${#CATEGORY_WEB_SERVER[@]} -gt 0 ]; then
+    for dir_name in $(printf '%s\n' "${!CATEGORY_WEB_SERVER[@]}" | sort); do
+      local idx=${CATEGORY_WEB_SERVER[$dir_name]}
+      menu_options+=("$option_num" "🌐 ${TEMPLATE_NAMES[$idx]}" "${TEMPLATE_DESCRIPTIONS[$idx]}")
+      MENU_TO_INDEX[$option_num]=$idx
+      ((option_num++))
     done
   fi
+  
+  # Web App templates
+  if [ ${#CATEGORY_WEB_APP[@]} -gt 0 ]; then
+    for dir_name in $(printf '%s\n' "${!CATEGORY_WEB_APP[@]}" | sort); do
+      local idx=${CATEGORY_WEB_APP[$dir_name]}
+      menu_options+=("$option_num" "📱 ${TEMPLATE_NAMES[$idx]}" "${TEMPLATE_DESCRIPTIONS[$idx]}")
+      MENU_TO_INDEX[$option_num]=$idx
+      ((option_num++))
+    done
+  fi
+  
+  # Other templates
+  if [ ${#CATEGORY_OTHER[@]} -gt 0 ]; then
+    for dir_name in $(printf '%s\n' "${!CATEGORY_OTHER[@]}" | sort); do
+      local idx=${CATEGORY_OTHER[$dir_name]}
+      menu_options+=("$option_num" "📦 ${TEMPLATE_NAMES[$idx]}" "${TEMPLATE_DESCRIPTIONS[$idx]}")
+      MENU_TO_INDEX[$option_num]=$idx
+      ((option_num++))
+    done
+  fi
+  
+  local choice
+  choice=$(dialog --clear \
+    --item-help \
+    --title "Project Templates" \
+    --menu "Choose a template (ESC to cancel):\n\n🌐=Web Server  📱=Web App  📦=Other" \
+    20 80 12 \
+    "${menu_options[@]}" \
+    2>&1 >/dev/tty)
+  
+  if [[ $? -ne 0 ]]; then
+    clear
+    echo "ℹ️  Selection cancelled"
+    rm -rf "$TEMP_DIR"
+    exit 3
+  fi
+  
+  echo "$choice"
+}
 
-  echo "Selected template: $TEMPLATE_NAME"
+#------------------------------------------------------------------------------
+# Show template details confirmation dialog
+#------------------------------------------------------------------------------
+function show_template_details() {
+  local idx=$1
+  local template_name="${TEMPLATE_NAMES[$idx]}"
+  local template_desc="${TEMPLATE_DESCRIPTIONS[$idx]}"
+  local template_category="${TEMPLATE_CATEGORIES[$idx]}"
+  local template_purpose="${TEMPLATE_PURPOSES[$idx]}"
+  
+  # Build details text
+  local details=""
+  details+="Name: $template_name\n\n"
+  details+="Category: $template_category\n\n"
+  details+="Description:\n$template_desc\n\n"
+  
+  if [ -n "$template_purpose" ]; then
+    details+="Purpose:\n$template_purpose\n\n"
+  fi
+  
+  details+="Directory: ${TEMPLATE_DIRS[$idx]}"
+  
+  # Show confirmation dialog
+  dialog --clear \
+    --title "Template Details" \
+    --yesno "$details\n\nDo you want to use this template?" \
+    20 80
+  
+  return $?
+}
+
+#------------------------------------------------------------------------------
+# Select template (interactive or from argument)
+#------------------------------------------------------------------------------
+function select_template() {
+  local param_name="$1"
+  
+  if [ -n "$param_name" ]; then
+    # Direct selection by directory name
+    TEMPLATE_NAME="$param_name"
+    
+    if [ ! -d "$TEMPLATE_REPO_NAME/templates/$TEMPLATE_NAME" ]; then
+      echo "❌ Template '$TEMPLATE_NAME' not found"
+      rm -rf "$TEMP_DIR"
+      exit 2
+    fi
+    
+    # Find index for display
+    for i in "${!TEMPLATE_DIRS[@]}"; do
+      if [ "${TEMPLATE_DIRS[$i]}" == "$TEMPLATE_NAME" ]; then
+        TEMPLATE_INDEX=$i
+        break
+      fi
+    done
+  else
+    # Interactive menu selection with confirmation
+    while true; do
+      local choice
+      choice=$(show_template_menu)
+      TEMPLATE_INDEX=${MENU_TO_INDEX[$choice]}
+      
+      # Show details and get confirmation
+      if show_template_details $TEMPLATE_INDEX; then
+        TEMPLATE_NAME="${TEMPLATE_DIRS[$TEMPLATE_INDEX]}"
+        break
+      fi
+      # If user said no, loop back to menu
+    done
+  fi
+  
+  clear
+  display_intro
+  echo "✅ Selected: ${TEMPLATE_NAMES[$TEMPLATE_INDEX]}"
+  
+  if [ -n "${TEMPLATE_PURPOSES[$TEMPLATE_INDEX]}" ]; then
+    echo ""
+    echo "📝 About this template:"
+    echo "   ${TEMPLATE_PURPOSES[$TEMPLATE_INDEX]}"
+  fi
+  echo ""
+  
   TEMPLATE_PATH="$TEMPLATE_REPO_NAME/templates/$TEMPLATE_NAME"
 }
 
 #------------------------------------------------------------------------------
-# Verify template structure and required files
+# Verify template structure
 #------------------------------------------------------------------------------
 function verify_template() {
-  echo "Verifying template structure..."
+  echo "🔍 Verifying template structure..."
 
-  # Check for the manifests directory
   if [ ! -d "$TEMPLATE_PATH/manifests" ]; then
-    echo "❌ Required directory 'manifests' not found in template."
-    echo "Removing template repository folder: $TEMP_DIR"
+    echo "❌ Required directory 'manifests' not found"
     rm -rf "$TEMP_DIR"
     exit 1
   fi
 
-  # Check for deployment.yaml
   if [ ! -f "$TEMPLATE_PATH/manifests/deployment.yaml" ]; then
-    echo "❌ Required file 'manifests/deployment.yaml' not found in template."
-    echo "Removing template repository folder: $TEMP_DIR"
+    echo "❌ Required file 'manifests/deployment.yaml' not found"
     rm -rf "$TEMP_DIR"
     exit 1
   fi
 
-  echo "✅ Required template structure verified"
+  echo "✅ Template structure verified"
+  echo ""
 }
 
 #------------------------------------------------------------------------------
-# Copy template files to project directory
+# Copy template files
 #------------------------------------------------------------------------------
 function copy_template_files() {
-  echo "Extracting template $TEMPLATE_NAME"
-  # Copy all visible files and directories
+  echo "📦 Extracting template files..."
   cp -r "$TEMPLATE_PATH/"* "$OLDPWD/"
 
-  # Copy urbalurba-scripts directory from the repository root
   if [ -d "$TEMPLATE_REPO_NAME/urbalurba-scripts" ]; then
-    echo "Setting up urbalurba-scripts for project integration..."
-    # Create urbalurba-scripts directory if it doesn't exist
+    echo "   Setting up urbalurba-scripts..."
     mkdir -p "$OLDPWD/urbalurba-scripts"
-    
-    # Copy all files from urbalurba-scripts directory
     cp -r "$TEMPLATE_REPO_NAME/urbalurba-scripts/"* "$OLDPWD/urbalurba-scripts/"
-    
-    # Make sure script files are executable
     chmod +x "$OLDPWD/urbalurba-scripts/"*.sh 2>/dev/null || true
-    echo "✅ Added urbalurba-scripts"
-  else
-    echo "❌ urbalurba-scripts directory not found in template repository"
-    echo "Warning: The project may not function correctly without these scripts"
+    echo "   ✅ Added urbalurba-scripts"
   fi
+  
+  echo ""
 }
 
 #------------------------------------------------------------------------------
-# Copy and set up GitHub workflow files
+# Setup GitHub workflows
 #------------------------------------------------------------------------------
 function setup_github_workflows() {
-  # Handle special directories that might be hidden
-  # Create .github directory if needed
   if [ -d "$TEMPLATE_PATH/.github" ]; then
-    echo "Setting up .github directory and workflows..."
-    
-    # Create .github/workflows directory if it doesn't exist
+    echo "⚙️  Setting up GitHub workflows..."
     mkdir -p "$OLDPWD/.github/workflows"
-    
-    # Copy all files from .github directory preserving structure
     cp -r "$TEMPLATE_PATH/.github"/* "$OLDPWD/.github/"
-    echo "✅ Added GitHub files and workflows"
-  else
-    # Check if there's a common workflows directory in the template repo
-    if [ -d "$TEMPLATE_REPO_NAME/.github/workflows" ]; then
-      echo "Setting up common GitHub workflows..."
-      mkdir -p "$OLDPWD/.github/workflows"
-      cp -r "$TEMPLATE_REPO_NAME/.github/workflows"/* "$OLDPWD/.github/workflows/"
-      echo "✅ Added common GitHub workflows"
-    fi
+    echo "   ✅ Added GitHub workflows"
+    echo ""
   fi
 }
 
 #------------------------------------------------------------------------------
-# Merge gitignore files
+# Merge .gitignore files
 #------------------------------------------------------------------------------
 function merge_gitignore() {
-  # Handle .gitignore merging
   if [ -f "$TEMPLATE_PATH/.gitignore" ]; then
-    echo "Merging .gitignore files..."
+    echo "🔀 Merging .gitignore files..."
     
-    # Check if destination .gitignore exists
     if [ -f "$OLDPWD/.gitignore" ]; then
-      echo "Existing .gitignore found, merging with template .gitignore"
-      
-      # Create temporary files
       TEMP_MERGED=$(mktemp)
-      
-      # Copy existing .gitignore entries to temp file
       cat "$OLDPWD/.gitignore" > "$TEMP_MERGED"
-      
-      # Add a newline to ensure separation
       echo "" >> "$TEMP_MERGED"
-      
-      # Add template .gitignore entries that don't already exist
       echo "# Added from template $TEMPLATE_NAME" >> "$TEMP_MERGED"
       
       while IFS= read -r line; do
-        # Skip empty lines and comments
         if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
-          # Check if this entry already exists in the destination .gitignore
           if ! grep -Fxq "$line" "$OLDPWD/.gitignore"; then
             echo "$line" >> "$TEMP_MERGED"
           fi
         fi
       done < "$TEMPLATE_PATH/.gitignore"
       
-      # Replace the existing .gitignore with the merged file
-      # Use cat instead of mv to avoid permission issues
       if cat "$TEMP_MERGED" > "$OLDPWD/.gitignore"; then
-          echo "✅ Successfully merged .gitignore files"
-          # Clean up temp file
-          rm -f "$TEMP_MERGED"
+        echo "   ✅ Merged .gitignore files"
+        rm -f "$TEMP_MERGED"
       else
-          echo "❌ Failed to update .gitignore file: Permission denied"
-          rm -f "$TEMP_MERGED"
-          exit 1
+        echo "   ❌ Failed to merge .gitignore"
+        rm -f "$TEMP_MERGED"
+        exit 1
       fi
     else
-      echo "No existing .gitignore, copying template .gitignore"
       cp "$TEMPLATE_PATH/.gitignore" "$OLDPWD/"
+      echo "   ✅ Copied .gitignore"
     fi
+    echo ""
   fi
 }
 
 #------------------------------------------------------------------------------
-# Replace placeholders in a single file
+# Replace template variables in file
 #------------------------------------------------------------------------------
 function replace_placeholders() {
   local file=$1
@@ -443,153 +416,92 @@ function replace_placeholders() {
           -e "s|{{REPO_NAME}}|$REPO_NAME|g" > "$temp_file"
     
     if cat "$temp_file" > "$file"; then
-      echo "✅ Updated $(basename "$file")"
+      echo "      ✅ $(basename "$file")"
     else
-      echo "❌ Failed to update $(basename "$file")"
+      echo "      ❌ $(basename "$file")"
       return 1
     fi
     rm "$temp_file"
-  else
-    echo "⚠️ File not found: $file"
-    return 1
   fi
   
   return 0
 }
 
 #------------------------------------------------------------------------------
-# Process only the essential files that need template variable replacement
+# Process template variables
 #------------------------------------------------------------------------------
 function process_essential_files() {
-  echo "Processing manifest files..."
-  # Process manifest files
+  echo "⚙️  Processing template variables..."
+  
   if [ -d "manifests" ]; then
+    echo "   📄 Updating manifest files:"
     for manifest_file in manifests/*.yaml manifests/*.yml; do
       if [ -f "$manifest_file" ]; then
         replace_placeholders "$manifest_file"
       fi
     done
-  else
-    echo "⚠️ No manifests directory found"
   fi
   
-  echo "Processing GitHub Actions workflows..."
-  # Process GitHub workflow files
   if [ -d ".github/workflows" ]; then
+    echo "   📄 Updating workflow files:"
     for workflow_file in .github/workflows/*.yaml .github/workflows/*.yml; do
       if [ -f "$workflow_file" ]; then
         replace_placeholders "$workflow_file"
       fi
     done
-  else
-    echo "⚠️ No GitHub workflows directory found"
   fi
+  
+  echo ""
 }
 
 #------------------------------------------------------------------------------
-# Clean up temporary files and display completion message
+# Cleanup and show completion
 #------------------------------------------------------------------------------
 function cleanup_and_complete() {
-  echo "Removing template repository folder: $TEMP_DIR"
+  echo "🧹 Cleaning up..."
+  echo "   Removing: $TEMP_DIR"
   rm -rf "$TEMP_DIR"
 
   echo ""
-  echo "✅ Template setup complete! Next steps:"
-  echo "1. Review the files that were created"
-  echo "2. Run any setup commands specified in the template's README"
-  echo "3. Commit and push your project to GitHub"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "✅ Template setup complete!"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
-}
-
-#------------------------------------------------------------------------------
-# Update devcontainer files
-#------------------------------------------------------------------------------
-function update_devcontainer_files() {
-  echo "🔄 Checking for devcontainer file updates..."
-  
-  # Template variables
-  TEMPLATE_OWNER="terchris"
-  TEMPLATE_REPO_NAME="urbalurba-dev-templates"
-  TEMPLATE_REPO_URL="https://github.com/$TEMPLATE_OWNER/$TEMPLATE_REPO_NAME"
-  
-  # Create temporary directory
-  TEMP_DIR=$(mktemp -d)
-  
-  # Clone the repository to get latest files
-  echo "📥 Fetching latest devcontainer files..."
-  if ! git clone --depth 1 "$TEMPLATE_REPO_URL" "$TEMP_DIR" > /dev/null 2>&1; then
-    echo "❌ Failed to fetch devcontainer files"
-    rm -rf "$TEMP_DIR"
-    return 1
-  fi
-  
-  # Check if source directory exists
-  SRC_DIR="$TEMP_DIR/developer-toolbox/.devcontainer/additions"
-  if [ ! -d "$SRC_DIR" ]; then
-    echo "❌ Source directory not found"
-    rm -rf "$TEMP_DIR"
-    return 1
-  fi
-  
-  # Create target directory if it doesn't exist
-  TARGET_DIR=".devcontainer/additions"
-  mkdir -p "$TARGET_DIR"
-  
-  # Track if any files were updated
-  FILES_UPDATED=false
-  
-  # Process each file in the source directory
-  for SRC_FILE in "$SRC_DIR"/*.sh; do
-    if [ -f "$SRC_FILE" ]; then
-      FILENAME=$(basename "$SRC_FILE")
-      TARGET_FILE="$TARGET_DIR/$FILENAME"
-      
-      # Check if file needs to be updated
-      if [ ! -f "$TARGET_FILE" ] || ! cmp -s "$SRC_FILE" "$TARGET_FILE"; then
-        echo "📝 Updating $FILENAME..."
-        cp "$SRC_FILE" "$TARGET_FILE"
-        chmod +x "$TARGET_FILE"
-        FILES_UPDATED=true
-      fi
-    fi
-  done
-  
-  # Clean up
-  rm -rf "$TEMP_DIR"
-  
-  if [ "$FILES_UPDATED" = true ]; then
-    echo "✅ Devcontainer files updated successfully"
-  else
-    echo "✅ Devcontainer files are up to date"
-  fi
+  echo "📝 Next steps:"
+  echo "   1. Review the files that were created"
+  echo "   2. Run any setup commands in the template's README"
+  echo "   3. Commit and push your project to GitHub"
+  echo ""
 }
 
 #------------------------------------------------------------------------------
 # Main execution
 #------------------------------------------------------------------------------
-# Process command line arguments
-process_args "$@"
 
-# Check for updates first
-update_script
+# Get template name from command line (optional)
+TEMPLATE_NAME="${1:-}"
 
-# Update devcontainer files
-update_devcontainer_files
+# Check for dialog
+check_dialog
 
+# Show intro
+clear
 display_intro
+
+# Run the process
 detect_github_info
 clone_template_repo
+scan_templates
 select_template "$TEMPLATE_NAME"
 verify_template
 copy_template_files
 setup_github_workflows
 merge_gitignore
 
-# Navigate back to the project directory
+# Go back to original directory
 cd "$OLDPWD"
 
-# Process template files - ONLY the essential ones
-echo "Processing template files..."
+# Process files
 process_essential_files
 
 cleanup_and_complete

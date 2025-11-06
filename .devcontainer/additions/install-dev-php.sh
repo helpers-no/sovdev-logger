@@ -1,320 +1,317 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # file: .devcontainer/additions/install-dev-php.sh
 #
-# Usage: ./install-dev-php.sh [options]
+# Usage: ./install-dev-php.sh [options] [--version <php_version>]
 #
 # Options:
 #   --debug     : Enable debug output for troubleshooting
 #   --uninstall : Remove installed components instead of installing them
-#   --force     : Force installation/uninstallation even if there are dependencies
+#   --force     : Force installation/uninstallation (less relevant for APT)
+#   --version X.Y : Install a specific PHP major.minor version (e.g., 8.2, 8.3)
+#                   Defaults to a predefined stable version if not specified.
+#
+# Examples:
+#   ./install-dev-php.sh
+#   ./install-dev-php.sh --version 8.3
+#   ./install-dev-php.sh --version 8.1 --uninstall
 #
 #------------------------------------------------------------------------------
-# CONFIGURATION - Modify this section for each new script
+# CONFIGURATION - Modify this section for the PHP script
 #------------------------------------------------------------------------------
 
-# Script metadata - must be at the very top of the configuration section
-SCRIPT_NAME="PHP Development Tools"
-SCRIPT_DESCRIPTION="Installs PHP 8.4, Composer, and sets up PHP development environment"
+# --- Script Metadata ---
+SCRIPT_NAME="PHP Runtime & Development Tools"
+SCRIPT_DESCRIPTION="Installs PHP runtime (CLI), common extensions, Composer, and VS Code extensions for PHP development using the Ondrej PPA."
+SCRIPT_CATEGORY="LANGUAGE_DEV"
+CHECK_INSTALLED_COMMAND="command -v php >/dev/null 2>&1"
 
-# Before running installation, we need to add any required repositories or setup
+# --- Default Configuration ---
+DEFAULT_PHP_VERSION="8.3" # Specify the default PHP version to install
+TARGET_PHP_VERSION=""     # Will be set based on --version flag or default
+
+# --- Utility Functions ---
+detect_architecture() {
+    # Using dpkg is generally reliable on Debian/Ubuntu
+    if command -v dpkg > /dev/null 2>&1; then
+        ARCH=$(dpkg --print-architecture)
+    elif command -v uname > /dev/null 2>&1; then
+        local unamem=$(uname -m)
+        case "$unamem" in
+            aarch64|arm64) ARCH="arm64" ;;
+            x86_64) ARCH="amd64" ;;
+            *) ARCH="$unamem" ;;
+        esac
+    else
+        ARCH="unknown"
+    fi
+    echo "$ARCH"
+}
+
+get_installed_php_version() {
+    if command -v php &> /dev/null; then
+        php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || echo ""
+    else
+        echo ""
+    fi
+}
+
+# --- Pre-installation/Uninstallation Setup ---
 pre_installation_setup() {
+    echo "🔧 Preparing environment..."
+    
+    # Ensure essential tools are present
+    if ! command -v sudo > /dev/null || ! command -v apt-get > /dev/null || ! command -v curl > /dev/null || ! command -v gpg > /dev/null; then
+         echo "⏳ Installing prerequisites (sudo, curl, apt-transport-https, gpg)..."
+         apt-get update -y > /dev/null
+         apt-get install -y --no-install-recommends sudo curl apt-transport-https ca-certificates gnupg > /dev/null
+    fi
+
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        echo "🔧 Preparing for uninstallation..."
-    else
-        echo "🔧 Performing pre-installation setup..."
-
-        # Check if PHP is already installed
-        if command -v php >/dev/null 2>&1; then
-            echo "✅ PHP is already installed (version: $(php --version | head -n 1))"
-        else
-            # Install PHP using custom function to avoid core-install-apt.sh hanging
-            install_php_custom
-        fi
-        
-        # Check if Composer is available (should be included with PHP installation)
-        if command -v composer >/dev/null 2>&1; then
-            echo "✅ Composer is already installed (version: $(composer --version | head -n 1))"
-        else
-            echo "⚠️  Composer not found - this should be included with PHP installation"
-            # Install Composer as fallback
-            install_composer
-        fi
-    fi
-}
-
-# Custom PHP installation function (uses Laravel's proven installer)
-install_php_custom() {
-    echo "📦 Installing PHP 8.4 stack using Laravel's official installer..."
-    
-    # Install PHP stack using Laravel's official installer
-    if ! /bin/bash -c "$(curl -fsSL https://php.new/install/linux/8.4)"; then
-        echo "❌ Failed to install PHP stack"
-        return 1
-    fi
-    
-    # Source the bashrc to update PATH for current session
-    if [ -f "/home/vscode/.bashrc" ]; then
-        echo "🔄 Updating PATH for current session..."
-        # shellcheck source=/dev/null
-        source /home/vscode/.bashrc
-        
-        # Also update PATH for this script execution
-        export PATH="/home/vscode/.config/herd-lite/bin:$PATH"
-    fi
-    
-    # Verify installation
-    if command -v php >/dev/null 2>&1; then
-        echo "✅ PHP is now available: $(php --version | head -n 1)"
-    else
-        echo "❌ PHP installation failed - not found in PATH"
-        return 1
-    fi
-    
-    echo "✅ PHP stack installation completed"
-}
-
-
-# Custom function to install Composer after PHP is installed
-install_composer() {
-    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        if [ -f "/usr/local/bin/composer" ]; then
-            echo "Removing Composer..."
-            sudo rm -f /usr/local/bin/composer
-            echo "✅ Composer removed"
-        fi
-    else
-        if ! command -v composer >/dev/null 2>&1; then
-            echo "📥 Installing Composer..."
-            
-            # Download Composer installer using curl (more reliable in containers)
-            echo "Downloading Composer installer..."
-            if ! curl -sS https://getcomposer.org/installer -o composer-setup.php; then
-                echo "❌ Failed to download Composer installer"
-                return 1
-            fi
-            
-            # Install to system location
-            echo "Installing Composer to /usr/local/bin/composer..."
-            if ! sudo php composer-setup.php --install-dir=/usr/local/bin --filename=composer; then
-                echo "❌ Failed to install Composer"
-                rm -f composer-setup.php 2>/dev/null || true
-                return 1
-            fi
-            
-            # Clean up
-            echo "Cleaning up installer..."
-            rm -f composer-setup.php || true
-            
-            # Make sure it's executable
-            sudo chmod +x /usr/local/bin/composer
-            
-            # Verify installation
-            echo "Verifying Composer installation..."
-            if [ -f "/usr/local/bin/composer" ] && command -v composer >/dev/null 2>&1; then
-                echo "✅ Composer installed successfully: $(composer --version | head -n 1)"
+        echo "🔧 Preparing for PHP uninstallation..."
+        # Determine version to uninstall if not specified
+        if [ -z "$TARGET_PHP_VERSION" ]; then
+            TARGET_PHP_VERSION=$(get_installed_php_version)
+            if [ -z "$TARGET_PHP_VERSION" ]; then
+                echo "⚠️ Could not detect installed PHP version. Please specify with --version X.Y to uninstall."
+                # Optionally, could try a generic uninstall pattern, but safer to require version.
+                # exit 1 # Or proceed with a generic attempt
             else
-                echo "❌ Composer installation failed"
-                return 1
+                 echo "ℹ️ Detected PHP version $TARGET_PHP_VERSION for uninstallation."
             fi
-        else
-            echo "✅ Composer already installed: $(composer --version | head -n 1)"
         fi
+        # Construct package list for removal (only if version is known)
+        if [ -n "$TARGET_PHP_VERSION" ]; then
+            declare -g PHP_APT_PACKAGES=(
+                "php${TARGET_PHP_VERSION}-cli" "php${TARGET_PHP_VERSION}-common" "php${TARGET_PHP_VERSION}-curl"
+                "php${TARGET_PHP_VERSION}-mbstring" "php${TARGET_PHP_VERSION}-mysql" "php${TARGET_PHP_VERSION}-pgsql"
+                "php${TARGET_PHP_VERSION}-sqlite3" "php${TARGET_PHP_VERSION}-xml" "php${TARGET_PHP_VERSION}-zip"
+                "php${TARGET_PHP_VERSION}-intl" "php${TARGET_PHP_VERSION}-gd" "php${TARGET_PHP_VERSION}-bcmath"
+                "php${TARGET_PHP_VERSION}-opcache" "php${TARGET_PHP_VERSION}-readline"
+                # Add php${TARGET_PHP_VERSION} as a meta-package sometimes used
+                "php${TARGET_PHP_VERSION}"
+                "composer" # Remove composer too
+            )
+        else
+             # Attempt generic removal if version couldn't be determined
+             echo "⚠️ Attempting generic PHP package removal patterns."
+             declare -g PHP_APT_PACKAGES=( "php*-cli" "php*-common" "composer" ) # Minimal generic pattern
+        fi
+
+    else
+        echo "🔧 Performing pre-installation setup for PHP..."
+        SYSTEM_ARCH=$(detect_architecture)
+        echo "🖥️ Detected system architecture: $SYSTEM_ARCH"
+
+        # Set target PHP version (use default if --version not provided)
+        if [ -z "$TARGET_PHP_VERSION" ]; then
+            TARGET_PHP_VERSION="$DEFAULT_PHP_VERSION"
+            echo "ℹ️ No --version specified, using default: $TARGET_PHP_VERSION"
+        else
+             echo "ℹ️ Target PHP version specified: $TARGET_PHP_VERSION"
+        fi
+
+        # Check if target PHP version is already installed
+        local current_version=$(get_installed_php_version)
+        if [[ "$current_version" == "$TARGET_PHP_VERSION" ]]; then
+            echo "✅ PHP $TARGET_PHP_VERSION seems to be already installed."
+            # Decide if we should exit or continue (e.g., to install extensions/composer)
+            # For simplicity, we'll continue for now, apt will handle already installed packages.
+        elif [ -n "$current_version" ]; then
+            echo "⚠️ PHP version $current_version is installed. This script will install $TARGET_PHP_VERSION alongside it."
+            echo "   You may need to use 'update-alternatives' to switch between them."
+        fi
+
+        # Check/Install software-properties-common for add-apt-repository
+        if ! command -v add-apt-repository > /dev/null; then
+            echo "⏳ Installing software-properties-common..."
+            sudo apt-get update -y > /dev/null
+            sudo apt-get install -y --no-install-recommends software-properties-common > /dev/null
+        fi
+        
+        # Add Ondrej PHP PPA (provides up-to-date PHP versions)
+        echo "➕ Adding Ondrej PHP PPA (ppa:ondrej/php)..."
+        # Check if PPA is already added to avoid errors/redundancy
+        if ! grep -q "^deb .*ondrej/php" /etc/apt/sources.list /etc/apt/sources.list.d/*; then
+            sudo add-apt-repository -y ppa:ondrej/php > /dev/null
+        else
+            echo "ℹ️ Ondrej PHP PPA already added."
+        fi
+        
+        echo "🔄 Updating package lists after adding PPA..."
+        sudo apt-get update -y > /dev/null
+
+        # Define APT packages based on the target version
+        # Using declare -g to make it globally accessible after the function returns
+        declare -g PHP_APT_PACKAGES=(
+            "php${TARGET_PHP_VERSION}-cli"      # Command Line Interface
+            "php${TARGET_PHP_VERSION}-common"   # Common files
+            "php${TARGET_PHP_VERSION}-curl"     # cURL library support
+            "php${TARGET_PHP_VERSION}-mbstring" # Multibyte string support
+            "php${TARGET_PHP_VERSION}-mysql"    # MySQL database support
+            "php${TARGET_PHP_VERSION}-pgsql"    # PostgreSQL database support
+            "php${TARGET_PHP_VERSION}-sqlite3"  # SQLite database support
+            "php${TARGET_PHP_VERSION}-xml"      # XML support
+            "php${TARGET_PHP_VERSION}-zip"      # ZIP archive support
+            "php${TARGET_PHP_VERSION}-intl"     # Internationalization support
+            "php${TARGET_PHP_VERSION}-gd"       # GD graphics library support
+            "php${TARGET_PHP_VERSION}-bcmath"   # Arbitrary precision mathematics
+            "php${TARGET_PHP_VERSION}-opcache"  # PHP bytecode cacher
+            "php${TARGET_PHP_VERSION}-readline" # Readline support for interactive CLI
+            "composer"                          # PHP Dependency Manager
+            "unzip"                             # Often needed by Composer
+        )
     fi
 }
 
-# Define package arrays - PHP installed via custom logic above
-SYSTEM_PACKAGES=(
-    # PHP is installed via custom function, not apt packages
-)
 
-NODE_PACKAGES=(
-    # No Node.js packages needed for basic PHP development
-)
+# --- Define VS Code extensions for PHP Development ---
+declare -A EXTENSIONS # Using associative array like the C# script
+EXTENSIONS["bmewburn.vscode-intelephense-client"]="PHP Intelephense|Code completion, intellisense"
+EXTENSIONS["DEVSENSE.phptools-vscode"]="PHP Tools|Debugging, refactoring (often paid features)"
+EXTENSIONS["xdebug.php-debug"]="PHP Debug|Xdebug integration for VS Code"
+EXTENSIONS["neilbrayfield.php-docblocker"]="PHP DocBlocker|Easily add PHPDoc blocks"
+EXTENSIONS["MehediDracula.php-namespace-resolver"]="PHP Namespace Resolver|Import and resolve namespaces"
+EXTENSIONS["junstyle.php-cs-fixer"]="PHP CS Fixer|Code style formatting"
 
-PYTHON_PACKAGES=(
-    # No Python packages needed for PHP development
-)
-
-PWSH_MODULES=(
-    # No PowerShell modules needed for PHP development
-)
-
-# Define VS Code extensions
-declare -A EXTENSIONS
-EXTENSIONS["bmewburn.vscode-intelephense-client"]="PHP Intelephense|Advanced PHP language support with IntelliSense"
-EXTENSIONS["xdebug.php-debug"]="PHP Debug|Debug PHP applications using Xdebug"
-EXTENSIONS["neilbrayfield.php-docblocker"]="PHP DocBlocker|Automatically generate PHPDoc comments"
-EXTENSIONS["ikappas.composer"]="Composer|Composer dependency manager integration"
-EXTENSIONS["mehedidracula.php-namespace-resolver"]="PHP Namespace Resolver|Auto-import and resolve PHP namespaces"
-EXTENSIONS["humao.rest-client"]="REST Client|Send HTTP requests and view responses directly in VS Code"
-
-# Define verification commands to run after installation
+# --- Define verification commands ---
 VERIFY_COMMANDS=(
-    "command -v php >/dev/null && php --version | head -n 1 || echo '❌ PHP not found'"
-    "command -v composer >/dev/null && composer --version | head -n 1 || echo '❌ Composer not found'"
-    "php -m | grep -q 'mbstring' && echo '✅ PHP mbstring extension loaded' || echo '❌ PHP mbstring extension missing'"
-    "php -m | grep -q 'curl' && echo '✅ PHP curl extension loaded' || echo '❌ PHP curl extension missing'"
-    "php -m | grep -q 'sqlite3' && echo '✅ PHP SQLite extension loaded' || echo '❌ PHP SQLite extension missing'"
-    "php -m | grep -q 'json' && echo '✅ PHP JSON extension loaded' || echo '❌ PHP JSON extension missing'"
+    "command -v php >/dev/null && php --version || echo '❌ PHP CLI not found'"
+    "command -v composer >/dev/null && composer --version || echo '❌ Composer not found'"
+    "php -m || echo '❌ Failed to list PHP modules'" # List installed PHP modules
 )
 
-# Post-installation notes
+# --- Post-installation/Uninstallation Messages ---
 post_installation_message() {
     local php_version
     local composer_version
-
-    if command -v php >/dev/null 2>&1; then
-        php_version=$(php --version | head -n 1)
-    else
-        php_version="not installed"
-    fi
-
-    if command -v composer >/dev/null 2>&1; then
-        composer_version=$(composer --version | head -n 1)
-    else
-        composer_version="not installed"
-    fi
+    php_version=$(get_installed_php_version)
+    composer_version=$(composer --version 2>/dev/null || echo "not found")
 
     echo
-    echo "🎉 Installation process complete for: $SCRIPT_NAME!"
+    echo "🎉 Installation process complete for: $SCRIPT_NAME (Version: ${php_version:-Target $TARGET_PHP_VERSION})!"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     echo
-    echo "Installed Versions:"
-    echo "📋 PHP: $php_version"
-    echo "📋 Composer: $composer_version"
-    echo
     echo "Important Notes:"
-    echo "1. PHP built-in development server: php -S localhost:8000"
-    echo "2. Composer for dependency management"
-    echo "3. Xdebug support for debugging PHP applications"
-    echo "4. SQLite support included for database development"
+    echo "1. PHP CLI version ${php_version:-Not detected} should be installed."
+    echo "2. Composer: $composer_version"
+    echo "3. Ondrej PHP PPA has been added."
+    echo "4. Common PHP extensions installed (check 'php -m')."
+    echo "5. VS Code extensions for PHP development suggested/installed."
     echo
     echo "Quick Start Commands:"
-    echo "- Create composer.json: composer init"
-    echo "- Install dependencies: composer install"
-    echo "- Add dependency: composer require vendor/package"
-    echo "- Start development server: php -S localhost:8000"
-    echo "- Run PHP script: php script.php"
-    echo "- Check PHP info: php -m (show modules)"
-    echo "- Interactive PHP: php -a"
-    echo
-    echo "Urbalurba Logging Example:"
-    echo "- Navigate to php/examples/demo/ folder"
-    echo "- Run setup: ./setup-dev-env.sh"
-    echo "- Run example: composer install && php demo.php"
-    echo
-    echo "Development Workflow:"
-    echo "1. Create/open your PHP project"
-    echo "2. Install dependencies with Composer"
-    echo "3. Start development server: php -S localhost:8000"
-    echo "4. Open http://localhost:8000 in your browser"
-    echo "5. Edit PHP files - reload browser to see changes"
+    echo "- Check PHP version: php --version"
+    echo "- Check Composer version: composer --version"
+    echo "- Run a PHP script: php your_script.php"
+    echo "- Start PHP built-in server: php -S 0.0.0.0:8000 -t public/"
+    echo "- Install project dependencies: composer install"
+    echo "- Update dependencies: composer update"
+    echo "- List installed PHP modules: php -m"
     echo
     echo "Documentation Links:"
-    echo "- PHP Documentation: https://www.php.net/docs.php"
+    echo "- PHP Documentation: https://www.php.net/manual/en/"
     echo "- Composer Documentation: https://getcomposer.org/doc/"
-    echo "- PHP The Right Way: https://phptherightway.com/"
-
-    # Show PATH information
+    echo "- Ondrej PHP PPA: https://launchpad.net/~ondrej/+archive/ubuntu/php"
+    echo "- PHP Intelephense Extension: https://marketplace.visualstudio.com/items?itemName=bmewburn.vscode-intelephense-client"
+    echo "- Xdebug Extension: https://marketplace.visualstudio.com/items?itemName=xdebug.php-debug"
     echo
-    echo "Environment Information:"
-    echo "📁 PHP binaries location: /home/vscode/.config/herd-lite/bin"
-    echo "🔄 PATH has been configured in ~/.bashrc"
-    
-    # Show next steps at the very end
-    echo
-    echo "🚀 Next Steps:"
-    echo "1. Run: source ~/.bashrc"
-    echo "2. Test: php --version"
-    echo "3. Test: composer --version"
-    echo "4. Navigate to a PHP project and run: php -S localhost:8000"
+    echo "Installation Status:"
+    verify_installations # Re-run verification for final status
 }
 
-# Post-uninstallation notes
 post_uninstallation_message() {
     echo
-    echo "🏁 Uninstallation process complete for: $SCRIPT_NAME!"
+    echo "🏁 Uninstallation process complete for specified PHP components."
     echo
     echo "Additional Notes:"
-    echo "1. PHP installed via apt package manager"
-    echo "2. Composer cache remains in ~/.composer/"
-    echo "3. VS Code extensions have been removed"
-    echo "4. See PHP documentation for complete removal steps if needed"
+    echo "1. If other PHP versions remain, they were not touched unless specified."
+    echo "2. Composer global packages might remain in ~/.composer/vendor/bin"
+    echo "3. Composer cache might remain in ~/.cache/composer"
+    echo "4. The Ondrej PHP PPA was NOT removed automatically. To remove it:"
+    echo "   sudo add-apt-repository --remove ppa:ondrej/php"
+    echo "5. Check VS Code extensions if they need manual removal."
 
-    # Check for remaining components
+    # Check for remaining components (simple checks)
     echo
     echo "Checking for remaining components..."
-
-    if command -v php >/dev/null 2>&1; then
-        echo
-        echo "⚠️  Warning: PHP is still installed"
-        echo "To completely remove PHP:"
-        echo "  sudo apt-get purge php8.4*"
-        echo "  sudo apt-get autoremove"
+    if command -v php >/dev/null; then
+        echo "⚠️ PHP $(php --version | head -n 1) is still installed (might be a different version or not fully removed)."
+    else
+        echo "✅ PHP CLI appears to be removed."
+    fi
+    if command -v composer >/dev/null; then
+        echo "⚠️ Composer $(composer --version | head -n 1) is still installed."
+    else
+        echo "✅ Composer appears to be removed."
     fi
 
-    if command -v composer >/dev/null 2>&1; then
-        echo
-        echo "⚠️  Warning: Composer is still installed"
-        echo "To remove: sudo rm /usr/local/bin/composer"
-        echo "Composer cache location: ~/.composer/"
-    fi
-
-    # Check for remaining VS Code extensions
-    local extensions=(
-        "bmewburn.vscode-intelephense-client"
-        "xdebug.php-debug"
-        "neilbrayfield.php-docblocker"
-        "ikappas.composer"
-        "mehedidracula.php-namespace-resolver"
-        "humao.rest-client"
-    )
-
-    local has_extensions=0
-    for ext in "${extensions[@]}"; do
-        if code --list-extensions | grep -q "$ext"; then
-            if [ $has_extensions -eq 0 ]; then
-                echo
-                echo "⚠️  Note: Some VS Code extensions are still installed:"
-                has_extensions=1
-            fi
-            echo "- $ext"
-        fi
-    done
-
-    if [ $has_extensions -eq 1 ]; then
-        echo "These were not automatically removed during uninstallation."
+    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
+         local remaining_ext=0
+         for ext_id in "${!EXTENSIONS[@]}"; do
+             if code --list-extensions 2>/dev/null | grep -qi "^${ext_id}$"; then
+                 if [ $remaining_ext -eq 0 ]; then
+                      echo "⚠️ Some VS Code extensions might remain:"
+                      remaining_ext=1
+                 fi
+                 echo "   - $ext_id"
+             fi
+         done
+         if [ $remaining_ext -eq 1 ]; then
+              echo "   Use 'code --uninstall-extension <extension_id>' to remove them."
+         fi
     fi
 }
 
+# --- Custom Installation/Uninstallation Logic (using core-install-apt) ---
+# No custom install function needed here, we rely on populating PHP_APT_PACKAGES
+# and using the core-install-apt.sh script's functions.
+
 #------------------------------------------------------------------------------
-# STANDARD SCRIPT LOGIC - Do not modify anything below this line
+# STANDARD SCRIPT LOGIC - Adaptations for PHP version argument
 #------------------------------------------------------------------------------
 
 # Initialize mode flags
 DEBUG_MODE=0
 UNINSTALL_MODE=0
-FORCE_MODE=0
+FORCE_MODE=0 # Less critical for apt, but keep for consistency
 
 # Parse command line arguments
+SCRIPT_ARGS=()
+# Specific handling for --version
 while [[ $# -gt 0 ]]; do
     case $1 in
         --debug)
             DEBUG_MODE=1
+            SCRIPT_ARGS+=("$1")
             shift
             ;;
         --uninstall)
             UNINSTALL_MODE=1
+            SCRIPT_ARGS+=("$1")
             shift
             ;;
         --force)
             FORCE_MODE=1
+            SCRIPT_ARGS+=("$1")
             shift
             ;;
+        --version)
+            if [[ -n "$2" && "$2" != --* ]]; then
+                TARGET_PHP_VERSION="$2"
+                SCRIPT_ARGS+=("$1" "$2")
+                shift 2
+            else
+                echo "Error: --version requires a value (e.g., 8.2)" >&2
+                exit 1
+            fi
+            ;;
+        --)
+            # Stop argument parsing, treat rest as potential future args if needed
+            shift
+            break
+            ;;
         *)
-            echo "ERROR: Unknown option: $1" >&2
-            echo "Usage: $0 [--debug] [--uninstall] [--force]" >&2
-            echo "Description: $SCRIPT_DESCRIPTION"
+            echo "Error: Unknown argument: $1" >&2
+            echo "Usage: $0 [--debug] [--uninstall] [--force] [--version X.Y]"
             exit 1
             ;;
     esac
@@ -325,106 +322,69 @@ export DEBUG_MODE
 export UNINSTALL_MODE
 export FORCE_MODE
 
-# Source all core installation scripts
-source "$(dirname "$0")/core-install-apt.sh"
-source "$(dirname "$0")/core-install-node.sh"
-source "$(dirname "$0")/core-install-extensions.sh"
-source "$(dirname "$0")/core-install-pwsh.sh"
-source "$(dirname "$0")/core-install-python-packages.sh"
+# Source all required core installation scripts
+# Adjust paths as necessary relative to this script's location
+CORE_SCRIPT_DIR="$(dirname "$0")"
+source "${CORE_SCRIPT_DIR}/core-install-apt.sh"
+# source "${CORE_SCRIPT_DIR}/core-install-node.sh" # Not needed for PHP base install
+source "${CORE_SCRIPT_DIR}/core-install-extensions.sh"
+# source "${CORE_SCRIPT_DIR}/core-install-pwsh.sh" # Not needed
+# source "${CORE_SCRIPT_DIR}/core-install-python-packages.sh" # Not needed
 
-# Function to process installations
+# Function to process installations using core script functions
 process_installations() {
-    # Process each type of package if array is not empty
-    if [ ${#SYSTEM_PACKAGES[@]} -gt 0 ]; then
-        process_system_packages "SYSTEM_PACKAGES"
+    # Process APT packages if array is defined and not empty
+    if declare -p PHP_APT_PACKAGES &> /dev/null && [ ${#PHP_APT_PACKAGES[@]} -gt 0 ]; then
+        # Assuming core-install-apt.sh has a function like process_apt_packages
+        # Pass the *name* of the array to the function
+        process_apt_packages "PHP_APT_PACKAGES"
+    else
+        # This case happens during uninstall if version detection failed and generic was not attempted
+         if [ "${UNINSTALL_MODE}" -eq 1 ]; then
+             echo "ℹ️ No specific APT packages targeted for removal (version likely undetermined)."
+         else
+              echo "⚠️ No APT packages defined for installation. Check pre_installation_setup."
+         fi
     fi
 
-    if [ ${#NODE_PACKAGES[@]} -gt 0 ]; then
-        process_node_packages "NODE_PACKAGES"
-    fi
-
-    if [ ${#PYTHON_PACKAGES[@]} -gt 0 ]; then
-        process_python_packages "PYTHON_PACKAGES"
-    fi
-
-    if [ ${#PWSH_MODULES[@]} -gt 0 ]; then
-        process_pwsh_modules "PWSH_MODULES"
-    fi
-
+    # Process VS Code extensions if array is not empty
     if [ ${#EXTENSIONS[@]} -gt 0 ]; then
+        # Assuming core-install-extensions.sh has process_extensions
         process_extensions "EXTENSIONS"
     fi
 }
 
 # Function to verify installations
 verify_installations() {
-    echo
-    echo "🔍 Verifying installations..."
-    
-    # Check PHP
-    if command -v php >/dev/null 2>&1; then
-        echo "✅ PHP: $(php --version | head -n 1)"
-    else
-        echo "❌ PHP not found"
-    fi
-    
-    # Check Composer
-    if command -v composer >/dev/null 2>&1; then
-        echo "✅ Composer: $(composer --version | head -n 1)"
-    else
-        echo "❌ Composer not found"
-    fi
-    
-    # Check PHP extensions (only if PHP is available)
-    if command -v php >/dev/null 2>&1; then
-        if php -m | grep -q 'mbstring'; then
-            echo "✅ PHP mbstring extension loaded"
-        else
-            echo "❌ PHP mbstring extension missing"
-        fi
-        
-        if php -m | grep -q 'curl'; then
-            echo "✅ PHP curl extension loaded"
-        else
-            echo "❌ PHP curl extension missing"
-        fi
-        
-        if php -m | grep -q 'sqlite3'; then
-            echo "✅ PHP SQLite extension loaded"
-        else
-            echo "❌ PHP SQLite extension missing"
-        fi
-        
-        if php -m | grep -q 'json'; then
-            echo "✅ PHP JSON extension loaded"
-        else
-            echo "❌ PHP JSON extension missing"
-        fi
+    if [ ${#VERIFY_COMMANDS[@]} -gt 0 ]; then
+        echo
+        echo "🔍 Verifying installations..."
+        for cmd in "${VERIFY_COMMANDS[@]}"; do
+            # Use eval carefully or structure commands safely
+            eval "$cmd"
+        done
     fi
 }
 
-# Main execution
+# --- Main Execution Logic ---
 if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-    echo "🔄 Starting uninstallation process for: $SCRIPT_NAME"
-    echo "Purpose: $SCRIPT_DESCRIPTION"
-    pre_installation_setup
-    process_installations
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        for ext_id in "${!EXTENSIONS[@]}"; do
-            IFS='|' read -r name description _ <<< "${EXTENSIONS[$ext_id]}"
-            check_extension_state "$ext_id" "uninstall" "$name"
-        done
-    fi
+    echo "🔄 Starting uninstallation process for: $SCRIPT_NAME (Version: ${TARGET_PHP_VERSION:-Detected})"
+    pre_installation_setup # Sets up PHP_APT_PACKAGES for removal
+
+    # Call core script functions for uninstallation
+    process_installations # Will call process_apt_packages and process_extensions in uninstall mode
+
     post_uninstallation_message
 else
-    echo "🔄 Starting installation process for: $SCRIPT_NAME"
-    echo "Purpose: $SCRIPT_DESCRIPTION"
-    pre_installation_setup
-    process_installations
+    echo "🔄 Starting installation process for: $SCRIPT_NAME (Version: ${TARGET_PHP_VERSION:-$DEFAULT_PHP_VERSION})"
+    pre_installation_setup # Sets up PHP_APT_PACKAGES for installation
+
+    # Call core script functions for installation
+    process_installations # Will call process_apt_packages and process_extensions in install mode
+
     verify_installations
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        # Extensions installed successfully - VS Code will activate them after reload
-        echo "✅ All extensions installed - restart VS Code to activate"
-    fi
     post_installation_message
 fi
+
+echo "✅ Script execution finished."
+exit 0

@@ -15,6 +15,8 @@
 # Script metadata - must be at the very top of the configuration section
 SCRIPT_NAME="Cline AI Assistant"
 SCRIPT_DESCRIPTION="Installs Cline (previously Claude Dev) extension for AI assistance in VS Code"
+SCRIPT_CATEGORY="AI_TOOLS"
+CHECK_INSTALLED_COMMAND="code --list-extensions 2>/dev/null | grep -q 'saoudrizwan.claude-dev'"
 
 # Before running installation, we need to add any required repositories
 pre_installation_setup() {
