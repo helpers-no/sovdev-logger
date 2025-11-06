@@ -65,9 +65,9 @@ When implementing or validating sovdev-logger, follow these directory access res
 
 | Reference | Full Path | Purpose |
 |-----------|-----------|---------|
-| Validation Sequence | `specification/11-llm-checklist-template.md` → Phase 5 | Authoritative 8-step validation workflow |
+| Validation Sequence | `specification/llm-work-templates/validation-sequence.md` | Authoritative 8-step validation workflow |
 | Tool Documentation | `specification/tools/README.md` | Complete reference for all validation and query tools |
-| OTEL SDK Differences | `specification/10-otel-sdk.md` | Language-specific SDK implementation guidance |
+| OTEL SDK Differences | `specification/llm-work-templates/research-otel-sdk-guide.md` | Language-specific SDK implementation guidance |
 | Development Loop | `specification/09-development-loop.md` | Iterative development workflow |
 | API Contract | `specification/01-api-contract.md` | 8 API functions to implement |
 | Design Principles | `specification/00-design-principles.md` | Core philosophy |

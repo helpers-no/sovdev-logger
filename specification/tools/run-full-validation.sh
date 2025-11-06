@@ -94,25 +94,34 @@ print_header() {
 # Parse arguments
 LANGUAGE=${1:-typescript}
 
-if [[ "$LANGUAGE" != "typescript" && "$LANGUAGE" != "python" && "$LANGUAGE" != "go" ]]; then
-    print_error "Invalid language: $LANGUAGE"
-    echo "Usage: $0 [typescript|python|go]"
+if [[ -z "$LANGUAGE" ]]; then
+    print_error "Missing language argument"
+    echo "Usage: $0 <language>"
+    echo ""
+    echo "Examples:"
+    echo "  $0 typescript"
+    echo "  $0 python"
+    echo "  $0 go"
+    echo "  $0 csharp"
     exit 2
 fi
 
 # Determine paths based on language (devcontainer paths)
-if [[ "$LANGUAGE" == "typescript" ]]; then
-    TEST_DIR="/workspace/typescript/test/e2e/company-lookup"
-    SERVICE_NAME="sovdev-test-company-lookup-typescript"
-    LOG_FILE="$TEST_DIR/logs/dev.log"
-elif [[ "$LANGUAGE" == "python" ]]; then
-    TEST_DIR="/workspace/python/test/e2e/company-lookup"
-    SERVICE_NAME="sovdev-test-company-lookup-python"
-    LOG_FILE="$TEST_DIR/logs/dev.log"
-elif [[ "$LANGUAGE" == "go" ]]; then
-    TEST_DIR="/workspace/go/test/e2e/company-lookup"
-    SERVICE_NAME="sovdev-test-company-lookup-go"
-    LOG_FILE="$TEST_DIR/logs/dev.log"
+# Generic path structure that works for any language
+TEST_DIR="/workspace/$LANGUAGE/test/e2e/company-lookup"
+SERVICE_NAME="sovdev-test-company-lookup-$LANGUAGE"
+LOG_FILE="$TEST_DIR/logs/dev.log"
+
+# Check if test directory exists
+if [[ ! -d "$TEST_DIR" ]]; then
+    print_error "Test directory not found: $TEST_DIR"
+    echo ""
+    echo "The directory '$LANGUAGE/test/e2e/company-lookup' does not exist."
+    echo "Please ensure you have:"
+    echo "  1. Implemented the E2E test for $LANGUAGE"
+    echo "  2. Created the test directory structure"
+    echo ""
+    exit 2
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -139,6 +148,34 @@ fi
 
 print_success "kubectl configured and connected to cluster"
 echo ""
+
+# Check ROADMAP.md progress before allowing validation
+print_step "Checking ROADMAP.md progress..."
+echo ""
+
+PROGRESS_CHECK_SCRIPT="$SCRIPT_DIR/../llm-work-templates/enforcement/check-progress.sh"
+
+if [[ -f "$PROGRESS_CHECK_SCRIPT" ]]; then
+    # Run progress check
+    "$PROGRESS_CHECK_SCRIPT" "$LANGUAGE"
+    PROGRESS_EXIT=$?
+
+    if [[ $PROGRESS_EXIT -ne 0 ]]; then
+        print_error "Progress check failed"
+        echo ""
+        echo "You must update ROADMAP.md before running validation."
+        echo "See output above for details."
+        echo ""
+        exit 1
+    fi
+
+    print_success "Progress check passed"
+    echo ""
+else
+    print_warning "Progress check script not found (skipping)"
+    echo "  Expected: $PROGRESS_CHECK_SCRIPT"
+    echo ""
+fi
 
 print_header "FULL E2E VALIDATION - $LANGUAGE"
 

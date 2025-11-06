@@ -14,7 +14,7 @@ These skills codify the systematic implementation guidance from the `specificati
 **Purpose**: Systematic 7-phase implementation guidance following the specification checklist
 
 **Key Features**:
-- Automatically references critical documents (tools/README.md, 10-otel-sdk.md, 11-llm-checklist-template.md)
+- Automatically references critical documents (tools/README.md, llm-work-templates/research-otel-sdk-guide.md, llm-work-templates/ROADMAP-template.md)
 - Enforces Phase 0 (pre-implementation setup) completion before coding
 - Updates checklist systematically as work progresses
 - Prevents "complete" claims until ALL validation criteria met
@@ -124,54 +124,61 @@ This pattern:
 - ✅ Points to complete details in _SHARED.md
 - ✅ Makes maintenance easier
 
-## Strategic Duplication Policy
+## Skills as Routers Philosophy (v3.0)
 
-**Some duplication is intentional and documented for LLM execution convenience.**
+**Skills do NOT duplicate content. Skills are minimal routers.**
 
-### What We Duplicate
+### What Skills Contain
 
-Validation commands (bash commands) appear in BOTH:
-- `specification/tools/README.md` (authoritative documentation)
-- Skills (for immediate LLM execution)
+Skills contain:
+- ✅ **WHEN** to use which documentation (intent matching)
+- ✅ **WHERE** to find authoritative information (file paths)
+- ✅ **WHICH** section to read (section names)
+- ✅ **Minimal actionable steps** (initialize, read instructions)
+- ❌ **NOT** meta commentary, examples, or duplicated procedures
 
-### Why We Duplicate
+### Why Minimal
 
-**Purpose:** Skills guide immediate action. When Claude Code sees a command in a skill, it should execute immediately without context-switching to another file.
+**Rationale:** LLMs can read files instantly. No benefit to duplicating content or explaining WHY the system works.
 
-**Philosophy:**
-- **Specification documents** = Reference documentation (should have NO duplication)
-- **Skills** = Action workflows (can duplicate commands for usability)
+**Benefits:**
+- ✅ **Single source of truth** - Update once, not in multiple places
+- ✅ **Less context waste** - Read instructions once in the actual document
+- ✅ **No sync issues** - Can't have outdated duplicated content
+- ✅ **Easier maintenance** - Update specification, done
+- ✅ **Clearer intent** - Skills say WHEN/WHERE, specs say HOW
 
-### How We Mark Duplication
+### Skills Updated to v3.0
 
-Every duplicated command section includes an HTML comment:
-```html
-<!-- Commands below duplicated from specification/tools/README.md for immediate LLM execution convenience -->
-```
+All skills radically simplified (2025-10-31):
+- ✅ `implement-language` - 330 → 90 lines (72% reduction)
+- ✅ `validation-tools` - 133 → 67 lines (50% reduction)
+- ✅ `development-loop` - 143 → 83 lines (42% reduction)
+- ✅ `validate-implementation` - 97 → 84 lines (13% reduction)
 
-This makes the duplication:
-- ✅ **Visible**: Anyone reading the skill sees it's duplicated
-- ✅ **Intentional**: Clearly marked as design decision, not oversight
-- ✅ **Traceable**: References the authoritative source
+**Total: 703 → 324 lines (54% overall reduction, -379 lines removed)**
 
-### Maintenance Process
+**Removed:**
+- Meta commentary about system design
+- Duplicated workflow procedures
+- Example walkthroughs
+- Reference document lists
+- Historical version information
+- Success criteria (belongs in specs)
+- Descriptions of what's IN files (just read them)
 
-When updating commands in `specification/tools/README.md`:
-1. Check if the command is duplicated in skills (look for HTML comments)
-2. Update the duplicated commands in skills to match
-3. Skills with duplicated commands:
-   - `implement-language/SKILL.md`: Build, test, validation commands
-   - `development-loop/SKILL.md`: Development loop commands
-   - `validate-implementation/SKILL.md`: Quick validation commands
-   - `validation-tools/SKILL.md`: 5 common commands
+**Kept:**
+- Minimal actionable steps (initialize, read)
+- Pointers to authoritative documentation
+- Troubleshooting routing (where to look for help)
 
-### Lines Duplicated
+### Maintenance
 
-- **Estimated:** ~100 lines across all skills
-- **Trade-off:** Accepted for LLM execution convenience
-- **Alternative considered:** Centralize commands (rejected - too slow for LLM workflow)
+When updating specifications:
+1. Update the specification file (single source of truth)
+2. Done - skills just point to specifications
 
-**This duplication is intentional, documented, and maintained.**
+**No duplication to maintain.**
 
 ## Benefits
 
@@ -202,8 +209,9 @@ These skills **do not replace** the specification - they **guide** you through i
 |------------------------|---------------|---------|
 | `specification/README.md` | implement-language | Overall guidance |
 | **`specification/tools/README.md`** | **ALL skills** | **Complete validation tool reference** |
-| `specification/11-llm-checklist-template.md` | implement-language | Systematic checklist |
-| `specification/10-otel-sdk.md` | implement-language | OTEL SDK differences |
+| `specification/llm-work-templates/ROADMAP-template.md` | implement-language | 13-task implementation workflow |
+| `specification/llm-work-templates/validation-sequence.md` | validate-implementation | 8-step validation sequence |
+| `specification/llm-work-templates/research-otel-sdk-guide.md` | implement-language | OTEL SDK differences |
 | `specification/09-development-loop.md` | development-loop | Iterative workflow |
 | `specification/01-api-contract.md` | implement-language | API requirements |
 
@@ -213,61 +221,19 @@ These skills **do not replace** the specification - they **guide** you through i
 
 If not using Claude Code, you can still implement sovdev-logger manually by following:
 1. `specification/README.md` - Quick start guide
-2. `specification/11-llm-checklist-template.md` - Systematic checklist
-3. `specification/09-development-loop.md` - Development workflow
-4. `specification/tools/README.md` - Complete validation tool reference
+2. `specification/llm-work-templates/ROADMAP-template.md` - 13-task workflow
+3. `specification/llm-work-templates/validation-sequence.md` - 8-step validation
+4. `specification/09-development-loop.md` - Development workflow
+5. `specification/tools/README.md` - Complete validation tool reference
 
 The skills simply make this process automatic and harder to skip steps.
 
 ## Skill Development
 
-**Created**: 2025-10-21
-**Version**: 1.4.0
+**Version**: 3.0.0
 **Status**: Production
 
-**Recent Updates**:
-
-**v1.4.0** (2025-10-28):
-- **Checklist Workflow Clarity**: Improved implement-language skill
-  - Added prominent "Your Working Checklist" section immediately after directory restrictions
-  - Clarified that checklist copy is the FIRST concrete action
-  - Emphasized checklist is working plan updated throughout implementation
-  - Removed duplicate "Follow the Checklist" section from Phase 0
-  - Updated implement-language skill to version 1.3.0
-
-**v1.3.0** (2025-10-27):
-- **Phase 3 (Strategic Duplication)**: Documented intentional command duplication
-  - Added HTML comments marking duplicated commands (source: specification/tools/README.md)
-  - Created Strategic Duplication Policy in README
-  - Accepted ~100 lines of command duplication for LLM execution convenience
-- **Phase 1 (Standardization)**: Added metadata and standardized references
-  - Added version, last_updated, references to all skill frontmatter
-  - Standardized 14 cross-reference patterns to consistent **See:** format
-  - All skills now at version 1.2.0 with clear dependencies listed
-
-**v1.2.0** (2025-10-27):
-- **Phase 5 (Checklist Alignment)**: Fixed validation sequence inconsistency
-  - implement-language now references 8-step sequence from checklist Phase 5
-  - validation-tools now provides quick examples for common commands
-  - All skills consistently reference checklist Phase 5 as authoritative
-- **Phase 2 (Content Deduplication)**: Created shared components pattern
-  - Added `_SHARED.md` with common content (Directory Restrictions, Execute Commands warning)
-  - Updated all 4 skills to reference shared components
-  - Eliminated ~95 lines of duplication across skills
-
-**v1.1.0** (2025-10-21):
-- Added `validation-tools` skill for tool documentation guidance
-- Updated all skills to reference `specification/tools/README.md` instead of duplicating content
-- Added "Execute Commands, Don't Describe Them" sections to all skills
-- Emphasized single source of truth principle
-
-**Maintenance**:
-- **Common content**: Update `_SHARED.md` (applies to all skills automatically)
-- **Duplicated commands**: When updating `specification/tools/README.md`, check HTML comments in skills and update matching commands
-- **Specification changes**: Skills should be updated when specification documents change
-- **Testing**: Test skills with each new language implementation
-- **Feedback**: Gather feedback and improve skill guidance
-- **Philosophy**: Keep skills as action guides (can duplicate for usability), not encyclopedias
+**Architecture**: Skills are routers that point to authoritative documentation. No command duplication.
 
 ## Getting Help
 

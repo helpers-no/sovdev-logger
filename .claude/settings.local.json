@@ -12,7 +12,14 @@
       "Skill(implement-language)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:opentelemetry.io)"
+      "WebFetch(domain:opentelemetry.io)",
+      "Bash(./specification/llm-work-templates/enforcement/check-progress.sh:*)",
+      "Bash(cat:*)",
+      "Bash(for skill in .claude/skills/*/SKILL.md)",
+      "Bash(done)",
+      "Bash(./specification/llm-work-templates/enforcement/init-language-workspace.sh:*)",
+      "Bash(./run-full-validation.sh:*)",
+      "WebFetch(domain:www.nuget.org)"
     ],
     "deny": [],
     "ask": []

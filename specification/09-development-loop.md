@@ -10,6 +10,91 @@ This document describes the **iterative development workflow** for implementing 
 
 ---
 
+## Validation-First Development
+
+**Critical Principle:** Validation is not a phase at the end. Validation is continuous throughout development.
+
+### Two-Level Validation Strategy
+
+When implementing sovdev-logger in any programming language, use this two-level approach:
+
+#### Level 1: System-Wide Health Check (TypeScript Baseline)
+
+**ALWAYS verify TypeScript works before starting new language implementation**
+
+TypeScript is the reference implementation that proves the observability stack is healthy:
+- If TypeScript validation fails → Infrastructure problem (fix Docker, Loki, Prometheus, Tempo)
+- If TypeScript validation passes → Infrastructure is healthy (new language issues are code-specific)
+
+```bash
+# Run TypeScript validation to verify system health (Phase 0, Task 2)
+./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh"
+./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-typescript"
+./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-prometheus.sh sovdev-test-company-lookup-typescript"
+./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-typescript"
+```
+
+**This is Phase 0, Task 2: "Verify TypeScript baseline"** - it's MANDATORY, not optional.
+
+#### Level 2: Continuous Language-Specific Validation
+
+Validate your implementation at these checkpoints during development:
+
+**1. File Format Validation** (fastest, local, no infrastructure)
+- **After**: Implementing file logger and running a simple test
+- **Action**: Run test → Check log files created → Run `validate-log-format.sh`
+- Tool: `validate-log-format.sh`
+- When: Phase 1, Task 7 (Implement file logging)
+- Why first: Catches format issues without needing OTLP infrastructure
+
+**2. OTLP Connectivity Test** (fast, infrastructure)
+- **After**: Implementing OTLP exporters
+- **Action**: Create simple test with SDK → Send test data → Verify appears in backends
+- Method: Use OTEL SDK's built-in functions (not bash scripts)
+- When: Phase 1, Task 6 (Implement OTLP exporters)
+- Why second: Isolates connectivity issues (headers, TLS, auth) from logic issues
+- Note: Language-idiomatic testing - C# tests in C#, Go tests in Go, etc.
+
+**3. Backend Data Validation** (slow, requires full E2E test)
+- **After**: E2E test runs successfully
+- **Action**: Run E2E test → Wait 10s → Run `run-full-validation.sh` → Verify all pass
+- Tools: Automated validation script runs Steps 1-7 automatically
+- When: Phase 2, Task 10 (Run test successfully)
+- Why third: Verifies end-to-end data flow with correct format
+- **Complete tool documentation**: `specification/tools/README.md`
+
+**4. Grafana Visual Validation** (manual, requires full stack)
+- **After**: Automated validation (`run-full-validation.sh`) passes
+- **Action**: Open Grafana → Verify ALL 3 panels show data → Compare with TypeScript
+- When: Phase 3, Task 11 (Grafana visual verification)
+- Why last: Verifies complete observability experience in UI
+- **Critical**: Don't open Grafana until automated validation passes
+
+### Key Principle
+
+**TypeScript validates the system. Your language validates its integration with the system.**
+
+If TypeScript works but your language doesn't:
+- Check OTLP endpoint configuration
+- Check Host header (must be "Host: otel.localhost")
+- Check metric labels (use underscores, not dots)
+- Check log format (must match specification exactly)
+
+### Rule for Task Completion
+
+**You cannot claim a task is "complete" without running applicable validation tools.**
+
+Examples:
+- Task 6: "Implement OTLP exporters"
+  - ❌ Wrong: Write code → mark complete
+  - ✅ Correct: Write code → create connectivity test → verify connects to Loki/Prometheus/Tempo → mark complete
+
+- Task 7: "Implement file logging"
+  - ❌ Wrong: Write code → mark complete
+  - ✅ Correct: Write code → run validate-log-format.sh → verify passes → mark complete
+
+---
+
 ## Developer Workflows: Human vs LLM
 
 **For environment architecture diagram**, see `05-environment-configuration.md` → **Architecture Diagram** section. This shows how Host Machine, DevContainer, and Kubernetes Cluster interact.
@@ -105,26 +190,13 @@ The typical development cycle follows this **5-step pattern**:
 
 ---
 
-### For LLMs: Track Your Progress with the Checklist
+### For LLMs: Task Management Integration
 
-**⚠️ IMPORTANT:** As you work through the development loop, systematically update your implementation checklist.
+**⚠️ IMPORTANT:** Track implementation progress using the task management system.
 
-**Checklist Location:** `{language}/llm-work/llm-checklist-{language}.md`
+**Progress Tracking:** `{language}/llm-work/ROADMAP.md` (13 tasks across 4 phases)
 
-**How to use it:**
-1. **Before starting:** Copy `specification/11-llm-checklist-template.md` to `{language}/llm-work/llm-checklist-{language}.md`
-2. **During development:** Update checkboxes as you complete each step
-   - Mark items as `in_progress` when you start working on them
-   - Mark items as `completed` when finished
-3. **Before claiming complete:** Verify ALL completion criteria are checked
-
-**Why this matters:**
-- Prevents forgetting critical steps (language toolchain, SDK comparison, Grafana validation)
-- Provides workspace for SDK analysis and notes
-- Ensures systematic implementation
-- Prevents premature "complete" claims
-
-**See:** `11-llm-checklist-template.md` for the complete 7-phase checklist you should be following.
+**For complete task management workflow**, see `specification/llm-work-templates/README.md`
 
 ---
 
@@ -151,7 +223,7 @@ Edit source files using your preferred tools:
 - ✅ Stops bad patterns from propagating across language implementations
 - ✅ **Critical for LLM-generated code** - prevents "going off the rails"
 
-**For complete linting philosophy and rules**, see: [`specification/12-code-quality.md`](./12-code-quality.md)
+**For complete linting philosophy and rules**, see: [`specification/10-code-quality.md`](./10-code-quality.md)
 
 ---
 
@@ -218,7 +290,7 @@ cd python && make lint       # Runs flake8, black --check, mypy
 cd python && make lint-fix   # Runs black (auto-format)
 ```
 
-**See:** `specification/12-code-quality.md` for Python-specific rules
+**See:** `specification/10-code-quality.md` for Python-specific rules
 
 ---
 
@@ -226,7 +298,7 @@ cd python && make lint-fix   # Runs black (auto-format)
 
 Follow the same pattern:
 1. Study `typescript/.eslintrc.json` (reference implementation)
-2. Read `specification/12-code-quality.md` (universal rules)
+2. Read `specification/10-code-quality.md` (universal rules)
 3. Create language-specific configuration files
 4. Create `Makefile` with `lint` and `lint-fix` targets
 5. Ensure exit code 0 on success, non-zero on errors
@@ -238,7 +310,7 @@ Follow the same pattern:
 When implementing a new language:
 
 1. **Read this step** - You'll see "Step 2: Lint Code (MANDATORY)"
-2. **Read the specification** - `specification/12-code-quality.md` explains WHY and WHAT
+2. **Read the specification** - `specification/10-code-quality.md` explains WHY and WHAT
 3. **Study TypeScript** - Look at `typescript/.eslintrc.json` and `typescript/Makefile`
 4. **Adapt to your language** - Use language-appropriate tools (flake8 for Python, golangci-lint for Go, etc.)
 5. **Create Makefile** - Consistent interface: `make lint` works for all languages
@@ -701,19 +773,4 @@ All validation tools support this workflow:
 
 ---
 
-**Document Status:** ✅ v1.10.0 COMPLETE
-**Last Updated:** 2025-10-30
-**Part of:** sovdev-logger specification v1.1.0
-
-**Version History:**
-- v1.10.0 (2025-10-30): Added mandatory Step 2 (Lint Code) - development loop now 6 steps: Edit → Lint → Build → Run → Validate Logs → Validate OTLP. Added linting commands to Command Comparison table and updated all workflow examples. References specification/12-code-quality.md for linting rules.
-- v1.9.0 (2025-10-24): Added explicit reference to 8-step validation sequence from tools/README.md in Step 6 (OTLP validation)
-- v1.8.0 (2025-10-17): Added language-specific build scripts (build-sovdevlogger.sh) and "Build Library" step in development loop
-- v1.7.0 (2025-10-15): Added "For LLMs: Track Your Progress with the Checklist" section and updated "⚠️ For LLMs Specifically" to reference systematic checklist tracking
-- v1.6.0 (2025-10-15): Added "⚠️ For LLMs Specifically" section with explicit anti-patterns (no --limit, no manual inspection, follow examples exactly)
-- v1.5.0 (2025-10-14): Changed to Mode 2 pattern - ALL commands use `in-devcontainer.sh -e "command"` for consistency
-- v1.4.0 (2025-10-14): Clarified LLMs MUST use `in-devcontainer.sh` wrapper for ALL commands (tools and custom commands)
-- v1.3.0 (2025-10-14): Emphasized validation tools over manual commands - use `validate-log-format.sh` (does everything)
-- v1.2.0 (2025-10-14): Clarified bind mount behavior - file editing works same for both, only code execution differs
-- v1.1.0 (2025-10-14): Added distinction between Human vs LLM developer workflows
-- v1.0.0 (2025-10-14): Initial release with 4-step development loop
+**Last Updated:** 2025-10-31

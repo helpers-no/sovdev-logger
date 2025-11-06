@@ -99,8 +99,8 @@ Help them get home to their family. Help yourself build a reputation as someone 
 **→ Implementation Guide:**
 1. **Understand the development environment** - [specification/05-environment-configuration.md](specification/05-environment-configuration.md)
 2. Read [specification/README.md](specification/README.md) - Complete implementation guide
-3. Read [specification/10-otel-sdk.md](specification/10-otel-sdk.md) ⚠️ **CRITICAL**: OTEL SDK differences
-4. Copy [specification/11-llm-checklist-template.md](specification/11-llm-checklist-template.md) to track progress
+3. Read [specification/llm-work-templates/research-otel-sdk-guide.md](specification/llm-work-templates/research-otel-sdk-guide.md) ⚠️ **CRITICAL**: OTEL SDK differences
+4. Initialize workspace with [specification/llm-work-templates/ROADMAP-template.md](specification/llm-work-templates/ROADMAP-template.md) - 13-task workflow
 5. Study [typescript/src/logger.ts](typescript/src/logger.ts) - Reference implementation
 
 **Current implementations:**

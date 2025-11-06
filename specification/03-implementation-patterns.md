@@ -4,7 +4,7 @@
 
 This document defines **required implementation patterns** that all sovdev-logger implementations MUST follow. These patterns ensure consistency across programming languages and guarantee that all implementations produce identical log output.
 
-**📚 For language-specific OTEL SDK differences**, see [`10-otel-sdk.md`](./10-otel-sdk.md) - Read this **BEFORE implementing** to understand SDK quirks (HTTP headers, attribute naming, duration units, etc.)
+**📚 For language-specific OTEL SDK differences**, see [`llm-work-templates/research-otel-sdk-guide.md`](./llm-work-templates/research-otel-sdk-guide.md) - Read this **BEFORE implementing** to understand SDK quirks (HTTP headers, attribute naming, duration units, etc.)
 
 ---
 
