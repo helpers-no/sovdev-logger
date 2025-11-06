@@ -15,6 +15,8 @@
 # Script metadata - must be at the very top of the configuration section
 SCRIPT_NAME="Rust Development Tools"
 SCRIPT_DESCRIPTION="Installs Rust (latest stable via rustup), cargo, and sets up Rust development environment"
+SCRIPT_CATEGORY="LANGUAGE_DEV"
+CHECK_INSTALLED_COMMAND="command -v rustc >/dev/null 2>&1"
 
 # Before running installation, we need to add any required repositories or setup
 pre_installation_setup() {

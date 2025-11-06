@@ -15,6 +15,8 @@
 # Script metadata - must be at the very top of the configuration section
 SCRIPT_NAME="Configuration Tools"
 SCRIPT_DESCRIPTION="Installs tools and extensions for Infrastructure as Code (Bicep) and configuration management (Ansible)"
+SCRIPT_CATEGORY="INFRA_CONFIG"
+CHECK_INSTALLED_COMMAND="command -v ansible >/dev/null 2>&1"
 
 # Before running installation, we need to add any required repositories
 pre_installation_setup() {

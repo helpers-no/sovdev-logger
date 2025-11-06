@@ -17,6 +17,8 @@
 # Script metadata
 SCRIPT_NAME="Kubernetes kubectl CLI"
 SCRIPT_DESCRIPTION="Installs kubectl and sets up topsecret folder for credentials"
+SCRIPT_CATEGORY="INFRA_CONFIG"
+CHECK_INSTALLED_COMMAND="command -v kubectl >/dev/null 2>&1"
 
 # Custom function BEFORE standard package installation
 pre_installation_setup() {

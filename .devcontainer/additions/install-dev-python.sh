@@ -15,6 +15,8 @@
 # Script metadata - must be at the very top of the configuration section
 SCRIPT_NAME="Python Development Tools"
 SCRIPT_DESCRIPTION="Installs Python 3.11+, pip, venv, and essential development tools"
+SCRIPT_CATEGORY="LANGUAGE_DEV"
+CHECK_INSTALLED_COMMAND="command -v python3 >/dev/null 2>&1"
 
 # Before running installation, we need to add any required repositories or setup
 pre_installation_setup() {

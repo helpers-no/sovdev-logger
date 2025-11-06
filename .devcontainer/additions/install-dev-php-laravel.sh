@@ -15,6 +15,8 @@
 # Script metadata - must be at the very top of the configuration section
 SCRIPT_NAME="PHP Laravel Development Tools"
 SCRIPT_DESCRIPTION="Installs PHP 8.4, Composer, Laravel installer, and sets up Laravel development environment"
+SCRIPT_CATEGORY="LANGUAGE_DEV"
+CHECK_INSTALLED_COMMAND="command -v php >/dev/null 2>&1 && command -v composer >/dev/null 2>&1 && command -v laravel >/dev/null 2>&1"
 
 # Before running installation, we need to add any required repositories or setup
 pre_installation_setup() {
