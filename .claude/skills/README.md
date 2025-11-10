@@ -53,7 +53,7 @@ These skills codify the systematic implementation guidance from the `specificati
 **Key Features**:
 - Follows specification/09-development-loop.md workflow
 - Enforces "validate log files FIRST" (instant feedback)
-- Uses `in-devcontainer.sh` for all command execution (LLM mode)
+- Executes commands directly (LLM runs inside DevContainer)
 - Handles build step when needed
 - Only validates OTLP after file logs pass
 - References validation tools documentation

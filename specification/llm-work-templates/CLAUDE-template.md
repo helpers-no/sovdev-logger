@@ -247,7 +247,7 @@ After (when task 4 completes):
 - [ ] Are metric labels using underscores (not dots)?
 
 ### Validation
-- [ ] Did I run validation via DevContainer? (e.g., `./specification/tools/in-devcontainer.sh -e "./specification/tools/validate-log-format.sh"`)
+- [ ] Did I run validation? (e.g., `cd /workspace/specification/tools && ./validate-log-format.sh`)
 - [ ] Did I check logs appear in Loki?
 - [ ] Did I check metrics appear in Prometheus?
 - [ ] Did I check traces appear in Tempo?
@@ -330,10 +330,10 @@ TypeScript is the reference implementation that proves the observability stack i
 
 ```bash
 # Run TypeScript validation to verify system health (Phase 0, Task 2)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh"
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-typescript"
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-prometheus.sh sovdev-test-company-lookup-typescript"
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-typescript"
+\1
+\1
+\1
+\1
 ```
 
 **This is Phase 0, Task 2: "Verify TypeScript baseline"** - it's MANDATORY, not optional.
@@ -346,7 +346,7 @@ Validate your implementation at these checkpoints during development:
 - **After**: Implementing file logger and running a simple test
 - **Action**: Run test → Check log files created → Run `validate-log-format.sh`
 - Tool: `validate-log-format.sh`
-- When: Phase 1, Task 7 (Implement file logging)
+- When: Phase 1, Task 8 (Implement file logging)
 - Why first: Catches format issues without needing OTLP infrastructure
 
 **2. OTLP Connectivity Test** (fast, infrastructure)
@@ -391,7 +391,7 @@ Examples:
   - ❌ Wrong: Write code → mark complete
   - ✅ Correct: Write code → create connectivity test → verify connects to Loki/Prometheus/Tempo → mark complete
 
-- Task 7: "Implement file logging"
+- Task 8: "Implement file logging"
   - ❌ Wrong: Write code → mark complete
   - ✅ Correct: Write code → run validate-log-format.sh → verify passes → mark complete
 
@@ -418,7 +418,6 @@ This includes:
 ./specification/tools/query-prometheus.sh            # Query Prometheus backend
 ./specification/tools/query-tempo.sh                 # Query Tempo backend
 ./specification/tools/run-full-validation.sh         # Complete validation
-./specification/tools/in-devcontainer.sh             # DevContainer wrapper
 ```
 
 ### Phase-Specific Validation
@@ -567,7 +566,7 @@ specification/01-api-contract.md              # The 8 functions
 specification/02-log-format.md                # JSON log format
 specification/03-metrics-specification.md     # Metrics with underscores
 specification/04-traces-specification.md      # Trace spans
-specification/05-environment-configuration.md # DevContainer setup
+specification/05-environment-configuration.md # Environment setup
 specification/06-otel-backend-config.md       # OTLP endpoints
 specification/07-grafana-dashboard.md         # Visualization
 specification/08-testprogram-company-lookup.md # E2E test spec
@@ -588,7 +587,6 @@ specification/10-code-quality.md              # Linting standards (MANDATORY)
 ./specification/tools/validate-log-format.sh         # Phase 3
 ./specification/tools/check-otel-backend.sh          # Phase 3
 ./specification/tools/validate-grafana.sh            # Phase 3
-./specification/tools/in-devcontainer.sh             # Wrapper
 ```
 
 ---

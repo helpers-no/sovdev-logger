@@ -1,7 +1,6 @@
 # Task 5: Setup Project Structure
 
 **Parent task**: ROADMAP.md - Phase 1, Task 5
-**Estimated time**: 45 minutes
 **Prerequisites**: Phase 0 complete (all 4 tasks)
 
 ---
@@ -23,11 +22,11 @@ Set up the complete project structure for [LANGUAGE] implementation including:
 
 ### 5.1 Verify Language Toolchain (CRITICAL FIRST STEP)
 
-**Before creating any files, verify the language is available in DevContainer:**
+**Before creating any files, verify the language is available:**
 
 - [ ] Check language is installed:
   ```bash
-  ./specification/tools/in-devcontainer.sh -e "[language-command] --version"
+  [language-command] --version
   ```
 
   Examples:
@@ -45,7 +44,7 @@ Set up the complete project structure for [LANGUAGE] implementation including:
   ```bash
   ./.devcontainer/additions/install-dev-[language].sh
   ```
-- [ ] If no installer, escalate to user (language not in DevContainer)
+- [ ] If no installer, escalate to user (language not available)
 
 **Verification:**
 - [ ] Language version: _______________________________
@@ -61,7 +60,6 @@ Set up the complete project structure for [LANGUAGE] implementation including:
 Create the standard sovdev-logger directory layout:
 
 ```bash
-# From host machine (file operations)
 mkdir -p [LANGUAGE]/src
 mkdir -p [LANGUAGE]/test/e2e/company-lookup
 mkdir -p [LANGUAGE]/test/unit
@@ -131,7 +129,7 @@ From Task 4 (otel-sdk-comparison.md), install all required packages:
 
 **Example command structure:**
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/[LANGUAGE] && [install-command]"
+\1
 ```
 
 **Install:**
@@ -284,16 +282,16 @@ cat typescript/package.json
 Verify all Makefile targets work:
 
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/[LANGUAGE] && make lint"
+\1
 # Should run successfully (no code yet, but linter runs)
 
-./specification/tools/in-devcontainer.sh -e "cd /workspace/[LANGUAGE] && make lint-fix"
+\1
 # Should run successfully
 
-./specification/tools/in-devcontainer.sh -e "cd /workspace/[LANGUAGE] && make build"
+\1
 # Should run successfully (might be no-op if no code)
 
-./specification/tools/in-devcontainer.sh -e "cd /workspace/[LANGUAGE] && make test"
+\1
 # Should run successfully (no tests yet, might be no-op)
 ```
 
@@ -364,17 +362,17 @@ implementation-notes.md
 
 ## Common Issues
 
-### Issue 1: Language Not in DevContainer
+### Issue 1: Language Not Available
 **Problem:** `[language] --version` returns "command not found"
 **Solution:**
 - Check `.devcontainer/additions/` for installer script
-- If no installer, escalate to user to add language to DevContainer
+- If no installer, escalate to user to add language to environment
 
 ### Issue 2: Package Installation Fails
 **Problem:** Cannot install OTEL packages
 **Solution:**
 - Check package names are correct (from Task 4)
-- Check network access from DevContainer
+- Check network access
 - Check package registry is accessible
 
 ### Issue 3: Makefile Doesn't Work
@@ -383,22 +381,6 @@ implementation-notes.md
 - Verify linter is installed (check dependencies)
 - Verify commands are correct for [LANGUAGE]
 - Test commands manually first, then add to Makefile
-
----
-
-## Time Estimate
-
-- Subtask 5.1: 5 minutes (verify toolchain)
-- Subtask 5.2: 2 minutes (create directories)
-- Subtask 5.3: 3 minutes (initialize project)
-- Subtask 5.4: 5 minutes (install OTEL deps)
-- Subtask 5.5: 3 minutes (install logging lib)
-- Subtask 5.6: 10 minutes (create Makefile)
-- Subtask 5.7: 10 minutes (setup linting)
-- Subtask 5.8: 5 minutes (test Makefile)
-- Subtask 5.9: 2 minutes (create .gitignore)
-
-**Total**: ~45 minutes
 
 ---
 

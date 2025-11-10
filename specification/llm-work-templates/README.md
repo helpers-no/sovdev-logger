@@ -27,7 +27,7 @@ specification/llm-work-templates/
 ├── task-templates/                     # Detailed task breakdowns
 │   ├── task-03-research-otel-sdk.md   # 7 subtasks for OTEL research
 │   ├── task-06-implement-otlp.md      # 10 subtasks for OTLP exporters
-│   ├── task-08-implement-api.md       # 10 subtasks for API functions
+│   ├── task-07-implement-api.md       # 10 subtasks for API functions
 │   ├── task-09-e2e-test.md            # 15 subtasks for E2E test
 │   └── task-12-validation.md          # 10 subtasks for validation
 │
@@ -83,8 +83,7 @@ specification/llm-work-templates/
 **Progress check runs before validation:**
 
 ```bash
-# All commands run INSIDE DevContainer via wrapper:
-./specification/tools/in-devcontainer.sh -e "./specification/tools/run-full-validation.sh go"
+cd /workspace/specification/tools && ./run-full-validation.sh go
   ↓
 Calls: check-progress.sh go
   ↓
@@ -93,8 +92,6 @@ Checks: go/llm-work/ROADMAP.md exists and is being updated
 If fail: Block validation, show error
 If pass: Continue with validation
 ```
-
-**⚠️ CRITICAL: All commands MUST run via in-devcontainer.sh wrapper**
 
 **What enforcement checks:**
 - ROADMAP.md exists
@@ -181,11 +178,11 @@ cat rust/llm-work/ROADMAP.md
 **Checking progress:**
 
 ```bash
-# Run progress check manually (inside DevContainer)
-./specification/tools/in-devcontainer.sh -e "./specification/llm-work-templates/enforcement/check-progress.sh rust"
+# Run progress check manually
+cd /workspace/specification/llm-work-templates/enforcement && ./check-progress.sh rust"
 
-# Or let validation script run it automatically (wrapper calls it internally)
-./specification/tools/in-devcontainer.sh -e "./specification/tools/run-full-validation.sh rust"
+# Or let validation script run it automatically (calls check-progress.sh internally)
+cd /workspace/specification/tools && ./run-full-validation.sh rust"
 ```
 
 **Improving templates:**
@@ -315,7 +312,7 @@ Implements logs, metrics, and traces exporters:
 - Test each exporter
 - **Critical:** Verify HTTP header present
 
-### task-08-implement-api.md
+### task-07-implement-api.md
 
 **8 API functions** (10 subtasks, ~3.5 hours).
 
@@ -638,8 +635,7 @@ rm -rf test-lang/
 
 ```bash
 # 1. Test with real language (TypeScript)
-# IMPORTANT: All commands run via in-devcontainer.sh wrapper
-./specification/tools/in-devcontainer.sh -e "./specification/tools/run-full-validation.sh typescript"
+cd /workspace/specification/tools && ./run-full-validation.sh typescript
 
 # Should run progress check, then proceed with validation
 # Check for "Checking ROADMAP.md progress..." message
@@ -735,7 +731,7 @@ sed -i 's/\[DATE\]/2025-10-31/g' *.md
 **Related files:**
 - `.claude/skills/implement-language/SKILL.md` - Integration point
 - `specification/tools/run-full-validation.sh` - Enforcement integration
-- `specification/09-development-loop.md` - 6-step workflow (Edit → Lint → Build → Run → Validate Logs → Validate OTLP)
+- `specification/09-development-loop.md` - Test-driven iterative workflow (6 steps: Edit → Lint → Build → Run → Validate → Iterate when fails). See "Test-Driven Development: The Iterative Feedback Loop" section for complete workflow.
 - `specification/10-code-quality.md` - Linting standards (MANDATORY - must pass before build)
 - `typescript/` - Reference implementation (source of truth)
 
@@ -761,6 +757,6 @@ When improving this system:
 
 ---
 
-**Last updated:** 2025-10-31
+**Last updated:** 2025-11-08
 **Maintainer:** sovdev-logger project
 **License:** Same as project

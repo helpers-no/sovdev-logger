@@ -1,7 +1,6 @@
 # Task 2: Verify TypeScript Baseline (and Environment)
 
 **Parent task**: ROADMAP.md - Phase 0, Task 2
-**Estimated time**: 10 minutes
 **Prerequisites**: Task 1 complete
 
 ---
@@ -9,7 +8,7 @@
 ## Purpose
 
 **⚠️ CRITICAL:** Before implementing a new language, verify that:
-1. You understand the DevContainer environment
+1. You understand the working directory and network endpoints
 2. The monitoring stack is operational
 3. TypeScript reference implementation works
 
@@ -23,27 +22,21 @@
 
 Read and confirm your understanding:
 
-- [ ] **You are running inside a container** (not on your host machine)
-- [ ] **All commands must use `in-devcontainer.sh` wrapper**
-  - Correct: `./specification/tools/in-devcontainer.sh -e "command"`
-  - Wrong: Running commands directly on host
-- [ ] **Available endpoints:**
-  - [ ] `host.docker.internal` - For OTLP exports from inside container
-  - [ ] `otel.localhost` - Host header required for Traefik routing
-  - [ ] `grafana.localhost` - Grafana UI access
-- [ ] **Network architecture:**
-  - [ ] DevContainer → host.docker.internal:80 → Traefik → Loki/Prometheus/Tempo
-  - [ ] Browser → grafana.localhost → Grafana UI
+- [ ] **Working directory:** `/workspace/`
+- [ ] **OTLP endpoints:**
+  - [ ] `http://host.docker.internal/v1/{logs,metrics,traces}` - OTLP export destination
+  - [ ] Required header: `Host: otel.localhost` - For Traefik routing
+- [ ] **Grafana access:**
+  - [ ] `http://grafana.localhost` - Dashboard UI
 
 **⛔ CRITICAL:** If you skip this understanding:
-- You will encounter "command not found" errors
-- You will encounter "connection refused" errors
 - OTLP exports will fail
+- Network connectivity issues
 
 **Checkpoint questions:**
-1. Can you run commands directly on your host? **NO**
-2. What wrapper must you use? **in-devcontainer.sh**
-3. What Host header is required for OTLP? **otel.localhost**
+1. What is your working directory? **/workspace/**
+2. What Host header is required for OTLP? **otel.localhost**
+3. What endpoint for OTLP exports? **host.docker.internal**
 
 **If you cannot answer these correctly → Re-read specification/05-environment-configuration.md**
 
@@ -52,17 +45,44 @@ Read and confirm your understanding:
 ### A.2 Verify Understanding
 
 - [ ] Read `specification/05-environment-configuration.md` completely
-  - [ ] Understand Section 1: DevContainer Environment
-  - [ ] Understand Section 2: Network Endpoints
-  - [ ] Understand Section 3: Command Execution
+  - [ ] Understand environment setup
+  - [ ] Understand network endpoints
+  - [ ] Understand OTLP configuration
 - [ ] Read `specification/tools/README.md` → Prerequisites section
-  - [ ] Understand DevContainer requirement
   - [ ] Understand monitoring stack architecture
-- [ ] Confirmed: All test commands will use `in-devcontainer.sh -e "..."`
+  - [ ] Understand validation tools
 
 ---
 
 ## Part B: Verify Monitoring Stack Works
+
+### B.0 Understand TypeScript Reference Structure
+
+**Purpose:** Understand the TypeScript implementation structure you'll replicate in Task 5.
+
+**Key files to review:**
+- [ ] `typescript/Makefile` - Standard targets (lint, lint-fix, build, test)
+- [ ] `typescript/test/e2e/company-lookup/run-test.sh` - Runs E2E test
+- [ ] `specification/tools/run-full-validation.sh` - Runs 7 automated validation steps
+
+**Quick check:**
+```bash
+# View Makefile targets
+cat typescript/Makefile
+# See: lint, lint-fix, build, test
+
+# View test script
+cat typescript/test/e2e/company-lookup/run-test.sh
+# See: Cleans logs/, runs npm start
+
+# View validation script
+cat specification/tools/run-full-validation.sh
+# See: Runs 7-step validation sequence
+```
+
+**Why this matters:** In Task 5, you'll create the same structure for your language (Makefile with lint/build/test targets, run-test.sh script).
+
+---
 
 ### B.1 Run TypeScript E2E Test
 
@@ -70,7 +90,7 @@ Read and confirm your understanding:
 
 **Command:**
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh"
+\1
 ```
 
 **Expected result:**
@@ -88,8 +108,8 @@ wc -l typescript/test/e2e/company-lookup/logs/dev.log
 
 **If test fails:**
 - ❌ TypeScript implementation broken → Report issue
-- ❌ DevContainer not running → Start DevContainer
-- ❌ Node.js not installed → Check DevContainer setup
+- ❌ Node.js not available → Check environment setup
+- ❌ Test script not found → Verify file exists and is executable
 
 **Checklist:**
 - [ ] TypeScript test ran successfully
@@ -104,7 +124,7 @@ wc -l typescript/test/e2e/company-lookup/logs/dev.log
 
 **Command:**
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-full-validation.sh typescript"
+\1
 ```
 
 **Expected result:** All 7 automated steps pass ✅
@@ -193,7 +213,7 @@ wc -l typescript/test/e2e/company-lookup/logs/dev.log
 
 **This task is complete when:**
 
-- [ ] ✅ Part A: Environment understanding verified (DevContainer, endpoints, command wrapper)
+- [ ] ✅ Part A: Environment understanding verified (endpoints, OTLP configuration)
 - [ ] ✅ Part B.1: TypeScript E2E test passed (17 log entries)
 - [ ] ✅ Part B.2: TypeScript full validation passed (all 7 steps)
 - [ ] ✅ Part B.3: Grafana dashboard shows TypeScript data (all 3 panels)
@@ -202,31 +222,35 @@ wc -l typescript/test/e2e/company-lookup/logs/dev.log
 **Do NOT mark complete if:**
 - ❌ TypeScript validation fails (fix monitoring stack first!)
 - ❌ Grafana dashboard is empty (wait for data or re-run test)
-- ❌ You don't understand DevContainer environment (read 05-environment-configuration.md)
+- ❌ You don't understand environment configuration (read 05-environment-configuration.md)
 
 ---
 
 ## Common Issues
 
 ### Issue 1: "Command not found" when running test
-**Cause:** Running command directly on host instead of in DevContainer
-**Solution:** Always use `./specification/tools/in-devcontainer.sh -e "command"`
+**Cause:** Test script not found or not executable
+**Solution:** Execute the test command:
+```bash
+cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh
+```
+If still failing, check that the test script exists and is executable.
 
 ### Issue 2: "Connection refused" to OTLP endpoint
 **Cause:** Using wrong endpoint or missing Host header
 **Solution:**
-- Endpoint: `http://host.docker.internal/v1/logs` (from inside container)
-- Header: `Host: otel.localhost` (for Traefik routing)
+- Endpoint: `http://host.docker.internal/v1/logs`
+- Header: `Host: otel.localhost` (required for Traefik routing)
 
 ### Issue 3: Grafana dashboard is empty
 **Cause:** Data not yet propagated or test didn't run
 **Solution:**
 1. Wait 30 seconds for OTLP propagation
-2. Re-run TypeScript test: `./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh"`
+2. Re-run TypeScript test: `\1`
 3. Refresh Grafana dashboard
 
 ### Issue 4: kubectl not working
-**Cause:** kubectl not configured in DevContainer
+**Cause:** kubectl not configured
 **Solution:** Use Grafana-based validation tools instead:
 - `query-grafana-loki.sh` instead of `query-loki.sh`
 - `query-grafana-prometheus.sh` instead of `query-prometheus.sh`
@@ -237,7 +261,7 @@ wc -l typescript/test/e2e/company-lookup/logs/dev.log
 ## Why This Task Matters
 
 **If TypeScript validation fails:**
-- ❌ Problem is with the **environment** (monitoring stack, DevContainer, network)
+- ❌ Problem is with the **environment** (monitoring stack, network configuration)
 - ❌ NOT a problem with your language implementation (you haven't started yet!)
 
 **If you skip this task:**
@@ -246,18 +270,6 @@ wc -l typescript/test/e2e/company-lookup/logs/dev.log
 - This task saves you from that wasted time
 
 **Bottom line:** Verify the infrastructure works BEFORE you write any code.
-
----
-
-## Time Estimate
-
-- Part A: 3 minutes (read and understand)
-- Part B.1: 2 minutes (run TypeScript test)
-- Part B.2: 3 minutes (run validation)
-- Part B.3: 2 minutes (check Grafana)
-- Part C: 2 minutes (read validation sequence)
-
-**Total**: ~10 minutes (could be longer if monitoring stack has issues)
 
 ---
 

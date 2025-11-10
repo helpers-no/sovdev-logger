@@ -1,28 +1,30 @@
 # Task 4: Create SDK Comparison Document
 
 **Parent task**: ROADMAP.md - Phase 0, Task 4
-**Estimated time**: 30 minutes
 **Prerequisites**: Task 3 complete (SDK research done)
 
 ---
 
 ## Purpose
 
-Create a comprehensive comparison document that captures all findings from Task 3 (SDK research).
+Complete and structure the comprehensive comparison document started in Task 3.
 
-**Output**: `[LANGUAGE]/llm-work/otel-sdk-comparison.md`
+**Input**: Initial research notes from Task 3 (`[LANGUAGE]/llm-work/otel-sdk-comparison.md`)
 
-**Why this matters:** This document becomes the reference for understanding how [LANGUAGE] SDK differs from TypeScript, preventing repeated research and capturing workarounds for future maintainers.
+**Output**: Complete `[LANGUAGE]/llm-work/otel-sdk-comparison.md` with all critical implementation details
+
+**Why this matters:** This task adds critical sections not covered in Task 3 (duration handling, histogram units, workarounds) that are essential for implementation. The completed document becomes the reference for understanding how [LANGUAGE] SDK differs from TypeScript.
 
 ---
 
 ## Subtasks
 
-### 4.1 Create Document File
+### 4.1 Review Initial Research Notes
 
-- [ ] Create file: `[LANGUAGE]/llm-work/otel-sdk-comparison.md`
-- [ ] Copy template structure from below
-- [ ] Fill in [LANGUAGE] placeholder
+- [ ] Open file created in Task 3: `[LANGUAGE]/llm-work/otel-sdk-comparison.md`
+- [ ] Review initial research findings
+- [ ] Verify basic sections are present (SDK maturity, packages, OTLP config, HTTP headers, metric attributes)
+- [ ] If file is missing → Go back to Task 3.8
 
 ---
 
@@ -418,34 +420,17 @@ Last updated: [DATE]
 # File exists
 ls [LANGUAGE]/llm-work/otel-sdk-comparison.md
 
-# File has substance (>100 lines)
+# File has substance (>100 lines with all critical sections)
 wc -l [LANGUAGE]/llm-work/otel-sdk-comparison.md
 
-# Contains critical keywords
+# Contains ALL critical keywords (these are Task 4's additions)
 grep -i "header" [LANGUAGE]/llm-work/otel-sdk-comparison.md
 grep -i "underscore" [LANGUAGE]/llm-work/otel-sdk-comparison.md
-grep -i "millisecond" [LANGUAGE]/llm-work/otel-sdk-comparison.md
+grep -i "millisecond" [LANGUAGE]/llm-work/otel-sdk-comparison.md  # Duration handling (Task 4)
+grep -i "histogram.*unit" [LANGUAGE]/llm-work/otel-sdk-comparison.md  # Histogram unit (Task 4)
 ```
 
 **All checks must pass.**
-
----
-
-## Time Estimate
-
-- Subtask 4.1: 2 minutes (create file)
-- Subtask 4.2: 2 minutes (maturity status)
-- Subtask 4.3: 3 minutes (packages)
-- Subtask 4.4: 5 minutes (OTLP config)
-- Subtask 4.5: 5 minutes (HTTP headers)
-- Subtask 4.6: 5 minutes (metric attributes)
-- Subtask 4.7: 3 minutes (duration)
-- Subtask 4.8: 2 minutes (histogram unit)
-- Subtask 4.9: 5 minutes (differences)
-- Subtask 4.10: 3 minutes (workarounds - if any)
-- Subtask 4.11: 2 minutes (references)
-
-**Total**: ~30 minutes (assumes research from Task 3 is complete)
 
 ---
 

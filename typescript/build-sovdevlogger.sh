@@ -22,12 +22,12 @@
 #   1 - Build failed (compilation errors, missing dependencies, etc.)
 #
 # Examples:
-#   # Human developers (VSCode terminal inside container):
+#   # From inside DevContainer at /workspace/:
 #   cd typescript
 #   ./build-sovdevlogger.sh
 #
-#   # LLM developers (host machine):
-#   ./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript && ./build-sovdevlogger.sh"
+#   # Or with absolute path:
+#   cd /workspace/typescript && ./build-sovdevlogger.sh
 #
 # Related:
 #   - package.json: Contains build scripts and dependencies

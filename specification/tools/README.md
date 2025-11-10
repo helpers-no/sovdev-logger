@@ -26,10 +26,10 @@ TypeScript is the reference implementation that proves the observability stack i
 
 ```bash
 # Verify observability stack health (Phase 0, Task 2)
-./in-devcontainer.sh -e "cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh"
-./in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-typescript"
-./in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-prometheus.sh sovdev-test-company-lookup-typescript"
-./in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-typescript"
+cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh
+cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-typescript
+cd /workspace/specification/tools && ./query-prometheus.sh sovdev-test-company-lookup-typescript
+cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-typescript
 ```
 
 **Result interpretation**:
@@ -105,12 +105,19 @@ Before using these tools, ensure:
 
 ### The 8-Step Validation Sequence
 
-**You MUST follow these 8 steps in order.** Do NOT skip steps. Do NOT jump to Grafana (Step 8) unless Steps 1-7 all pass.
+**You MUST follow these 8 steps in order.** Do NOT skip steps.
+
+**Why order matters:**
+- If Step 1 fails (file logs incorrect), Steps 2-7 will also fail (they validate the same data exported to backends)
+- Each step validates a different layer of the same data pipeline
+- Skipping to later steps wastes time debugging symptoms instead of root causes
+
+**Rule:** If a step fails, stop and fix it before continuing.
 
 **Option 1: Automated (Recommended)**
 ```bash
 # Run Steps 1-7 automatically
-./in-devcontainer.sh run-full-validation {language}
+cd /workspace/specification/tools && ./run-full-validation.sh {language}
 
 # If exit code is 0, proceed to Step 8 (Grafana visual)
 # If exit code is non-zero, fix the failing step and re-run
@@ -129,7 +136,7 @@ Run each step individually (documented below) to identify which step is failing.
 
 **Command:**
 ```bash
-./in-devcontainer.sh validate-log-format {language}/test/e2e/company-lookup/logs/dev.log
+cd /workspace/specification/tools && ./validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log
 ```
 
 **What it checks:**
@@ -156,7 +163,7 @@ Run each step individually (documented below) to identify which step is failing.
 **Command:**
 ```bash
 sleep 10  # Wait for OTLP propagation
-./in-devcontainer.sh query-loki sovdev-test-company-lookup-{language} --json
+cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-{language} --json
 ```
 
 **What it checks:**
@@ -183,7 +190,7 @@ sleep 10  # Wait for OTLP propagation
 
 **Command:**
 ```bash
-./in-devcontainer.sh query-prometheus 'sovdev_operations_total{service_name=~".*{language}.*"}' --json
+cd /workspace/specification/tools && ./query-prometheus.sh 'sovdev_operations_total{service_name=~".*{language}.*"}' --json
 ```
 
 **What it checks:**
@@ -215,7 +222,7 @@ sleep 10  # Wait for OTLP propagation
 
 **Command:**
 ```bash
-./in-devcontainer.sh query-tempo sovdev-test-company-lookup-{language} --json
+cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-{language} --json
 ```
 
 **What it checks:**
@@ -240,7 +247,7 @@ sleep 10  # Wait for OTLP propagation
 
 **Command:**
 ```bash
-./in-devcontainer.sh query-grafana-loki sovdev-test-company-lookup-{language} --json
+cd /workspace/specification/tools && ./query-grafana-loki.sh sovdev-test-company-lookup-{language} --json
 ```
 
 **What it checks:**
@@ -266,7 +273,7 @@ sleep 10  # Wait for OTLP propagation
 
 **Command:**
 ```bash
-./in-devcontainer.sh query-grafana-prometheus 'sovdev_operations_total{service_name=~".*{language}.*"}' --json
+cd /workspace/specification/tools && ./query-grafana-prometheus.sh 'sovdev_operations_total{service_name=~".*{language}.*"}' --json
 ```
 
 **What it checks:**
@@ -292,7 +299,7 @@ sleep 10  # Wait for OTLP propagation
 
 **Command:**
 ```bash
-./in-devcontainer.sh query-grafana-tempo sovdev-test-company-lookup-{language} --json
+cd /workspace/specification/tools && ./query-grafana-tempo.sh sovdev-test-company-lookup-{language} --json
 ```
 
 **What it checks:**
@@ -363,52 +370,23 @@ sleep 10  # Wait for OTLP propagation
 
 ## Quick Reference
 
-**Core Principle:** All scripts run INSIDE the devcontainer (which has kubectl, language runtimes, and all tools).
+All scripts run inside the DevContainer at `/workspace/specification/tools/`.
 
-Complete table of all verification tools:
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| [**run-full-validation.sh**](run-full-validation.sh) | **RECOMMENDED** - Complete E2E validation | `./run-full-validation.sh python` |
+| [**run-company-lookup.sh**](run-company-lookup.sh) | Quick smoke test | `./run-company-lookup.sh python` |
+| [**validate-log-format.sh**](validate-log-format.sh) | Validate log file format | `./validate-log-format.sh python/test/logs/dev.log` |
+| [**query-loki.sh**](query-loki.sh) | Query Loki for logs | `./query-loki.sh sovdev-test-company-lookup-python` |
+| [**query-prometheus.sh**](query-prometheus.sh) | Query Prometheus for metrics | `./query-prometheus.sh sovdev-test-company-lookup-python` |
+| [**query-tempo.sh**](query-tempo.sh) | Query Tempo for traces | `./query-tempo.sh sovdev-test-company-lookup-python` |
+| [**query-grafana.sh**](query-grafana.sh) | Check Grafana datasources | `./query-grafana.sh` |
+| [**query-grafana-loki.sh**](query-grafana-loki.sh) | Query Loki via Grafana | `./query-grafana-loki.sh sovdev-test-company-lookup-python` |
+| [**query-grafana-prometheus.sh**](query-grafana-prometheus.sh) | Query Prometheus via Grafana | `./query-grafana-prometheus.sh sovdev-test-company-lookup-python` |
+| [**query-grafana-tempo.sh**](query-grafana-tempo.sh) | Query Tempo via Grafana | `./query-grafana-tempo.sh sovdev-test-company-lookup-python` |
+| [**run-grafana-validation.sh**](run-grafana-validation.sh) | Validate Grafana queries only | `./run-grafana-validation.sh <service> <logfile>` |
 
-| Script | Purpose | Inside Container | From Host | Where It Runs |
-|--------|---------|------------------|-----------|---------------|
-| [**run-company-lookup.sh**](run-company-lookup.sh) | Quick smoke test - run app and send to OTLP | `./run-company-lookup.sh python` | `./in-devcontainer.sh run-company-lookup python` | Devcontainer |
-| [**run-full-validation.sh**](run-full-validation.sh) | **RECOMMENDED** - Complete E2E validation | `./run-full-validation.sh python` | `./in-devcontainer.sh run-full-validation python` | Devcontainer |
-| [**run-grafana-validation.sh**](run-grafana-validation.sh) | Validate Grafana datasource queries only | `./run-grafana-validation.sh <service> <logfile>` | `./in-devcontainer.sh run-grafana-validation <service> <logfile>` | Devcontainer |
-| [**query-loki.sh**](query-loki.sh) | Query Loki directly for service logs | `./query-loki.sh sovdev-test-company-lookup-python` | `./in-devcontainer.sh query-loki sovdev-test-company-lookup-python` | Devcontainer |
-| [**query-prometheus.sh**](query-prometheus.sh) | Query Prometheus directly for service metrics | `./query-prometheus.sh sovdev-test-company-lookup-python` | `./in-devcontainer.sh query-prometheus sovdev-test-company-lookup-python` | Devcontainer |
-| [**query-tempo.sh**](query-tempo.sh) | Query Tempo directly for service traces | `./query-tempo.sh sovdev-test-company-lookup-python` | `./in-devcontainer.sh query-tempo sovdev-test-company-lookup-python` | Devcontainer |
-| [**query-grafana.sh**](query-grafana.sh) | Check Grafana datasource configuration | `./query-grafana.sh` | `./in-devcontainer.sh query-grafana` | Devcontainer |
-| [**query-grafana-loki.sh**](query-grafana-loki.sh) | Query Loki THROUGH Grafana proxy | `./query-grafana-loki.sh sovdev-test-company-lookup-python` | `./in-devcontainer.sh query-grafana-loki sovdev-test-company-lookup-python` | Devcontainer |
-| [**query-grafana-prometheus.sh**](query-grafana-prometheus.sh) | Query Prometheus THROUGH Grafana proxy | `./query-grafana-prometheus.sh sovdev-test-company-lookup-python` | `./in-devcontainer.sh query-grafana-prometheus sovdev-test-company-lookup-python` | Devcontainer |
-| [**query-grafana-tempo.sh**](query-grafana-tempo.sh) | Query Tempo THROUGH Grafana proxy | `./query-grafana-tempo.sh sovdev-test-company-lookup-python` | `./in-devcontainer.sh query-grafana-tempo sovdev-test-company-lookup-python` | Devcontainer |
-| [**validate-log-format.sh**](validate-log-format.sh) | Validate log file format against schema | `./validate-log-format.sh python/test/logs/dev.log` | `./in-devcontainer.sh validate-log-format python/test/logs/dev.log` | Devcontainer |
-| [**in-devcontainer.sh**](in-devcontainer.sh) | Universal wrapper to run scripts from host | N/A | `./in-devcontainer.sh <script> [args]` | Host → Devcontainer |
-
-**Aliases (shortcuts with in-devcontainer.sh):**
-- `loki` → `query-loki.sh`
-- `prometheus` / `prom` → `query-prometheus.sh`
-- `tempo` → `query-tempo.sh`
-- `grafana` → `query-grafana.sh`
-- `validate` → `run-full-validation.sh`
-- `validate-logs` → `validate-log-format.sh`
-- `company-lookup` → `run-company-lookup.sh`
-
-**Usage Examples:**
-
-```bash
-# From host machine (most common)
-./in-devcontainer.sh validate python                         # Complete verification (alias)
-./in-devcontainer.sh run-full-validation python              # Complete verification
-./in-devcontainer.sh loki sovdev-test-company-lookup-python  # Query Loki (using alias)
-./in-devcontainer.sh validate-logs python/test/logs/dev.log  # Validate logs (using alias)
-
-# Inside devcontainer (if you're already in there)
-./run-full-validation.sh python
-./query-loki.sh sovdev-test-company-lookup-python
-./validate-log-format.sh python/test/logs/dev.log
-
-# Common workflow from host
-./in-devcontainer.sh run-company-lookup python && \
-./in-devcontainer.sh loki sovdev-test-company-lookup-python --json
-```
+All commands should be run from inside the DevContainer at `/workspace/`.
 
 ---
 
@@ -477,36 +455,23 @@ python3 ../tests/validate-log-consistency.py logs/dev.log /tmp/loki.json
 
 **Recommendations:**
 
-**For Development (Most Common - Use This!):**
+**For Development (Most Common):**
 ```bash
-# Use run-full-validation.sh or the "validate" alias
-./in-devcontainer.sh validate typescript
-# or
-./in-devcontainer.sh run-full-validation typescript
+cd /workspace/specification/tools && ./run-full-validation.sh typescript
 ```
-- ✅ Validates file logs + all backends (Loki, Prometheus, Tempo)
-- ✅ Schema + consistency validation (compares backend with log files)
-- ✅ Validates Grafana datasource configuration
-- ✅ Catches all implementation issues
-- **This is what you want for complete validation**
+Complete validation: file logs + all backends + Grafana datasources.
 
 **For Quick Smoke Test:**
 ```bash
-# Use run-company-lookup.sh - just run the app
-./in-devcontainer.sh run-company-lookup typescript
+cd /workspace/specification/tools && ./run-company-lookup.sh typescript
 ```
-- No backend queries
-- Just validates file log format
-- Use when testing code changes locally (fast feedback)
+Fast feedback: validates file log format only, no backend queries.
 
 **For Grafana-Only Testing:**
 ```bash
-# Use run-grafana-validation.sh - validates Grafana queries only
-./in-devcontainer.sh run-grafana-validation sovdev-test-company-lookup-typescript logs/dev.log
+cd /workspace/specification/tools && ./run-grafana-validation.sh sovdev-test-company-lookup-typescript logs/dev.log
 ```
-- Assumes app already ran and logs exist
-- Only validates Grafana datasource queries
-- Use when testing Grafana dashboard changes
+Validates Grafana datasource queries only (assumes logs exist).
 
 ---
 

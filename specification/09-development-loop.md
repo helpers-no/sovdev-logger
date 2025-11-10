@@ -28,10 +28,10 @@ TypeScript is the reference implementation that proves the observability stack i
 
 ```bash
 # Run TypeScript validation to verify system health (Phase 0, Task 2)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh"
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-typescript"
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-prometheus.sh sovdev-test-company-lookup-typescript"
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-typescript"
+cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh
+cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-typescript
+cd /workspace/specification/tools && ./query-prometheus.sh sovdev-test-company-lookup-typescript
+cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-typescript
 ```
 
 **This is Phase 0, Task 2: "Verify TypeScript baseline"** - it's MANDATORY, not optional.
@@ -95,98 +95,206 @@ Examples:
 
 ---
 
-## Developer Workflows: Human vs LLM
+## Developer Workflows
 
-**For environment architecture diagram**, see `05-environment-configuration.md` → **Architecture Diagram** section. This shows how Host Machine, DevContainer, and Kubernetes Cluster interact.
+**For environment architecture diagram**, see `05-environment-configuration.md` → **Architecture Diagram** section.
 
-There are **two different ways** to work with sovdev-logger, depending on whether you're a human or an LLM:
+**⚠️ CRITICAL:** All developers (human and LLM) now work **inside the DevContainer** at `/workspace/`. Execute commands directly.
 
-### Human Developers (VSCode + DevContainer Extension)
+### Working in the DevContainer
 
-**Environment:** VSCode with DevContainer extension installed and running
+**Environment:** Commands execute inside the DevContainer at `/workspace/`
 
 **How it works:**
-- Open project in VSCode
-- VSCode automatically starts the DevContainer
-- **Terminal runs INSIDE the container** (automatically)
-- Run commands directly without wrappers
+- Host project directory is bind-mounted to `/workspace/` in container (same filesystem)
+- Files edited via Read/Edit/Write tools or VSCode affect the same files
+- Commands execute inside container with access to all installed runtimes
+- Results are immediate
 
 **Example commands:**
 ```bash
-# Run test (terminal is already inside container)
-cd typescript/test/e2e/company-lookup
-./run-test.sh
+# Run tests
+cd typescript/test/e2e/company-lookup && ./run-test.sh
+cd python/test/e2e/company-lookup && ./run-test.sh
 
-# Or use npm/python/go directly
-npm test
-python -m pytest
-go test ./...
+# Build libraries
+cd typescript && ./build-sovdevlogger.sh
+cd python && ./build-sovdevlogger.sh
 
 # Validate log files
-../../../specification/tools/validate-log-format.sh typescript/test/e2e/company-lookup/logs/dev.log
+cd /workspace/specification/tools && ./validate-log-format.sh typescript/test/e2e/company-lookup/logs/dev.log
+
+# Query backends
+cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-typescript
+cd /workspace/specification/tools && ./query-prometheus.sh sovdev-test-company-lookup-typescript
 ```
 
-**Key difference:** No need for `in-devcontainer.sh` wrapper - you're already inside!
+### Common Commands Reference
 
----
-
-### LLM Developers (Host Machine + Bash Tool)
-
-**Environment:** LLM running on host machine, using Bash tool to execute commands
-
-**How it works:**
-- LLM edits files on host filesystem (Read/Edit/Write tools)
-- LLM uses `in-devcontainer.sh` wrapper for ALL code execution
-- Commands run inside container via wrapper
-- Results returned to LLM
-
-**Example commands:**
-```bash
-# Run test (call tool in container)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-company-lookup.sh typescript"
-
-# Validate log files (call tool in container)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./validate-log-format.sh typescript/test/e2e/company-lookup/logs/dev.log"
-
-# Custom commands (any command in container)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript && npm install"
-```
-
-**Key difference:** ALWAYS use `in-devcontainer.sh -e "command"` - everything inside quotes executes in the container.
-
----
-
-### Command Comparison
-
-| Task | Human Developer (VSCode Terminal) | LLM Developer (Host + Bash Tool) |
-|------|-----------------------------------|----------------------------------|
-| **Lint TypeScript code** | `cd typescript && make lint` | `./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript && make lint"` |
-| **Lint TypeScript (auto-fix)** | `cd typescript && make lint-fix` | `./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript && make lint-fix"` |
-| **Build TypeScript library** | `cd typescript && ./build-sovdevlogger.sh` | `./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript && ./build-sovdevlogger.sh"` |
-| **Build Python library** | `cd python && ./build-sovdevlogger.sh` | `./specification/tools/in-devcontainer.sh -e "cd /workspace/python && ./build-sovdevlogger.sh"` |
-| **Build Go library** | `cd go && ./build-sovdevlogger.sh` | `./specification/tools/in-devcontainer.sh -e "cd /workspace/go && ./build-sovdevlogger.sh"` |
-| **Run TypeScript test** | `cd typescript/test/e2e/company-lookup && ./run-test.sh` | `./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-company-lookup.sh typescript"` |
-| **Run Python test** | `cd python/test/e2e/company-lookup && ./run-test.sh` | `./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-company-lookup.sh python"` |
-| **Install dependencies** | `cd typescript && npm install` | `./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript && npm install"` |
-| **Run unit tests** | `cd typescript && npm test` | `./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript && npm test"` |
-| **Validate log format** | `validate-log-format.sh logs/dev.log` | `./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./validate-log-format.sh typescript/.../logs/dev.log"` |
-| **Query Loki** | `query-loki.sh sovdev-test-company-lookup-typescript` | `./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-typescript"` |
-
-**Note:** LLMs must use `in-devcontainer.sh -e "command"` for ALL commands. Human developers run commands directly (terminal is already inside container).
+| Task | Command (from `/workspace/`) |
+|------|------------------------------|
+| **Lint TypeScript code** | `cd typescript && make lint` |
+| **Lint TypeScript (auto-fix)** | `cd typescript && make lint-fix` |
+| **Build TypeScript library** | `cd typescript && ./build-sovdevlogger.sh` |
+| **Build Python library** | `cd python && ./build-sovdevlogger.sh` |
+| **Build Go library** | `cd go && ./build-sovdevlogger.sh` |
+| **Run TypeScript test** | `cd typescript/test/e2e/company-lookup && ./run-test.sh` |
+| **Run Python test** | `cd python/test/e2e/company-lookup && ./run-test.sh` |
+| **Install dependencies** | `cd typescript && npm install` |
+| **Validate log format** | `cd /workspace/specification/tools && ./validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log` |
+| **Query Loki** | `cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-{language}` |
+| **Full validation** | `cd /workspace/specification/tools && ./run-full-validation.sh {language}` |
 
 ---
 
 ## The Development Loop
 
-The typical development cycle follows this **5-step pattern**:
+The typical development cycle follows this **6-step pattern**:
 
 1. **Edit** - Make code changes
 2. **Lint** - Check code quality (MANDATORY - must pass before build)
 3. **Build** - Compile/build the library
-4. **Test** - Run E2E tests
-5. **Validate** - Verify logs/metrics/traces
+4. **Run/Test** - Execute code (start with simple tests, work up to E2E)
+5. **Validate Logs** - Check file format (FAST - instant feedback)
+6. **Validate OTLP** - Check backends (SLOW - requires infrastructure)
+
+**Key principle:** Validate incrementally as you build. Don't wait until the end to run full E2E test.
+
+**Validation order matters:**
+- If Step 5 fails (file logs incorrect) → Steps 6-7 will also fail
+- Validate file logs FIRST (instant), then OTLP backends SECOND (slower)
+- See `specification/tools/README.md` for complete 8-step validation sequence
 
 **Note on file editing:** Files are synchronized between host and container (bind mount). The distinction below is only about **where commands execute**. For architecture details, see `05-environment-configuration.md`.
+
+---
+
+## Test-Driven Development: The Iterative Feedback Loop
+
+**⚠️ CRITICAL FOR LLMs:** This is NOT a one-time sequence. This is **iterative test-driven development**.
+
+### The Feedback Loop
+
+```
+┌─────────────────────────────────────────┐
+│  1. Edit code                            │
+│  2. Lint (must pass)                     │
+│  3. Build                                │
+│  4. Run test                             │
+│  5. Validate (use 8-step sequence)       │
+│     │                                    │
+│     ├─ ✅ PASS → Next task               │
+│     │                                    │
+│     └─ ❌ FAIL → Read error              │
+│              ↓                           │
+│         Understand what's broken         │
+│              ↓                           │
+│         Go back to Step 1 (Edit)         │
+│              ↓                           │
+│         Fix the issue                    │
+│              ↓                           │
+│         Run through loop again           │
+│              ↓                           │
+│         Repeat until validation passes   │
+└─────────────────────────────────────────┘
+```
+
+### The 8-Step Validation Sequence (MUST FOLLOW IN ORDER)
+
+**Complete documentation:** `specification/tools/README.md` → **Validation Sequence (Step-by-Step)**
+
+**⛔ BLOCKING POINTS:** Each step has a blocking point. You CANNOT skip to the next step until the current step passes.
+
+**The sequence:**
+
+1. **Step 1: Validate Log Files** (INSTANT - file format)
+   - Tool: `validate-log-format.sh`
+   - **⛔ DO NOT PROCEED to Step 2 until this passes**
+   - If fails → Go back to Edit, fix log format
+
+2. **Step 2: Verify Logs in Loki** (OTLP export working)
+   - Tool: `query-loki.sh`
+   - **⛔ DO NOT PROCEED to Step 3 until logs are in Loki**
+   - If fails → Go back to Edit, fix OTLP log exporter
+
+3. **Step 3: Verify Metrics in Prometheus** (OTLP export working)
+   - Tool: `query-prometheus.sh`
+   - **⛔ DO NOT PROCEED to Step 4 until metrics are in Prometheus**
+   - If fails → Go back to Edit, fix OTLP metrics exporter
+
+4. **Step 4: Verify Traces in Tempo** (OTLP export working)
+   - Tool: `query-tempo.sh`
+   - **⛔ DO NOT PROCEED to Step 5 until traces are in Tempo**
+   - If fails → Go back to Edit, fix OTLP trace exporter
+
+5. **Step 5: Verify Grafana-Loki Connection**
+   - Tool: `query-grafana-loki.sh`
+   - **⛔ DO NOT PROCEED to Step 6 until Grafana can query Loki**
+
+6. **Step 6: Verify Grafana-Prometheus Connection**
+   - Tool: `query-grafana-prometheus.sh`
+   - **⛔ DO NOT PROCEED to Step 7 until Grafana can query Prometheus**
+
+7. **Step 7: Verify Grafana-Tempo Connection**
+   - Tool: `query-grafana-tempo.sh`
+   - **⛔ DO NOT PROCEED to Step 8 until Grafana can query Tempo**
+
+8. **Step 8: Manual Grafana Dashboard Verification**
+   - Open: http://grafana.localhost
+   - Verify ALL 3 panels show data for your language
+
+**Automated validation (Steps 1-7):**
+```bash
+cd /workspace/specification/tools && ./run-full-validation.sh {language}
+```
+
+This runs Steps 1-7 automatically. You MUST still do Step 8 manually.
+
+### Example Iteration: Implementing OTLP Log Exporter
+
+**Iteration 1:**
+1. Edit: Implement OTLP log exporter
+2. Lint: ✅ Passes
+3. Build: ✅ Compiles
+4. Run: ✅ Test executes
+5. Validate:
+   - Step 1 (File logs): ❌ **FAILS** - "Missing required field: trace_id"
+   - **STOP HERE - Do not proceed to Step 2**
+
+**Iteration 2:**
+1. Edit: Add trace_id to log entries
+2. Lint: ✅ Passes
+3. Build: ✅ Compiles
+4. Run: ✅ Test executes
+5. Validate:
+   - Step 1 (File logs): ✅ **PASSES** - 17 entries, all fields correct
+   - Step 2 (Loki): ❌ **FAILS** - "No logs found in Loki"
+   - **STOP HERE - Do not proceed to Step 3**
+
+**Iteration 3:**
+1. Edit: Fix OTLP endpoint (was missing Host: otel.localhost header)
+2. Lint: ✅ Passes
+3. Build: ✅ Compiles
+4. Run: ✅ Test executes
+5. Validate:
+   - Step 1 (File logs): ✅ **PASSES**
+   - Step 2 (Loki): ✅ **PASSES** - 17 logs found
+   - Step 3 (Prometheus): ✅ **PASSES** - 4 metrics found
+   - Step 4 (Tempo): ✅ **PASSES** - 2 traces found
+   - Step 5-7 (Grafana connections): ✅ **ALL PASS**
+   - Step 8 (Dashboard): ✅ **PASS** - All 3 panels show data
+
+**Task complete!** ✅
+
+### Key Principles
+
+1. **Validation tools tell you what's broken** - Read error messages carefully
+2. **Each failure teaches you something** - Understand the error before fixing
+3. **Fix one thing at a time** - Don't change multiple things between iterations
+4. **Follow the sequence** - Don't skip validation steps
+5. **Iterate until it works** - This is normal, expected, and how development works
+
+**For complete validation sequence details:** `specification/tools/README.md`
 
 ---
 
@@ -242,11 +350,11 @@ npm run lint:fix
 
 **LLM developers (host machine):**
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript && make lint"
-./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript && make lint-fix"
+cd /workspace/typescript && make lint
+cd /workspace/typescript && make lint-fix
 
 # Or use npm directly:
-./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript && npm run lint"
+cd /workspace/typescript && npm run lint
 ```
 
 **Exit codes:**
@@ -358,16 +466,16 @@ cd go
 **LLM developers (host machine):**
 ```bash
 # TypeScript
-./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript && ./build-sovdevlogger.sh"
-./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript && ./build-sovdevlogger.sh clean"
+cd /workspace/typescript && ./build-sovdevlogger.sh
+cd /workspace/typescript && ./build-sovdevlogger.sh clean
 
 # Python
-./specification/tools/in-devcontainer.sh -e "cd /workspace/python && ./build-sovdevlogger.sh"
-./specification/tools/in-devcontainer.sh -e "cd /workspace/python && ./build-sovdevlogger.sh wheel"
+cd /workspace/python && ./build-sovdevlogger.sh
+cd /workspace/python && ./build-sovdevlogger.sh wheel
 
 # Go
-./specification/tools/in-devcontainer.sh -e "cd /workspace/go && ./build-sovdevlogger.sh"
-./specification/tools/in-devcontainer.sh -e "cd /workspace/go && ./build-sovdevlogger.sh test"
+cd /workspace/go && ./build-sovdevlogger.sh
+cd /workspace/go && ./build-sovdevlogger.sh test
 ```
 
 **Build scripts:**
@@ -377,252 +485,81 @@ cd go
 
 ---
 
-### Step 4: Run Test
+### Step 4: Run/Test (Incremental Approach)
 
-**This is where Human vs LLM differs!**
+**⚠️ IMPORTANT:** Don't jump straight to E2E test. Build and validate incrementally.
 
-**Human developers (VSCode terminal inside container):**
+**Development progression:**
+1. **After Task 6 (OTLP exporters)** → Create simple connectivity tests (emit test log/metric/trace)
+2. **After Task 7 (API functions)** → Test individual functions with unit tests
+3. **After Task 8 (File logging)** → Run E2E test to generate log files
+4. **Only then** → Proceed to validation steps 5 & 6
+
+**Run E2E test:**
 ```bash
-# Direct execution - you're already inside!
-cd typescript/test/e2e/company-lookup
-./run-test.sh
+# From inside DevContainer
+cd /workspace/{language}/test/e2e/company-lookup && ./run-test.sh
 
-# Or
-npm test
-python -m pytest
-go test ./...
+# Or using convenience script
+cd /workspace/specification/tools && ./run-company-lookup.sh {language}
 ```
 
-**LLM developers (host machine):**
-```bash
-# Call the test tool (recommended)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-company-lookup.sh {language}"
-
-# Or run test script directly:
-./specification/tools/in-devcontainer.sh -e "cd /workspace/{language}/test/e2e/company-lookup && ./run-test.sh"
-```
+**What this generates:**
+- Log files in `{language}/test/e2e/company-lookup/logs/`
+- OTLP data sent to Loki/Prometheus/Tempo (takes 5-10s to propagate)
 
 ---
 
-### Step 5: Validate Log Files FIRST ⚡ (Fast & Local)
+### Step 5 & 6: Validate Using 8-Step Sequence
 
-**CRITICAL:** Always validate log files before checking OTLP backends.
+**After running tests, validate using the iterative feedback loop described above.**
 
-**Human developers (VSCode terminal inside container):**
+**See the complete validation workflow in:**
+- **Test-Driven Development section** (above) - Shows the iterative feedback loop with examples
+- **specification/tools/README.md** - Complete 8-step validation sequence with all tools
+
+**Quick reference:**
 ```bash
-validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log
+# Step 1: Validate log files (INSTANT - do this first!)
+cd /workspace/specification/tools && ./validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log
+
+# Steps 2-7: Run full validation (after log files pass)
+sleep 10  # Wait for OTLP propagation
+cd /workspace/specification/tools && ./run-full-validation.sh {language}
+
+# Step 8: Manual Grafana dashboard check
+# Open http://grafana.localhost and verify all 3 panels show data
 ```
 
-**LLM developers (host machine - use wrapper):**
-```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log"
-```
-
-**That's it!** The validation tool automatically checks:
-- ✅ JSON schema compliance
-- ✅ Log entry count (should be 17)
-- ✅ Unique trace IDs (should be 13)
-- ✅ Field naming (snake_case)
-- ✅ Log type distribution (11 transaction, 2 job.status, 4 job.progress)
-- ✅ Required fields present
-- ✅ Correct data types
-
-**If validation passes, you're ready for Step 4 (OTLP backends).**
-
-**For debugging failures**, see manual inspection commands in the "Debugging Commands" section below.
-
-**Why validate log files first?**
-
-| Benefit | Description |
-|---------|-------------|
-| ⚡ **Instant feedback** | No waiting for backend propagation (0 seconds vs 5-10 seconds) |
-| 🔧 **No dependencies** | Works without Kubernetes cluster running |
-| 🎯 **Catches most issues** | ~90% of problems are format errors, field naming, missing data |
-| 🚀 **Fast iteration** | Edit → Run → Check logs in seconds |
-| 📊 **Full visibility** | See exact JSON structure and all fields |
-| 🐛 **Easy debugging** | Direct file inspection with standard tools (jq, grep) |
-
-**Common Issues Caught by Log File Validation:**
-- ❌ Wrong field names (camelCase instead of snake_case)
-- ❌ Missing required fields (trace_id, log_type, service_name)
-- ❌ Incorrect log_type values
-- ❌ Malformed JSON (syntax errors)
-- ❌ Wrong number of log entries
-- ❌ Missing trace_id correlation
-- ❌ Incorrect timestamp format
+**⚠️ CRITICAL:** Follow the 8-step sequence in order. Each step has blocking points - you cannot skip ahead.
 
 ---
 
-### Step 6: Validate OTLP Backends SECOND 🔄 (After Log Files Pass)
+## Complete Workflow Example
 
-Only after log files are correct, validate that telemetry reaches the observability backends.
+**See the "Test-Driven Development: The Iterative Feedback Loop" section above for a detailed example with 3 iterations.**
 
-**CRITICAL:** Follow the complete 8-step validation sequence documented in `specification/tools/README.md`.
+**Quick workflow:**
 
-**See:** **🔢 Validation Sequence (Step-by-Step)** section in `specification/tools/README.md`
-
-This ensures:
-- ⛔ Blocking points between steps (don't skip ahead)
-- ✅ Progressive confidence building through Steps 1-8
-- 🎯 Clear failure modes and remediation at each step
-
-**Quick validation (automated Steps 1-7):**
-
-**Human developers (VSCode terminal inside container):**
 ```bash
-# Wait 5-10 seconds for logs to propagate to backends
+# 1. Edit code (using your editor)
+
+# 2. Lint code (MANDATORY - must pass before build)
+cd /workspace/{language} && make lint
+
+# 3. Build library (if needed)
+cd /workspace/{language} && ./build-sovdevlogger.sh
+
+# 4. Run test
+cd /workspace/{language}/test/e2e/company-lookup && ./run-test.sh
+
+# 5-6. Validate using 8-step sequence (see TDD section above)
+cd /workspace/specification/tools && ./validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log
 sleep 10
+cd /workspace/specification/tools && ./run-full-validation.sh {language}
 
-# Run complete backend validation (Steps 1-7)
-run-full-validation.sh {language}
-
-# You MUST still do Step 8 manually:
-# - Open http://grafana.localhost
-# - Verify ALL 3 panels show data
-```
-
-**LLM developers (host machine - use wrapper):**
-```bash
-# Wait 5-10 seconds for logs to propagate to backends
-sleep 10
-
-# Run complete backend validation (Steps 1-7)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-full-validation.sh {language}"
-
-# You MUST still do Step 8 manually:
-# - Open http://grafana.localhost
-# - Verify ALL 3 panels show data
-```
-
-**This validation checks (Steps 1-7):**
-- ✅ Step 1: Logs in file (schema, count, trace IDs)
-- ✅ Step 2: Logs in Loki (OTLP export working)
-- ✅ Step 3: Metrics in Prometheus (OTLP export working, labels correct)
-- ✅ Step 4: Traces in Tempo (OTLP export working)
-- ✅ Step 5: Grafana-Loki connection (datasource working)
-- ✅ Step 6: Grafana-Prometheus connection (datasource working)
-- ✅ Step 7: Grafana-Tempo connection (datasource working)
-- ⚠️ Step 8: Manual Grafana dashboard verification (YOU must do this)
-
-**Or query backends directly:**
-
-**Human developers:**
-```bash
-query-loki.sh sovdev-test-company-lookup-{language}
-query-prometheus.sh sovdev-test-company-lookup-{language}
-query-tempo.sh sovdev-test-company-lookup-{language}
-```
-
-**LLM developers:**
-```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-{language}"
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-prometheus.sh sovdev-test-company-lookup-{language}"
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-{language}"
-```
-
-**Why validate OTLP backends second?**
-- Requires wait time for backend propagation (5-10 seconds)
-- Depends on Kubernetes cluster being available
-- Tests network connectivity and OTLP configuration
-- Validates observability stack integration
-
----
-
-## Complete Workflow Examples
-
-**Key Difference:** Only **Step 4 (Run Test)** differs between Human and LLM developers. All other steps (Edit, Lint, Build, Validate Logs, Validate OTLP) work the same due to file synchronization.
-
-### Example 1: Human Developer (VSCode Terminal)
-
-Working inside VSCode with DevContainer extension - terminal is already inside container:
-
-```bash
-# ============================================
-# Step 1: Edit code in VSCode
-# ============================================
-# (use VSCode editor to modify source files)
-
-# ============================================
-# Step 2: Lint code (MANDATORY - must pass before build)
-# ============================================
-cd python
-make lint
-
-# Exit code 0? ✅ Proceed
-# Exit code non-zero? ⛔ Fix errors first
-
-# ============================================
-# Step 3: Build library (if needed)
-# ============================================
-./build-sovdevlogger.sh
-
-# ============================================
-# Step 4: Run test (terminal is inside container)
-# ============================================
-cd test/e2e/company-lookup
-./run-test.sh
-
-# ============================================
-# Step 5: Validate log files (FAST - do this first!)
-# ============================================
-../../../specification/tools/validate-log-format.sh logs/dev.log
-
-# That's it! Validation tool checks everything automatically.
-# If it passes, move to Step 6.
-
-# ============================================
-# Step 6: If validation passes, check OTLP backends
-# ============================================
-sleep 10
-../../../specification/tools/run-full-validation.sh python
-```
-
----
-
-### Example 2: LLM Developer (Host Machine)
-
-Working on host machine - must use `in-devcontainer.sh -e "command"` for ALL code execution:
-
-```bash
-# ============================================
-# Step 1: Edit code on host
-# ============================================
-# (LLM uses Read/Edit/Write tools to modify source files)
-
-# ============================================
-# Step 2: Lint code (MANDATORY - must pass before build)
-# ============================================
-./specification/tools/in-devcontainer.sh -e "cd /workspace/python && make lint"
-
-# Exit code 0? ✅ Proceed
-# Exit code non-zero? ⛔ Fix errors first
-
-# ============================================
-# Step 3: Build library (if needed)
-# ============================================
-./specification/tools/in-devcontainer.sh -e "cd /workspace/python && ./build-sovdevlogger.sh"
-
-# ============================================
-# Step 4: Run test in DevContainer (using wrapper)
-# ============================================
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-company-lookup.sh python"
-
-# Or run test script directly:
-# ./specification/tools/in-devcontainer.sh -e "cd /workspace/python/test/e2e/company-lookup && ./run-test.sh"
-
-# ============================================
-# Step 5: Validate log files (FAST - do this first!)
-# ============================================
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./validate-log-format.sh python/test/e2e/company-lookup/logs/dev.log"
-
-# That's it! Validation tool checks everything automatically.
-# If it passes, move to Step 6.
-
-# ============================================
-# Step 6: If validation passes, check OTLP backends
-# ============================================
-sleep 10
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-full-validation.sh python"
+# If validation fails → Go back to Step 1, fix the issue, iterate
+# If validation passes → Task complete!
 ```
 
 ---
@@ -631,119 +568,58 @@ sleep 10
 
 ### Essential Commands
 
-**LLM developers (from host - use wrapper with -e flag for ALL commands):**
+**All developers (working inside DevContainer at `/workspace/`):**
+
 ```bash
 # Lint code (MANDATORY before build)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/{language} && make lint"
+cd /workspace/{language} && make lint
 
 # Auto-fix linting issues
-./specification/tools/in-devcontainer.sh -e "cd /workspace/{language} && make lint-fix"
+cd /workspace/{language} && make lint-fix
 
 # Build library
-./specification/tools/in-devcontainer.sh -e "cd /workspace/{language} && ./build-sovdevlogger.sh"
+cd /workspace/{language} && ./build-sovdevlogger.sh
 
 # Run test
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-company-lookup.sh {language}"
+cd /workspace/{language}/test/e2e/company-lookup && ./run-test.sh
 
 # Validate log files (instant)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log"
+cd /workspace/specification/tools && ./validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log
 
 # Validate backends (after 10s wait)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-full-validation.sh {language}"
-```
-
-**Human developers (VSCode terminal inside container - run directly):**
-```bash
-# Lint code (MANDATORY before build)
-cd {language} && make lint
-
-# Auto-fix linting issues
-cd {language} && make lint-fix
-
-# Build library
-cd {language} && ./build-sovdevlogger.sh
-
-# Run test
-cd {language}/test/e2e/company-lookup && ./run-test.sh
-
-# Validate log files (instant)
-validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log
-
-# Validate backends (after 10s wait)
-run-full-validation.sh {language}
+cd /workspace/specification/tools && ./run-full-validation.sh {language}
 ```
 
 
 ## Best Practices
 
-### ✅ DO
-
-1. **Always validate log files before OTLP backends**
-   - Catches 90% of issues instantly
-   - No waiting for infrastructure
-
-2. **Use validation tools early and often**
-   - Run `validate-log-format.sh` after every change
-   - Catch issues immediately, not at the end
-
-3. **Run complete validation before committing**
-   - Linting passes (0 errors)
-   - All log file checks pass
-   - All backend validations pass
-
-4. **Follow the 6-step loop consistently**
-   - Edit → Lint → Build → Run → Validate Logs → Validate OTLP
-   - Don't skip steps
-   - Linting is MANDATORY before build
-   - Only Step 4 (Run) differs between Human/LLM developers
-
-### ❌ DON'T
-
-1. **Don't skip log file validation**
-   - "Just checking OTLP" wastes time waiting for propagation
-   - You'll miss obvious format errors
-
-2. **Don't wait for OTLP when developing**
-   - Use log files for fast iteration
-   - Only check OTLP periodically
-
-3. **Don't run tests on host machine** (LLM developers)
-   - Always use `in-devcontainer.sh` wrapper
-   - Ensures consistent runtime environment
-   - Note: Human developers work inside container already (VSCode terminal)
-
-4. **Don't commit without full validation**
-   - Both log files AND backends must pass
-   - Use `run-full-validation.sh {language}`
+**See the "Test-Driven Development: The Iterative Feedback Loop" section above for complete workflow guidance.**
 
 ### ⚠️ For LLMs Specifically
 
-**CRITICAL:** Follow the examples in this document exactly, with no variations.
+**CRITICAL:** This is iterative test-driven development. When validation fails, go back to Edit and iterate.
 
-1. **Update your checklist as you work**
-   - Checklist location: `{language}/llm-work/llm-checklist-{language}.md`
-   - Mark items `in_progress` when starting, `completed` when done
-   - Prevents forgetting critical steps
-   - See "For LLMs: Track Your Progress with the Checklist" section above
+1. **Follow the 8-step validation sequence in order**
+   - Step 1 (file logs) MUST pass before Step 2 (Loki)
+   - Do NOT skip steps or proceed when validation fails
+   - See TDD section above for complete sequence
 
-2. **Use tool commands EXACTLY as shown in examples**
-   - Do NOT add parameters (like `--limit`) unless example shows them
+2. **Use tool commands EXACTLY as shown**
+   - Do NOT add parameters (like `--limit`) unless shown in examples
    - Do NOT use manual inspection tools (`jq`, `python -m json.tool`, `cat`)
-   - Copy the command patterns character-for-character
+   - Copy command patterns character-for-character from TDD section
 
 3. **Trust the validation tools**
-   - `validate-log-format.sh` checks everything automatically (schema, fields, types, trace IDs)
-   - If you think you need to manually inspect, you're wrong
-   - The tools give you all the information you need
+   - `validate-log-format.sh` checks everything automatically
+   - `run-full-validation.sh` runs Steps 1-7 automatically
+   - If you think you need manual inspection, you're wrong
 
-4. **Follow the sequence**
-   - Edit → Run → Validate Logs → Validate OTLP
-   - Don't query backends before running tests (query tools READ data, they don't GENERATE data)
-   - Run tests FIRST, then query results
-
-5. **When in doubt, re-read the examples**
-   - The examples in this document are complete and correct
-   - If your command doesn't match an example, you're doing it wrong
+4. **Iterate when validation fails**
+   - Read error messages carefully
+   - Go back to Step 1 (Edit)
+   - Fix ONE thing at a time
+   - Run through loop again
+   - Repeat until validation passes
 
 ---
 

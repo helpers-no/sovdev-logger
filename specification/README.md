@@ -31,9 +31,10 @@ If you're using Claude Code, you can leverage automatic skills that guide you th
 - Ensures ALL 3 Grafana panels show data (often skipped!)
 - Compares metric labels with TypeScript
 
-**3. development-loop** - Iterative 4-step workflow
+**3. development-loop** - Test-driven iterative workflow (6 steps)
 - **Invoke**: "test changes" or "run the development loop"
-- Guides: Build → Run → Validate logs FIRST → Validate OTLP SECOND
+- Guides: Edit → Lint → Build → Run → Validate (8-step sequence) → Iterate
+- Emphasizes test-driven development: when validation fails, go back to Edit
 - Optimized for fast feedback (file validation is instant)
 
 **See**: `.claude/skills/README.md` for complete skills documentation
@@ -104,25 +105,28 @@ cat {language}/llm-work/ROADMAP.md
 
 ## Development Environment
 
-**⚠️ CRITICAL:** All code execution MUST use DevContainer via `in-devcontainer.sh`.
+**⚠️ CRITICAL for Claude Code (LLM):** You run **inside** the DevContainer at `/workspace/`. Execute all commands directly.
 
 **Architecture Overview:**
-- **Host Machine:** Where you edit files (LLM tools or VSCode)
-- **DevContainer:** Where code executes (language runtimes, tests, OTLP export)
+- **Host Machine:** Where files physically exist (project repository)
+- **DevContainer:** Where Claude Code and code both execute (language runtimes, tests, OTLP export)
 - **Kubernetes Cluster:** Monitoring stack (Loki, Prometheus, Tempo, Grafana via Traefik)
+- **Bind Mount:** Host project directory → `/workspace/` in container (same filesystem, instant sync)
 
 **For architecture diagram and complete details**, see:
 - `05-environment-configuration.md` → **Architecture Diagram** section (visual overview)
 - `05-environment-configuration.md` → Component 1 & 2 (detailed configuration)
 - `tools/README.md` - Validation tool usage and examples
 
-**Key principle:** File operations on host, code execution in DevContainer.
+**Key principle:** You (Claude Code) work at `/workspace/` inside the container. Files are bind-mounted from host.
 
 ---
 
 ## Implementation Workflow
 
 **For detailed workflow**, see `09-development-loop.md` and `llm-work-templates/README.md`.
+
+**Key workflow principle:** Test-driven development with iterative feedback loop. See `09-development-loop.md` → "Test-Driven Development: The Iterative Feedback Loop" section.
 
 ### Quick Reference
 
@@ -239,7 +243,7 @@ An implementation is **complete and correct** when:
 ---
 
 **Specification Status:** ✅ v2.0.0 COMPLETE
-**Last Updated:** 2025-10-31
+**Last Updated:** 2025-11-08
 **Reference Implementation:** TypeScript (`typescript/`)
 **Development Environment:** DevContainer Toolbox (required)
 **New in v2.0.0:** Hierarchical task management system (`llm-work-templates/`) with enforcement. Uses 13-task ROADMAP.md + detailed task files for systematic implementation. Progress enforcement blocks validation if checklist not followed.

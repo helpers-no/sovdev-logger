@@ -21,68 +21,18 @@ When the user asks to implement sovdev-logger in a new programming language, ini
 
 ---
 
-## Step 0: Understand Environment (CRITICAL - Read First!)
+## Step 0: Understand Environment
 
-**🔴 MANDATORY: Read these files BEFORE doing anything else:**
+You run at `/workspace/` inside the DevContainer.
 
-### 0.1 Read Environment Configuration
+**Key facts:**
+- Working directory: `/workspace/`
+- Only Node.js, Python, PowerShell pre-installed
+- Install other languages: `/workspace/.devcontainer/additions/install-dev-{language}.sh`
+- OTLP endpoint: `http://host.docker.internal/v1/{logs,metrics,traces}` with `Host: otel.localhost` header
+- Validation tools: `/workspace/specification/tools/`
 
-```bash
-Read specification/05-environment-configuration.md (complete file)
-```
-
-**You MUST understand:**
-- DevContainer architecture (/workspace mount point)
-- How commands execute (host machine vs inside container)
-- Network endpoints (host.docker.internal, otel.localhost, Host headers)
-- Language installation process (what's pre-installed, what needs installation)
-- File operations (read/write on host, execute in container)
-
-### 0.2 Read Command Wrapper Script
-
-```bash
-Read specification/tools/in-devcontainer.sh (read the actual script file)
-```
-
-**You MUST understand:**
-- **MODE 1**: Run scripts from specification/tools/ directory
-  - Example: `./specification/tools/in-devcontainer.sh query-loki.sh service-name`
-- **MODE 2**: Execute arbitrary commands with `-e` flag
-  - Example: `./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript && npm test"`
-- All paths inside container start with `/workspace/`
-- Script installation paths: `/workspace/.devcontainer/additions/install-dev-{language}.sh`
-
-### 0.3 Checkpoint Questions
-
-**Before proceeding, you MUST be able to answer these:**
-
-1. **Q:** How do you run arbitrary commands inside the DevContainer?
-   **A:** `./specification/tools/in-devcontainer.sh -e "command"`
-
-2. **Q:** What is the workspace path inside the container?
-   **A:** `/workspace` (maps to project root on host)
-
-3. **Q:** How do you install .NET/C# in the DevContainer?
-   **A:** `./specification/tools/in-devcontainer.sh -e "/workspace/.devcontainer/additions/install-dev-csharp.sh"`
-
-4. **Q:** What Host header is required for OTLP exports?
-   **A:** `Host: otel.localhost`
-
-5. **Q:** What endpoint do you use for OTLP exports from inside container?
-   **A:** `http://host.docker.internal/v1/logs` (with Host header)
-
-**If you CANNOT answer all these questions correctly → STOP and re-read the files above.**
-
-### Why This Matters
-
-**90% of early implementation mistakes come from environment misunderstanding:**
-- ❌ Wrong command patterns → "command not found" errors
-- ❌ Wrong file paths → "No such file or directory" errors
-- ❌ Wrong endpoints → "connection refused" errors
-- ❌ Missing Host headers → 404 errors from Traefik
-- ❌ Wrong script names → Installation failures
-
-**Understanding the environment FIRST saves hours of debugging later.**
+See `specification/05-environment-configuration.md` for details.
 
 ---
 
@@ -194,7 +144,7 @@ These rules prevent the most common mistakes that lead to user corrections:
   - ✅ TypeScript test passes → Infrastructure is healthy → [LANGUAGE] code has a bug
   - ❌ TypeScript test fails → Infrastructure is broken → Fix Docker/Loki/Prometheus/Tempo first
 - **Never** debug code when infrastructure is broken (wasted time)
-- **Command**: `./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh"`
+- **Command**: `cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh`
 - **Task 2 now enforces**: TypeScript baseline verification before proceeding
 
 ### Rule 3: Never Claim Completion Without Validation
@@ -202,16 +152,16 @@ These rules prevent the most common mistakes that lead to user corrections:
 **Task completion requires PROOF, not just claims:**
 
 - **Task 6 complete** = OTLP exporters implemented AND connectivity verified in Loki/Prometheus/Tempo
-- **Task 7 complete** = File logging implemented AND `validate-log-format.sh` passes
-- **Task 8 complete** = All 8 API functions implemented AND E2E test passes AND full validation passes
+- **Task 7 complete** = All 8 API functions implemented AND E2E test passes AND full validation passes
+- **Task 8 complete** = File logging implemented AND `validate-log-format.sh` passes
 
 **Evidence from C# Session 3:**
-- LLM claimed "Task 8 complete" without validation
+- LLM claimed "Task 7 complete" without validation
 - Result: 5 user corrections required (missing attributes, wrong initialization order, metrics not exporting)
 - Total debugging time: 3+ hours
 - **Validation would have caught all issues in 2 minutes**
 
-**Task 8 now enforces**: Mandatory end-to-end validation section before claiming complete
+**Task 7 now enforces**: Mandatory end-to-end validation section before claiming complete
 
 ### Rule 4: Research Official SDK Examples (Phase 0, Task 3)
 

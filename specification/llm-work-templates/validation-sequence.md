@@ -33,7 +33,6 @@ Before starting validation:
 - ✅ Implementation complete (all 8 API functions implemented)
 - ✅ E2E test created (company-lookup)
 - ✅ Test has been run successfully
-- ✅ DevContainer environment running
 - ✅ Monitoring stack accessible (Loki, Prometheus, Tempo, Grafana)
 
 **Read first:** `specification/tools/README.md` → "🔢 Validation Sequence (Step-by-Step)"
@@ -61,7 +60,7 @@ Run TypeScript test
 
 **Command:**
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh"
+\1
 ```
 
 **Expected result:** Test exits with status 0, validation steps 1-8 pass
@@ -102,7 +101,7 @@ Run TypeScript test
 
 **Command:**
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log"
+\1
 ```
 
 **What it checks:**
@@ -134,7 +133,7 @@ Run TypeScript test
 **Command:**
 ```bash
 sleep 10  # Wait for OTLP propagation
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-{language} --json"
+\1
 ```
 
 **What it checks:**
@@ -166,7 +165,7 @@ sleep 10  # Wait for OTLP propagation
 
 **Command:**
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-prometheus.sh 'sovdev_operations_total{service_name=~\".*{language}.*\"}'"
+\1.*{language}.*\"}'"
 ```
 
 **What it checks:**
@@ -202,7 +201,7 @@ sleep 10  # Wait for OTLP propagation
 
 **Command:**
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-{language}"
+\1
 ```
 
 **What it checks:**
@@ -233,7 +232,7 @@ sleep 10  # Wait for OTLP propagation
 
 **Command:**
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-grafana-loki.sh sovdev-test-company-lookup-{language}"
+\1
 ```
 
 **What it checks:**
@@ -263,7 +262,7 @@ sleep 10  # Wait for OTLP propagation
 
 **Command:**
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-grafana-prometheus.sh 'sovdev_operations_total{service_name=~\".*{language}.*\"}'"
+\1.*{language}.*\"}'"
 ```
 
 **What it checks:**
@@ -293,7 +292,7 @@ sleep 10  # Wait for OTLP propagation
 
 **Command:**
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-grafana-tempo.sh sovdev-test-company-lookup-{language}"
+\1
 ```
 
 **What it checks:**
@@ -373,7 +372,7 @@ For convenience, you can run Steps 1-7 automatically:
 
 **Command:**
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-full-validation.sh {language}"
+\1
 ```
 
 **This automates:**
@@ -401,10 +400,10 @@ For convenience, you can run Steps 1-7 automatically:
 **Commands:**
 ```bash
 # Query TypeScript metrics
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-prometheus.sh 'sovdev_operations_total{service_name=~\".*typescript.*\"}' > ts.txt"
+\1.*typescript.*\"}' > ts.txt"
 
 # Query language metrics
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-prometheus.sh 'sovdev_operations_total{service_name=~\".*{language}.*\"}' > lang.txt"
+\1.*{language}.*\"}' > lang.txt"
 
 # Compare
 diff ts.txt lang.txt

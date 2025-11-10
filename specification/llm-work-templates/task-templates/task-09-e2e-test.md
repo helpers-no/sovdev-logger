@@ -1,8 +1,7 @@
 # Task 9: Create E2E Test (Company-Lookup)
 
 **Parent task**: ROADMAP.md - Phase 2, Task 9
-**Estimated time**: 2-3 hours
-**Prerequisites**: Task 8 complete (all 8 API functions implemented)
+**Prerequisites**: Task 7 complete (all 8 API functions implemented)
 
 ---
 
@@ -19,7 +18,7 @@ Implement the company-lookup E2E test program that demonstrates all 8 sovdev-log
 ## Prerequisites Check
 
 Before starting, verify:
-- [ ] Task 8 complete (all 8 API functions working)
+- [ ] Task 7 complete (all 8 API functions working)
 - [ ] You have read `specification/08-testprogram-company-lookup.md` completely
 - [ ] You have reviewed TypeScript reference implementation
 - [ ] You understand the test scenario (batch company lookup)
@@ -55,7 +54,7 @@ From `specification/08-testprogram-company-lookup.md`:
 **This is the MOST IMPORTANT step. Do not skip this.**
 
 - [ ] Open `specification/08-testprogram-company-lookup.md`
-- [ ] Read the complete document (full specification)
+- [ ] Read the complete document
 - [ ] Understand the test scenario (batch company lookup)
 - [ ] Note the expected outputs (17 log entries, 4 metrics, 2 spans)
 - [ ] Review TypeScript reference: `typescript/test/e2e/company-lookup/company-lookup.ts`
@@ -156,7 +155,6 @@ Create the test execution script.
 
 **Requirements:**
 - Script runs the test program
-- Uses DevContainer environment (called via in-devcontainer.sh)
 - Cleans up logs before running
 - Exits with test program's exit code
 
@@ -189,8 +187,8 @@ exit $?
 
 Run the test and verify it works.
 
-**Execution** (via DevContainer wrapper):
-- [ ] Run: `./specification/tools/in-devcontainer.sh -e "cd /workspace/[LANGUAGE]/test/e2e/company-lookup && ./run-test.sh"`
+**Execution:**
+- [ ] Run: `\1`
 - [ ] Check for errors (should exit 0)
 - [ ] Check logs/ directory for log files
 
@@ -284,7 +282,7 @@ head -1 [LANGUAGE]/test/e2e/company-lookup/logs/*.log
 
 ```bash
 # Test runs successfully
-./specification/tools/in-devcontainer.sh -e "cd /workspace/[LANGUAGE]/test/e2e/company-lookup && ./run-test.sh"
+\1
 echo $?  # Should print: 0
 
 # Check log count
@@ -317,20 +315,7 @@ cd [LANGUAGE] && make lint
 - **specification/01-api-contract.md**: API functions to use
 
 **Supporting docs:**
-- **specification/09-development-loop.md**: How to run tests
 - **typescript/test/e2e/company-lookup/.env**: Environment variables
-
----
-
-## Time Estimate
-
-- Subtask 9.1: 20 minutes (read spec + review TypeScript)
-- Subtask 9.2: 10 minutes (create directory structure)
-- Subtask 9.3: 1.5-2 hours (implement test program)
-- Subtask 9.4: 10 minutes (create run-test.sh)
-- Subtask 9.5: 20 minutes (test locally + debug)
-
-**Total**: ~2-3 hours
 
 ---
 
