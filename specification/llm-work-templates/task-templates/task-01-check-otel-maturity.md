@@ -1,7 +1,6 @@
 # Task 1: Check OTEL SDK Maturity for [LANGUAGE]
 
 **Parent task**: ROADMAP.md - Phase 0, Task 1
-**Estimated time**: 5 minutes
 **Prerequisites**: None (first task)
 
 ---
@@ -178,18 +177,6 @@ Reason: Includes histogram serialization fixes for OTLP (addresses known issue #
 - [ ] Traces, Metrics, Logs maturity documented
 - [ ] GitHub repository URL recorded
 - [ ] Decision made: Proceed or escalate
-
----
-
-## Time Estimate
-
-- Subtask 1.1: 1 minute (open page)
-- Subtask 1.2: 2 minutes (check status)
-- Subtask 1.3: 1 minute (document)
-- Subtask 1.4: 1 minute (verify GitHub)
-- Subtask 1.5: 3 minutes (check latest version)
-
-**Total**: ~8 minutes
 
 ---
 

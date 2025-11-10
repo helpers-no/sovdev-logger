@@ -110,11 +110,8 @@ Help them get home to their family. Help yourself build a reputation as someone 
 
 **Validation (run in DevContainer):**
 ```bash
-# Direct (if inside VSCode DevContainer)
-./specification/tools/run-company-lookup-validate.sh {language}
-
-# Or via wrapper (from host machine)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-company-lookup-validate.sh {language}"
+# From inside DevContainer at /workspace/
+cd /workspace/specification/tools && ./run-company-lookup-validate.sh {language}
 ```
 
 ---
@@ -228,10 +225,12 @@ All sovdev-logger implementations produce **identical log structures** with **sn
   "message": "Human-readable message",
   "timestamp": "2025-10-10T19:38:39.109Z",
   "trace_id": "32-char-hex-trace-identifier",
-  "span_id": "16-char-hex-span-identifier",
+  "span_id": "16-char-hex-span-identifier",  // Optional: only present when logging within an active span
   "peer_service": "external-system-identifier"
 }
 ```
+
+**Note:** `span_id` is only included when the log is emitted within an active OpenTelemetry span. Logs outside of spans will not have this field.
 
 ### Contextual Fields (Optional)
 

@@ -1,7 +1,6 @@
 # Task 3: Research OTEL SDK for [LANGUAGE]
 
 **Parent task**: ROADMAP.md - Phase 0, Task 3
-**Estimated time**: 1-2 hours
 **Prerequisites**: Tasks 1 and 2 complete
 
 ---
@@ -226,9 +225,11 @@ Key difference: C# uses KeyValuePair, TypeScript uses plain object
 
 ---
 
-### 3.8 Document Findings in otel-sdk-comparison.md
+### 3.8 Create Initial Research Notes
 
-Create `[LANGUAGE]/llm-work/otel-sdk-comparison.md` with findings.
+Create `[LANGUAGE]/llm-work/otel-sdk-comparison.md` with initial research findings.
+
+**Note:** This is a rough draft. Task 4 will complete and structure this document with critical implementation details (duration handling, histogram units, workarounds).
 
 - [ ] Create file: `[LANGUAGE]/llm-work/otel-sdk-comparison.md`
 - [ ] Document SDK maturity status
@@ -283,19 +284,20 @@ Create `[LANGUAGE]/llm-work/otel-sdk-comparison.md` with findings.
 
 - [ ] All 8 subtasks checked off
 - [ ] SDK maturity verified (all signals Beta or Stable)
-- [ ] HTTP header configuration method documented
-- [ ] Metric attribute pattern documented (underscores!)
-- [ ] Instrument creation pattern documented (initialization order!)
-- [ ] otel-sdk-comparison.md file created
-- [ ] File contains code examples (not just descriptions)
-- [ ] Key differences from TypeScript documented
+- [ ] HTTP header configuration method researched
+- [ ] Metric attribute pattern researched (underscores!)
+- [ ] Instrument creation pattern researched (initialization order!)
+- [ ] Initial otel-sdk-comparison.md file created with basic research findings
+- [ ] File contains code examples from SDK documentation
+- [ ] Key differences from TypeScript noted
+
+**Note:** This creates initial research notes. Task 4 will add critical implementation details (duration handling, histogram units, workarounds).
 
 **Do NOT mark complete if**:
-- ❌ otel-sdk-comparison.md is missing
-- ❌ HTTP header method is unclear/unknown
-- ❌ Metric attribute pattern is unclear/unknown
-- ❌ No code examples provided
-- ❌ Dependencies/packages not listed
+- ❌ otel-sdk-comparison.md file not created
+- ❌ HTTP header method unclear/unknown
+- ❌ Metric attribute pattern unclear/unknown
+- ❌ No code examples from SDK docs
 
 ---
 
@@ -344,22 +346,5 @@ grep -i "otlp" [LANGUAGE]/llm-work/otel-sdk-comparison.md
 
 ---
 
-## Time Estimate
-
-- Subtask 3.1: 5 minutes (find docs)
-- Subtask 3.2: 5 minutes (check maturity)
-- Subtask 3.3: 20 minutes (OTLP config)
-- Subtask 3.4: 30 minutes (HTTP headers - critical!)
-- Subtask 3.5: 20 minutes (metric attributes - critical!)
-- Subtask 3.6: 20 minutes (instrument patterns - critical!)
-- Subtask 3.7: 20 minutes (TypeScript comparison)
-- Subtask 3.8: 20 minutes (document findings)
-
-**Total**: ~2.3 hours
-
-**This time is NOT wasted** - proper research prevents hours of debugging later.
-
----
-
 **Parent task**: Return to ROADMAP.md when complete
-**Next task**: Task 4 - Create SDK comparison doc (should be done as part of 3.7)
+**Next task**: Task 4 - Complete SDK comparison doc with critical implementation details

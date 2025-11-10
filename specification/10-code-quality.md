@@ -254,7 +254,7 @@ Result: Zero mistakes propagate
 
 ## Integration with Development Loop
 
-### The 5-Step Development Loop
+### The 6-Step Development Loop
 
 Linting is **Step 2** (mandatory, blocking):
 
@@ -262,8 +262,9 @@ Linting is **Step 2** (mandatory, blocking):
 1. Edit   - Make code changes
 2. Lint   - ⚠️ MANDATORY BLOCKING STEP ⚠️
 3. Build  - Compile/build library
-4. Test   - Run E2E tests
-5. Validate - Check OTLP backends
+4. Run/Test - Execute code (start with simple tests, work up to E2E)
+5. Validate Logs - Check file format (FAST - instant feedback)
+6. Validate OTLP - Check backends (SLOW - requires infrastructure)
 ```
 
 ### Why Lint is Step 2 (Before Build)
@@ -501,8 +502,8 @@ For each language implementation, verify:
 
 ### Integration
 - [ ] `Makefile` has `lint` and `lint-fix` targets
-- [ ] `make lint` works from language directory
-- [ ] Can run via `in-devcontainer.sh` wrapper
+- [ ] `make lint` works from language directory inside DevContainer
+- [ ] Commands execute successfully at `/workspace/`
 - [ ] Documented in language's README
 
 ### Quality

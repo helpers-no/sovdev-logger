@@ -50,18 +50,16 @@
   - All with `Host: otel.localhost` header
   - Expected: 2-3 hours
 
-- [ ] 7. Implement file logging
+- [ ] 7. Implement 8 API functions → [Details](task-07-implement-api.md)
+  - initLogger, startSpan, endSpan, log, etc.
+  - Full API contract implementation
+  - Expected: 3-4 hours
+
+- [ ] 8. Implement file logging → [Details](task-08-file-logging.md)
   - Choose logging library
   - Configure log rotation
   - Format as spec-compliant JSON
   - Expected: 1-2 hours
-
-- [ ] 8. Implement 8 API functions → [Details](task-08-implement-api.md)
-  - All 8 functions from specification/01-api-contract.md
-  - PeerServices helper
-  - Error handling
-  - Code must pass linting (make lint)
-  - Expected: 3-4 hours
 
 ---
 
@@ -88,7 +86,7 @@
 **Unlocked after Phase 2: 2/2 complete**
 
 - [ ] 11. File validation passes
-  - Run: `./specification/tools/in-devcontainer.sh -e "./specification/tools/validate-log-format.sh"`
+  - Run: `cd /workspace/specification/tools && ./validate-log-format.sh`
   - All checks pass
   - Expected: 5 minutes
 

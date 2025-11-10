@@ -1,8 +1,7 @@
-# Task 8: Implement 8 API Functions
+# Task 7: Implement 8 API Functions
 
-**Parent task**: ROADMAP.md - Phase 1, Task 8
-**Estimated time**: 3-4 hours
-**Prerequisites**: Tasks 6 and 7 complete (OTLP exporters and file logging)
+**Parent task**: ROADMAP.md - Phase 1, Task 7
+**Prerequisites**: Task 6 complete (OTLP exporters implemented)
 
 ---
 
@@ -18,9 +17,10 @@ These functions provide the public interface for sovdev-logger.
 
 Before starting, verify:
 - [ ] Task 6 complete (OTLP exporters working)
-- [ ] Task 7 complete (file logging working)
 - [ ] You have read `specification/01-api-contract.md` completely
 - [ ] You understand all 8 function signatures
+
+**Note:** Task 8 (file logging) can be implemented in parallel or after this task.
 
 **If ANY prerequisite missing → Go back and complete it first**
 
@@ -49,12 +49,12 @@ Before starting, verify:
 
 ## Subtasks
 
-### 8.1 Read API Contract Specification Completely
+### 7.1 Read API Contract Specification Completely
 
 **This is the MOST IMPORTANT step. Do not skip this.**
 
 - [ ] Open `specification/01-api-contract.md`
-- [ ] Read the complete document (995 lines)
+- [ ] Read the complete document
 - [ ] Identify all 8 functions with their exact names (all use snake_case)
 - [ ] Note function signatures (parameters and return types)
 - [ ] Note required vs optional parameters
@@ -71,7 +71,7 @@ Before starting, verify:
 
 ---
 
-### 8.2 Implement Each Function According to Specification
+### 7.2 Implement Each Function According to Specification
 
 **For each of the 8 functions:**
 
@@ -108,7 +108,7 @@ Before starting, verify:
 
 ---
 
-### 8.3 Export All Functions
+### 7.3 Export All Functions
 
 Create the public API module that exports all 8 functions.
 
@@ -164,7 +164,7 @@ Create the public API module that exports all 8 functions.
 ### Why This Matters
 
 **Evidence from C# Session 3:**
-- LLM claimed "Task 8 complete" without validation
+- LLM claimed "Task 7 complete" without validation
 - 5 user corrections required in next session
 - Issues found: missing attributes, wrong initialization order, metrics not exporting
 - Total debugging time: 3+ hours
@@ -172,10 +172,10 @@ Create the public API module that exports all 8 functions.
 
 ### Required Validation Steps
 
-Before claiming Task 8 is complete, you MUST run the complete end-to-end test:
+Before claiming Task 7 is complete, you MUST run the complete end-to-end test:
 
 ```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/[language]/test/e2e/company-lookup && ./run-test.sh"
+\1
 ```
 
 **Success criteria:**
@@ -187,7 +187,7 @@ Before claiming Task 8 is complete, you MUST run the complete end-to-end test:
 - ✅ Traces appear in Tempo with correct spans
 
 **If ANY step fails:**
-- ⛔ Task 8 is NOT complete
+- ⛔ Task 7 is NOT complete
 - 🔍 Debug using `specification/tools/README.md` → validation tools section
 - 🔁 Fix the issue and re-run full validation
 - ⚠️ Do NOT skip steps - each validates different aspects
@@ -224,8 +224,8 @@ Before claiming Task 8 is complete, you MUST run the complete end-to-end test:
 
 ### The "It Compiles" Trap
 
-❌ **WRONG**: "Code compiles and builds → Task 8 complete"
-✅ **CORRECT**: "Code compiles AND validation passes → Task 8 complete"
+❌ **WRONG**: "Code compiles and builds → Task 7 complete"
+✅ **CORRECT**: "Code compiles AND validation passes → Task 7 complete"
 
 **Remember**:
 - Compilation = syntax correct
@@ -318,16 +318,6 @@ echo "8. create_peer_services"
 **Supporting docs:**
 - **specification/03-implementation-patterns.md**: snake_case requirement
 - **specification/10-code-quality.md**: Linting standards
-
----
-
-## Time Estimate
-
-- Subtask 8.1: 30 minutes (read spec completely - 995 lines + anti-patterns)
-- Subtask 8.2: 2.5-3 hours (implement all 8 functions)
-- Subtask 8.3: 15 minutes (create exports)
-
-**Total**: ~3-4 hours
 
 ---
 

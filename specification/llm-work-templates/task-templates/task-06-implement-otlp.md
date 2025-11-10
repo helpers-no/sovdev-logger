@@ -1,7 +1,6 @@
 # Task 6: Implement OTLP Exporters
 
 **Parent task**: ROADMAP.md - Phase 1, Task 6
-**Estimated time**: 2-3 hours
 **Prerequisites**: Phase 0 complete (especially Task 3 - Research OTEL SDK)
 
 ---
@@ -42,7 +41,7 @@ Before starting, verify:
   - Exporter initialization order
 - [ ] Run TypeScript validation to verify backends are healthy:
   ```bash
-  ./specification/tools/in-devcontainer.sh -e "cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh"
+  \1
   ```
 - [ ] If TypeScript test fails → Infrastructure problem, NOT your code
 - [ ] If TypeScript test passes → Safe to proceed with [LANGUAGE] implementation
@@ -333,10 +332,10 @@ sleep(2000)
 sleep 10
 
 # Check if logs reach Loki (MUST pass before continuing)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-[LANGUAGE]"
+\1
 ```
 
-**⛔ Cannot proceed to 6.8 until**:
+**⛔ Cannot proceed to 6.9 until**:
 - Logs exporter sends data successfully
 - Query tool shows log entries in Loki
 - No errors in exporter or backend
@@ -345,7 +344,7 @@ sleep 10
 - Check Host header is exactly "Host: otel.localhost"
 - Check endpoint is "http://otel-collector:4318/v1/logs"
 - Check protocol is http/protobuf
-- Run TypeScript validation to verify infrastructure works (see specification/09-development-loop.md)
+- Re-run subtask 6.1 (TypeScript validation) to verify infrastructure works
 
 ---
 
@@ -389,10 +388,10 @@ sleep(2000)
 sleep 10
 
 # Check if metrics reach Prometheus (MUST pass before continuing)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-prometheus.sh sovdev-test-company-lookup-[LANGUAGE]"
+\1
 ```
 
-**⛔ Cannot proceed to 6.9 until**:
+**⛔ Cannot proceed to 6.10 until**:
 - Metrics exporter sends data successfully
 - Query tool shows metrics in Prometheus
 - Attributes use underscores (peer_service, NOT peer.service)
@@ -402,7 +401,7 @@ sleep 10
 - Check Host header is exactly "Host: otel.localhost"
 - Check endpoint is "http://otel-collector:4318/v1/metrics"
 - Check attributes use underscores, not dots
-- Run TypeScript validation to verify infrastructure works (see specification/09-development-loop.md)
+- Re-run subtask 6.1 (TypeScript validation) to verify infrastructure works
 
 ---
 
@@ -448,7 +447,7 @@ sleep(2000)
 sleep 10
 
 # Check if traces reach Tempo (MUST pass before continuing)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-[LANGUAGE]"
+\1
 ```
 
 **⛔ Cannot mark Task 6 complete until**:
@@ -461,7 +460,7 @@ sleep 10
 - Check Host header is exactly "Host: otel.localhost"
 - Check endpoint is "http://otel-collector:4318/v1/traces"
 - Check attributes use underscores, not dots
-- Run TypeScript validation to verify infrastructure works (see specification/09-development-loop.md)
+- Re-run subtask 6.1 (TypeScript validation) to verify infrastructure works
 
 ---
 
@@ -501,11 +500,88 @@ sleep 10
 
 ---
 
+### 6.12 Troubleshooting: Language-Specific HTTP Client Issues
+
+**⚠️ NOTE**: Only use this section if subtasks 6.8, 6.9, or 6.10 fail with 404 errors after confirming TypeScript baseline passes.
+
+**Problem:** Some language HTTP clients override or ignore custom Host headers.
+
+**Symptom:** 404 errors from OTLP endpoints despite correct header configuration in code.
+
+**When to use this section:**
+- You've configured `Host: otel.localhost` in all three exporters
+- Code compiles and runs without errors
+- But validation fails with 404 errors from Traefik
+- TypeScript validation passes (infrastructure is working)
+
+#### Go - Custom HTTP Transport Required
+
+Go's `http.Client` automatically sets the Host header from the URL, **overwriting** any custom headers you configure in the OTEL SDK.
+
+**Symptom:** 404 errors when exporting to OTLP despite correct configuration.
+
+**Solution:** Create a custom HTTP transport that forces the Host header:
+
+```go
+type hostOverrideTransport struct {
+    base http.RoundTripper
+    host string
+}
+
+func (t *hostOverrideTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+    if t.host != "" {
+        req.Host = t.host
+        req.Header.Set("Host", t.host)
+    }
+    return t.base.RoundTrip(req)
+}
+
+// Use with OTLP exporter
+httpClient := &http.Client{
+    Transport: &hostOverrideTransport{
+        base: http.DefaultTransport,
+        host: "otel.localhost",
+    },
+}
+// Pass httpClient to OTLP exporter via WithHTTPClient() option
+```
+
+#### TypeScript/Node.js - Works as Expected
+
+Node.js respects custom Host headers set via the headers option. No special handling needed.
+
+```typescript
+headers: { 'Host': 'otel.localhost' }  // Works correctly
+```
+
+#### Python - Verify Behavior
+
+Python's `requests` library typically respects custom Host headers, but verify with your OTEL SDK version.
+
+If you encounter 404 errors, the HTTP client is likely overriding the Host header. Implement a custom HTTP client or transport layer (similar to Go's approach above).
+
+#### Other Languages
+
+When implementing in Java, Rust, PHP, etc., verify that custom Host headers work correctly:
+
+1. **Test first:** Try setting Host header via OTEL SDK configuration
+2. **If 404 errors occur:** The HTTP client is overriding the Host header
+3. **Solution:** Implement a custom HTTP client/transport that forces the Host header (similar to Go's custom transport above)
+
+**Debugging checklist:**
+- [ ] TypeScript validation passes (proves infrastructure works)
+- [ ] Your code has `Host: otel.localhost` in all three exporters
+- [ ] Still getting 404 errors
+- [ ] Check if your language/HTTP client overrides Host headers (consult SDK docs)
+- [ ] Implement custom transport/client if needed
+
+---
+
 ## Success Criteria
 
 **This task is complete when**:
 
-- [ ] All 11 subtasks checked off
+- [ ] All 12 subtasks checked off
 - [ ] OTLP packages installed successfully
 - [ ] All three exporters implemented (logs, metrics, traces)
 - [ ] ALL exporters include `Host: otel.localhost` header
@@ -562,9 +638,12 @@ sleep 10
 **Before marking complete, run**:
 
 ```bash
-# Code builds successfully
+# Linting passes (MANDATORY)
 cd [LANGUAGE]
-[build-command]
+make lint
+
+# Code builds successfully
+make build
 
 # Run minimal test (if you created one)
 [run-test-command]
@@ -590,34 +669,15 @@ grep -r "operation\.name" [LANGUAGE]/
   - Complete 8-step validation sequence
   - Tool usage examples and troubleshooting
 - **specification/06-otel-backend-config.md**: Endpoint URLs and configuration
-- **specification/09-development-loop.md**: Development workflow and validation-first principle
 - **[LANGUAGE]/llm-work/otel-sdk-comparison.md**: SDK-specific syntax (YOUR research)
 - **typescript/src/index.ts**: TypeScript reference implementation
-
----
-
-## Time Estimate
-
-- Subtask 6.1: 10 minutes (check TypeScript reference)
-- Subtask 6.2: 15 minutes (install packages)
-- Subtask 6.3: 30 minutes (logs exporter)
-- Subtask 6.4: 30 minutes (metrics exporter)
-- Subtask 6.5: 30 minutes (traces exporter)
-- Subtask 6.6: 15 minutes (resource attributes)
-- Subtask 6.7: 30 minutes (initialization function)
-- Subtask 6.8: 10 minutes (test logs)
-- Subtask 6.9: 10 minutes (test metrics)
-- Subtask 6.10: 10 minutes (test traces)
-- Subtask 6.11: 20 minutes (verify headers)
-
-**Total**: ~3.25 hours
 
 ---
 
 ## Next Steps
 
 After completing this task:
-- Task 7: Implement file logging (separate from OTLP)
-- Task 8: Implement the 8 API functions (uses these exporters)
+- Task 7: Implement the 8 API functions (uses these exporters)
+- Task 8: Implement file logging (separate from OTLP)
 
 **Parent task**: Return to ROADMAP.md when complete
