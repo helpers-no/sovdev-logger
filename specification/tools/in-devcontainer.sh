@@ -225,7 +225,7 @@ resolve_script_name() {
             script_name="query-tempo.sh"
             ;;
         grafana)
-            script_name="query-grafana.sh"
+            script_name="validate-grafana-datasources.sh"
             ;;
         validate)
             script_name="run-full-validation.sh"

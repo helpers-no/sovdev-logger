@@ -1,12 +1,12 @@
 #!/bin/bash
 ################################################################################
-# query-grafana.sh - Verify Grafana datasources are configured and healthy
+# validate-grafana-datasources.sh - Verify Grafana datasources are configured
 #
 # Purpose: Validate that Grafana datasources (Loki/Prometheus/Tempo) are
-#          configured and can reach their backends
+#          configured correctly in Grafana
 #
 # Usage:
-#   ./query-grafana.sh [options]
+#   ./validate-grafana-datasources.sh [options]
 #
 # Options:
 #   --json          Output raw JSON data for parsing/verification
@@ -15,9 +15,9 @@
 # Output Modes:
 #   Human-readable (default): Color-coded status messages
 #     ✅ Grafana accessible
-#     ✅ Loki datasource configured and healthy
-#     ✅ Prometheus datasource configured and healthy
-#     ✅ Tempo datasource configured and healthy
+#     ✅ Loki datasource configured
+#     ✅ Prometheus datasource configured
+#     ✅ Tempo datasource configured
 #
 #   JSON mode (--json): Full structured JSON output
 #
@@ -26,11 +26,11 @@
 #   1 - Error (Grafana not accessible or datasources not configured)
 #
 # Examples:
-#   # Check datasource health (human-readable)
-#   ./query-grafana.sh
+#   # Check datasource configuration (human-readable)
+#   ./validate-grafana-datasources.sh
 #
 #   # Get JSON output for validation
-#   ./query-grafana.sh --json
+#   ./validate-grafana-datasources.sh --json
 #
 ################################################################################
 

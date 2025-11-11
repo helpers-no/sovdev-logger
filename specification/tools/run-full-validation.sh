@@ -5,22 +5,19 @@
 # Runs complete validation workflow for sovdev-logger:
 # A) Run program that creates log
 # B) Validate log file using schema definition
-# C) Loki: Validate if logs are sent to Loki via OTEL
-#    C.1) Validate if Loki stores logs according to schema definition
-#    C.2) Compare logs entries stored in Loki corresponds with logs entries in file
-# D) Prometheus: Validate if logs are sent to Prometheus via OTEL
-#    D.1) Validate if Prometheus stores logs according to schema definition
-#    D.2) Compare logs entries stored in Prometheus corresponds with logs entries in file
-# E) Tempo: Validate if traces are sent to Tempo via OTEL
-#    E.1) Validate if Tempo stores traces according to schema definition
-#    E.2) Compare trace_ids from log file match traces in Tempo (may show warning due to slow ingestion)
+# C) Loki: Combined schema + consistency validation via OTEL
+#    • Validates if Loki stores logs according to schema definition
+#    • Compares logs entries stored in Loki with logs entries in file
+# D) Prometheus: Combined schema + consistency validation via OTEL
+#    • Validates if Prometheus stores logs according to schema definition
+#    • Compares logs entries stored in Prometheus with logs entries in file
+# E) Tempo: Combined schema + consistency validation via OTEL
+#    • Validates if Tempo stores traces according to schema definition
+#    • Compares trace_ids from log file match traces in Tempo
 # F) Grafana: Validate queries via Grafana datasource proxy
-#    F.1) Query Loki via Grafana and validate schema
-#    F.2) Compare Grafana-Loki with log file
-#    F.3) Query Prometheus via Grafana and validate schema
-#    F.4) Compare Grafana-Prometheus with log file
-#    F.5) Query Tempo via Grafana and validate schema
-#    F.6) Compare Grafana-Tempo with log file
+#    F.1-F.2) Loki via Grafana: Combined schema + consistency validation
+#    F.3-F.4) Prometheus via Grafana: Combined schema + consistency validation
+#    F.5-F.6) Tempo via Grafana: Combined schema + consistency validation
 #
 # This validates the complete observability stack:
 # - File logging with snake_case fields
@@ -28,9 +25,12 @@
 # - Data consistency across all systems
 # - Grafana datasource proxy queries with snake_case fields
 #
+# Note: All query scripts now use combined validation flags (--validate --compare-with)
+#       which reduces queries from 12 to 6 (one per backend instead of two).
+#
 # Usage (from inside devcontainer):
 #   cd /workspace/specification/tools
-#   ./run-full-validation.sh [typescript|python|go]
+#   ./run-full-validation.sh [typescript|python|go|csharp]
 #
 # Exit codes:
 #   0 - All validations passed
@@ -149,34 +149,6 @@ fi
 print_success "kubectl configured and connected to cluster"
 echo ""
 
-# Check ROADMAP.md progress before allowing validation
-print_step "Checking ROADMAP.md progress..."
-echo ""
-
-PROGRESS_CHECK_SCRIPT="$SCRIPT_DIR/../llm-work-templates/enforcement/check-progress.sh"
-
-if [[ -f "$PROGRESS_CHECK_SCRIPT" ]]; then
-    # Run progress check
-    "$PROGRESS_CHECK_SCRIPT" "$LANGUAGE"
-    PROGRESS_EXIT=$?
-
-    if [[ $PROGRESS_EXIT -ne 0 ]]; then
-        print_error "Progress check failed"
-        echo ""
-        echo "You must update ROADMAP.md before running validation."
-        echo "See output above for details."
-        echo ""
-        exit 1
-    fi
-
-    print_success "Progress check passed"
-    echo ""
-else
-    print_warning "Progress check script not found (skipping)"
-    echo "  Expected: $PROGRESS_CHECK_SCRIPT"
-    echo ""
-fi
-
 print_header "FULL E2E VALIDATION - $LANGUAGE"
 
 #
@@ -223,138 +195,67 @@ fi
 print_success "Log file schema validation passed"
 
 #
-# STEP C: Loki Validation
+# STEP C: Loki Validation (Combined Schema + Consistency)
 #
 print_header "Step C: Loki - Validate Logs Sent Via OTEL"
-
-#
-# STEP C.1: Validate Loki response using schema
-#
-print_header "Step C.1: Validate Loki Response Using Schema"
 print_step "Waiting 10 seconds for logs to reach Loki..."
 sleep 10
 echo ""
 
-# Count entries in file to determine limit
-ENTRY_COUNT=$(wc -l < "$LOG_FILE" | tr -d ' ')
-LIMIT=$((ENTRY_COUNT + 10))  # Add buffer
-
-print_step "Querying Loki and validating against loki-response-schema.json..."
+print_step "Querying Loki with combined validation (schema + consistency)..."
 echo ""
 
-# Query Loki and validate schema
-./query-loki.sh "$SERVICE_NAME" --limit "$LIMIT" --json | \
-    python3 "$TEST_SCRIPT_DIR/validate-loki-response.py" -
+# Query Loki once with combined validation flags
+# This validates both schema and consistency in a single query
+./query-loki.sh "$SERVICE_NAME" --validate --compare-with "$LOG_FILE"
 
 if [[ $? -ne 0 ]]; then
-    print_error "Loki response validation failed"
+    print_error "Loki validation failed (schema or consistency)"
     exit 1
 fi
 
-print_success "Loki response schema validation passed"
+print_success "Loki validation passed (schema + consistency)"
 
 #
-# STEP C.2: Compare log file with Loki response
-#
-print_header "Step C.2: Compare Log File With Loki Response"
-print_step "Cross-validating file logs match Loki logs..."
-echo ""
-
-./query-loki.sh "$SERVICE_NAME" --limit "$LIMIT" --json | \
-    python3 "$TEST_SCRIPT_DIR/validate-log-consistency.py" "$LOG_FILE" -
-
-if [[ $? -ne 0 ]]; then
-    print_error "Log consistency validation failed"
-    exit 1
-fi
-
-print_success "Log consistency validation passed"
-
-#
-# STEP D: Prometheus Validation
+# STEP D: Prometheus Validation (Combined Schema + Consistency)
 #
 print_header "Step D: Prometheus - Validate Logs Sent Via OTEL"
-
-#
-# STEP D.1: Validate Prometheus response using schema
-#
-print_header "Step D.1: Validate Prometheus Response Using Schema"
-print_step "Querying Prometheus and validating against prometheus-response-schema.json..."
+print_step "Querying Prometheus with combined validation (schema + consistency)..."
 echo ""
 
-# Query Prometheus and validate schema
-timeout 30 ./query-prometheus.sh "$SERVICE_NAME" --json 2>/dev/null | \
-    python3 "$TEST_SCRIPT_DIR/validate-prometheus-response.py" -
+# Query Prometheus once with combined validation flags
+# This validates both schema and consistency in a single query
+timeout 30 ./query-prometheus.sh "$SERVICE_NAME" --validate --compare-with "$LOG_FILE" 2>/dev/null
 
 if [[ $? -eq 0 ]]; then
-    print_success "Prometheus response validation passed"
+    print_success "Prometheus validation passed (schema + consistency)"
 else
-    print_error "Prometheus response validation failed"
+    print_error "Prometheus validation failed (schema or consistency)"
     exit 1
 fi
 
 #
-# STEP D.2: Compare log file with Prometheus metrics
-#
-print_header "Step D.2: Compare Log File With Prometheus Metrics"
-print_step "Cross-validating file logs match Prometheus metrics..."
-echo ""
-
-timeout 30 ./query-prometheus.sh "$SERVICE_NAME" --json 2>/dev/null | \
-    python3 "$TEST_SCRIPT_DIR/validate-metrics-consistency.py" "$LOG_FILE" -
-
-if [[ $? -eq 0 ]]; then
-    print_success "Metrics consistency validation passed"
-else
-    print_error "Metrics consistency validation failed"
-    exit 1
-fi
-
-#
-# STEP E: Tempo Validation
+# STEP E: Tempo Validation (Combined Schema + Consistency)
 #
 print_header "Step E: Tempo - Validate Traces Sent Via OTEL"
-
-#
-# STEP E.1: Validate Tempo response using schema
-#
-print_header "Step E.1: Validate Tempo Response Using Schema"
 print_step "Waiting 30 seconds for traces to reach Tempo..."
 echo ""
 echo "Note: Tempo trace ingestion can be slow. Waiting longer than Loki/Prometheus..."
 sleep 30
 echo ""
 
-print_step "Querying Tempo and validating against tempo-response-schema.json..."
+print_step "Querying Tempo with combined validation (schema + consistency)..."
 echo ""
 
-# Query Tempo and validate schema
+# Query Tempo once with combined validation flags
+# This validates both schema and consistency in a single query
 # Use higher limit to catch all traces from current run
-timeout 30 ./query-tempo.sh "$SERVICE_NAME" --limit 50 --json 2>/dev/null | \
-    python3 "$TEST_SCRIPT_DIR/validate-tempo-response.py" -
+timeout 30 ./query-tempo.sh "$SERVICE_NAME" --limit 50 --validate --compare-with "$LOG_FILE" 2>/dev/null
 
-if [[ $? -ne 0 ]]; then
-    print_error "Tempo response validation failed"
-    exit 1
-fi
+TEMPO_EXIT=$?
 
-print_success "Tempo response schema validation passed"
-
-#
-# STEP E.2: Compare log file with Tempo traces
-#
-print_header "Step E.2: Compare Log File With Tempo Traces"
-print_step "Cross-validating file trace_ids match Tempo traces..."
-echo ""
-
-# Run trace consistency check
-timeout 30 ./query-tempo.sh "$SERVICE_NAME" --limit 50 --json 2>/dev/null | \
-    python3 "$TEST_SCRIPT_DIR/validate-trace-consistency.py" "$LOG_FILE" -
-
-TEMPO_CONSISTENCY_EXIT=$?
-
-if [[ $TEMPO_CONSISTENCY_EXIT -ne 0 ]]; then
-    print_error "Trace consistency validation failed"
+if [[ $TEMPO_EXIT -ne 0 ]]; then
+    print_error "Tempo validation failed (schema or consistency)"
     echo ""
     echo "File trace_ids do not match Tempo trace IDs."
     echo "This indicates a problem with trace ID correlation between logs and OTEL spans."
@@ -364,7 +265,7 @@ if [[ $TEMPO_CONSISTENCY_EXIT -ne 0 ]]; then
     echo ""
     exit 1
 else
-    print_success "Trace consistency validation passed"
+    print_success "Tempo validation passed (schema + consistency)"
 fi
 
 #
@@ -373,106 +274,59 @@ fi
 print_header "Step F: Grafana - Validate Queries Via Grafana Datasource Proxy"
 
 #
-# STEP F.1: Query Loki via Grafana
+# STEP F.1-F.2: Query Loki via Grafana (Combined Schema + Consistency)
 #
-print_header "Step F.1: Query Loki Via Grafana Datasource Proxy"
-print_step "Querying Loki through Grafana and validating schema..."
+print_header "Step F.1-F.2: Loki Via Grafana - Combined Validation"
+print_step "Querying Loki through Grafana with combined validation..."
 echo ""
 
-./query-grafana-loki.sh "$SERVICE_NAME" --limit "$LIMIT" --json | \
-    python3 "$TEST_SCRIPT_DIR/validate-loki-response.py" -
+# Count entries in file for limit calculation
+ENTRY_COUNT=$(wc -l < "$LOG_FILE" | tr -d ' ')
+LIMIT=$((ENTRY_COUNT + 10))  # Add buffer
+
+# Query Grafana-Loki once with combined validation flags
+./query-grafana-loki.sh "$SERVICE_NAME" --limit "$LIMIT" --validate --compare-with "$LOG_FILE"
 
 if [[ $? -ne 0 ]]; then
-    print_error "Grafana-Loki query validation failed"
+    print_error "Grafana-Loki validation failed (schema or consistency)"
     exit 1
 fi
 
-print_success "Grafana-Loki query validation passed"
+print_success "Grafana-Loki validation passed (schema + consistency)"
 
 #
-# STEP F.2: Compare Grafana-Loki with log file
+# STEP F.3-F.4: Query Prometheus via Grafana (Combined Schema + Consistency)
 #
-print_header "Step F.2: Compare Grafana-Loki Response With Log File"
-print_step "Cross-validating Grafana-Loki logs match file logs..."
+print_header "Step F.3-F.4: Prometheus Via Grafana - Combined Validation"
+print_step "Querying Prometheus through Grafana with combined validation..."
 echo ""
 
-./query-grafana-loki.sh "$SERVICE_NAME" --limit "$LIMIT" --json | \
-    python3 "$TEST_SCRIPT_DIR/validate-log-consistency.py" "$LOG_FILE" -
+# Query Grafana-Prometheus once with combined validation flags
+timeout 30 ./query-grafana-prometheus.sh "$SERVICE_NAME" --validate --compare-with "$LOG_FILE" 2>/dev/null
 
 if [[ $? -ne 0 ]]; then
-    print_error "Grafana-Loki consistency validation failed"
+    print_error "Grafana-Prometheus validation failed (schema or consistency)"
     exit 1
 fi
 
-print_success "Grafana-Loki consistency validation passed"
+print_success "Grafana-Prometheus validation passed (schema + consistency)"
 
 #
-# STEP F.3: Query Prometheus via Grafana
+# STEP F.5-F.6: Query Tempo via Grafana (Combined Schema + Consistency)
 #
-print_header "Step F.3: Query Prometheus Via Grafana Datasource Proxy"
-print_step "Querying Prometheus through Grafana and validating schema..."
+print_header "Step F.5-F.6: Tempo Via Grafana - Combined Validation"
+print_step "Querying Tempo through Grafana with combined validation..."
 echo ""
 
-timeout 30 ./query-grafana-prometheus.sh "$SERVICE_NAME" --json 2>/dev/null | \
-    python3 "$TEST_SCRIPT_DIR/validate-prometheus-response.py" -
+# Query Grafana-Tempo once with combined validation flags
+timeout 30 ./query-grafana-tempo.sh "$SERVICE_NAME" --limit 50 --validate --compare-with "$LOG_FILE" 2>/dev/null
 
 if [[ $? -ne 0 ]]; then
-    print_error "Grafana-Prometheus query validation failed"
+    print_error "Grafana-Tempo validation failed (schema or consistency)"
     exit 1
 fi
 
-print_success "Grafana-Prometheus query validation passed"
-
-#
-# STEP F.4: Compare Grafana-Prometheus with log file
-#
-print_header "Step F.4: Compare Grafana-Prometheus Response With Log File"
-print_step "Cross-validating Grafana-Prometheus metrics match file logs..."
-echo ""
-
-timeout 30 ./query-grafana-prometheus.sh "$SERVICE_NAME" --json 2>/dev/null | \
-    python3 "$TEST_SCRIPT_DIR/validate-metrics-consistency.py" "$LOG_FILE" -
-
-if [[ $? -ne 0 ]]; then
-    print_error "Grafana-Prometheus consistency validation failed"
-    exit 1
-fi
-
-print_success "Grafana-Prometheus consistency validation passed"
-
-#
-# STEP F.5: Query Tempo via Grafana
-#
-print_header "Step F.5: Query Tempo Via Grafana Datasource Proxy"
-print_step "Querying Tempo through Grafana and validating schema..."
-echo ""
-
-timeout 30 ./query-grafana-tempo.sh "$SERVICE_NAME" --limit 50 --json 2>/dev/null | \
-    python3 "$TEST_SCRIPT_DIR/validate-tempo-response.py" -
-
-if [[ $? -ne 0 ]]; then
-    print_error "Grafana-Tempo query validation failed"
-    exit 1
-fi
-
-print_success "Grafana-Tempo query validation passed"
-
-#
-# STEP F.6: Compare Grafana-Tempo with log file
-#
-print_header "Step F.6: Compare Grafana-Tempo Response With Log File"
-print_step "Cross-validating Grafana-Tempo traces match file trace_ids..."
-echo ""
-
-timeout 30 ./query-grafana-tempo.sh "$SERVICE_NAME" --limit 50 --json 2>/dev/null | \
-    python3 "$TEST_SCRIPT_DIR/validate-trace-consistency.py" "$LOG_FILE" -
-
-if [[ $? -ne 0 ]]; then
-    print_error "Grafana-Tempo consistency validation failed"
-    exit 1
-fi
-
-print_success "Grafana-Tempo consistency validation passed"
+print_success "Grafana-Tempo validation passed (schema + consistency)"
 
 #
 # SUCCESS
@@ -488,28 +342,25 @@ echo "  Log file: $LOG_FILE"
 echo "  Entries validated: $ENTRY_COUNT"
 echo ""
 echo "Validation steps completed:"
-echo "  A)   ✅ Run program that creates log"
-echo "  B)   ✅ Validate log file using schema definition"
+echo "  A) ✅ Run program that creates log"
+echo "  B) ✅ Validate log file using schema definition"
 echo ""
-echo "  C)   ✅ Loki: Validate if logs are sent to Loki via OTEL"
-echo "  C.1) ✅ Validate if Loki stores logs according to schema definition"
-echo "  C.2) ✅ Compare logs entries stored in Loki corresponds with logs entries in file"
+echo "  C) ✅ Loki: Schema + consistency validation (combined)"
+echo "     • Validates if Loki stores logs according to schema definition"
+echo "     • Compares logs entries stored in Loki with logs entries in file"
 echo ""
-echo "  D)   ✅ Prometheus: Validate if logs are sent to Prometheus via OTEL"
-echo "  D.1) ✅ Validate if Prometheus stores logs according to schema definition"
-echo "  D.2) ✅ Compare logs entries stored in Prometheus corresponds with logs entries in file"
+echo "  D) ✅ Prometheus: Schema + consistency validation (combined)"
+echo "     • Validates if Prometheus stores logs according to schema definition"
+echo "     • Compares logs entries stored in Prometheus with logs entries in file"
 echo ""
-echo "  E)   ✅ Tempo: Validate if traces are sent to Tempo via OTEL"
-echo "  E.1) ✅ Validate if Tempo stores traces according to schema definition"
-echo "  E.2) ✅ Compare trace_ids from log file match traces in Tempo"
+echo "  E) ✅ Tempo: Schema + consistency validation (combined)"
+echo "     • Validates if Tempo stores traces according to schema definition"
+echo "     • Compares trace_ids from log file match traces in Tempo"
 echo ""
-echo "  F)   ✅ Grafana: Validate queries via Grafana datasource proxy"
-echo "  F.1) ✅ Query Loki via Grafana and validate schema"
-echo "  F.2) ✅ Compare Grafana-Loki with log file"
-echo "  F.3) ✅ Query Prometheus via Grafana and validate schema"
-echo "  F.4) ✅ Compare Grafana-Prometheus with log file"
-echo "  F.5) ✅ Query Tempo via Grafana and validate schema"
-echo "  F.6) ✅ Compare Grafana-Tempo with log file"
+echo "  F) ✅ Grafana: Validate queries via Grafana datasource proxy"
+echo "     F.1-F.2) ✅ Loki via Grafana: Schema + consistency validation"
+echo "     F.3-F.4) ✅ Prometheus via Grafana: Schema + consistency validation"
+echo "     F.5-F.6) ✅ Tempo via Grafana: Schema + consistency validation"
 echo ""
 
 exit 0

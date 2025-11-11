@@ -34,7 +34,7 @@ import { BatchLogRecordProcessor, LoggerProvider } from '@opentelemetry/sdk-logs
 import { PeriodicExportingMetricReader, MeterProvider } from '@opentelemetry/sdk-metrics';
 import { BatchSpanProcessor, BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
 import { metrics, Counter, Histogram, UpDownCounter } from '@opentelemetry/api';
-import { trace, Span, SpanStatusCode } from '@opentelemetry/api';
+import { trace, Span, SpanStatusCode, context } from '@opentelemetry/api';
 import { logs, SeverityNumber } from '@opentelemetry/api-logs';
 import { v4 as uuidv4 } from 'uuid';
 import { readFileSync } from 'fs';
@@ -52,6 +52,12 @@ import { sovdev_log_level } from './logLevels';
  * This allows our lifecycle-based API (start/end) to work with async code
  */
 const spanStorage = new AsyncLocalStorage<Span>();
+
+/**
+ * Set of ended spans - tracks spans that have been explicitly ended
+ * Used to prevent ended spans from bleeding into subsequent log entries
+ */
+const endedSpans = new WeakSet<Span>();
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -502,8 +508,9 @@ class internal_sovdev_logger {
     try {
       // Extract trace ID and span ID from active span (stored in AsyncLocalStorage)
       // This links logs to traces automatically without creating new spans
+      // IMPORTANT: Only use span if it hasn't been ended yet (prevents bleed-through)
       const active_span = spanStorage.getStore();
-      if (active_span) {
+      if (active_span && !endedSpans.has(active_span)) {
         const span_context = active_span.spanContext();
         if (span_context.traceId) {
           // Override log trace_id with the active span's trace ID
@@ -1266,11 +1273,12 @@ export function sovdev_end_span(span: Span, error?: Error): void {
     // Span automatically exported to Tempo via OTLP BatchSpanProcessor
     span.end();
 
-    // Clear the span from AsyncLocalStorage since the operation is complete
-    // This ensures subsequent logs don't incorrectly use this span's trace_id
+    // Mark span as ended so subsequent logs know not to use it
+    endedSpans.add(span);
+
+    // Clear the span from AsyncLocalStorage if it's the currently active one
     const currentSpan = spanStorage.getStore();
     if (currentSpan === span) {
-      // Only clear if this is the currently active span
       // @ts-expect-error - TypeScript doesn't like undefined but it works fine
       spanStorage.enterWith(undefined);
     }

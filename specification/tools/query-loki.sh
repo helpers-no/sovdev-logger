@@ -11,10 +11,25 @@
 #   service-name    Required. The service name to query (e.g., sovdev-test-python)
 #
 # Options:
-#   --json          Output raw JSON data for parsing/verification
-#   --limit N       Limit results to N entries (default: 10)
-#   --time-range R  Time range: 1h, 30m, 24h, etc. (default: 1h)
-#   --help          Show this help message
+#   --json              Output raw JSON data for parsing/verification
+#   --validate          Validate response against loki-response-schema.json
+#   --compare-with FILE Compare Loki response with log file for consistency
+#                       (automatically calculates limit from file entry count)
+#   --limit N           Limit results to N entries (default: 10, auto-calculated with --compare-with)
+#   --time-range R      Time range: 1h, 30m, 24h, etc. (default: 1h)
+#   --help              Show this help message
+#
+# Validation Sequence:
+#   The script performs validation in three sequential steps:
+#
+#   Step 1: Query Loki and verify response has data
+#           → Ensures logs exist in backend (exits if no data)
+#
+#   Step 2: Validate response against loki-response-schema.json (if --validate)
+#           → Ensures Loki response structure is correct (exits if invalid)
+#
+#   Step 3: Compare with log file for consistency (if --compare-with)
+#           → Ensures backend data matches source of truth (exits if mismatch)
 #
 # Output Modes:
 #   Human-readable (default): Color-coded status messages
@@ -31,20 +46,32 @@
 #     }
 #
 # Exit Codes:
-#   0 - Success
-#   1 - Error (service not found, query failed, etc.)
+#   0 - Success (all validations passed)
+#   1 - Error (query failed, validation failed, or consistency check failed)
 #
 # Examples:
-#   # Quick check (human-readable)
+#   # Step 1 only: Query and check for data (human-readable)
 #   ./query-loki.sh sovdev-test-python
 #
-#   # Get JSON for field verification
+#   # Step 1 only: Query and get JSON output
+#   ./query-loki.sh sovdev-test-python --json
+#
+#   # Steps 1+2: Query + validate schema
+#   ./query-loki.sh sovdev-test-python --validate
+#
+#   # Steps 1+3: Query + compare with file (skip schema validation)
+#   ./query-loki.sh sovdev-test-python --compare-with logs/dev.log
+#
+#   # Steps 1+2+3: Full validation (query + schema + consistency)
+#   ./query-loki.sh sovdev-test-python --validate --compare-with logs/dev.log
+#
+#   # Advanced: Extract specific fields from JSON
 #   ./query-loki.sh sovdev-test-python --json | jq '.data.result[0].values[0][1]'
 #
-#   # Save evidence
+#   # Advanced: Save JSON evidence for later analysis
 #   ./query-loki.sh sovdev-test-python --json > evidence/loki-output.json
 #
-#   # Query last 30 minutes, limit to 5 entries
+#   # Advanced: Custom time range and limit
 #   ./query-loki.sh sovdev-test-python --time-range 30m --limit 5
 #
 ################################################################################
@@ -69,11 +96,13 @@ NC='\033[0m' # No Color
 LIMIT=10
 TIME_RANGE="1h"
 JSON_MODE=false
+VALIDATE_MODE=false
+COMPARE_WITH_FILE=""
 SERVICE_NAME=""
 
 # Parse arguments
 show_help() {
-    head -n 60 "$0" | grep "^#" | sed 's/^# \?//'
+    head -n 76 "$0" | grep "^#" | sed 's/^# \?//'
     exit 0
 }
 
@@ -82,6 +111,16 @@ while [[ $# -gt 0 ]]; do
         --json)
             JSON_MODE=true
             shift
+            ;;
+        --validate)
+            VALIDATE_MODE=true
+            JSON_MODE=true  # Validation requires JSON mode
+            shift
+            ;;
+        --compare-with)
+            COMPARE_WITH_FILE="$2"
+            JSON_MODE=true  # Comparison requires JSON mode
+            shift 2
             ;;
         --limit)
             LIMIT="$2"
@@ -118,6 +157,23 @@ if [[ -z "$SERVICE_NAME" ]]; then
     echo "Usage: $0 <service-name> [options]" >&2
     echo "Use --help for more information" >&2
     exit 1
+fi
+
+# Validate --compare-with file exists and auto-calculate limit
+if [[ -n "$COMPARE_WITH_FILE" ]]; then
+    if [[ ! -f "$COMPARE_WITH_FILE" ]]; then
+        echo -e "${RED}❌ Error: Log file not found: $COMPARE_WITH_FILE${NC}" >&2
+        exit 1
+    fi
+
+    # Auto-calculate limit based on log file entry count
+    FILE_ENTRY_COUNT=$(wc -l < "$COMPARE_WITH_FILE" | tr -d ' ')
+    AUTO_LIMIT=$((FILE_ENTRY_COUNT + 10))  # Add buffer for safety
+
+    # Override limit if auto-calculated is higher
+    if [[ $AUTO_LIMIT -gt $LIMIT ]]; then
+        LIMIT=$AUTO_LIMIT
+    fi
 fi
 
 # Calculate time range in nanoseconds from now
@@ -209,7 +265,51 @@ fi
 
 # Output based on mode
 if [[ "$JSON_MODE" == true ]]; then
-    # JSON mode: output raw JSON
+    # JSON mode: Three-step validation sequence
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    # STEP 1: Verify Loki response has data (already done above at line 241-249)
+    # Query was successful and returned data, proceed with validation if requested
+
+    # STEP 2: Validate response against schema (if --validate flag provided)
+    if [[ "$VALIDATE_MODE" == true ]]; then
+        VALIDATOR_SCRIPT="$SCRIPT_DIR/../tests/validate-loki-response.py"
+
+        if [[ ! -f "$VALIDATOR_SCRIPT" ]]; then
+            echo -e "${RED}❌ Validator script not found: ${VALIDATOR_SCRIPT}${NC}" >&2
+            exit 1
+        fi
+
+        # Pipe query result to schema validator
+        echo "$QUERY_RESULT" | python3 "$VALIDATOR_SCRIPT" -
+        VALIDATE_EXIT=$?
+
+        if [[ $VALIDATE_EXIT -ne 0 ]]; then
+            # Schema validation failed, exit before consistency check
+            exit $VALIDATE_EXIT
+        fi
+
+        # If only validating (no --compare-with), exit successfully
+        if [[ -z "$COMPARE_WITH_FILE" ]]; then
+            exit 0
+        fi
+    fi
+
+    # STEP 3: Compare with log file for consistency (if --compare-with flag provided)
+    if [[ -n "$COMPARE_WITH_FILE" ]]; then
+        CONSISTENCY_SCRIPT="$SCRIPT_DIR/../tests/validate-loki-consistency.py"
+
+        if [[ ! -f "$CONSISTENCY_SCRIPT" ]]; then
+            echo -e "${RED}❌ Consistency validator not found: ${CONSISTENCY_SCRIPT}${NC}" >&2
+            exit 1
+        fi
+
+        # Pipe query result to consistency validator with log file
+        echo "$QUERY_RESULT" | python3 "$CONSISTENCY_SCRIPT" "$COMPARE_WITH_FILE" -
+        exit $?
+    fi
+
+    # No validation requested, just output raw JSON
     echo "$QUERY_RESULT"
 else
     # Human-readable mode: parse and display

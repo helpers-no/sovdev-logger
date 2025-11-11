@@ -12,8 +12,10 @@
 #   service-name    Required. The service name to query
 #
 # Options:
-#   --json          Output raw JSON data for parsing/verification
-#   --help          Show this help message
+#   --json              Output raw JSON data for parsing/verification
+#   --validate          Validate response against prometheus-response-schema.json
+#   --compare-with FILE Compare Prometheus metrics with log file for consistency
+#   --help              Show this help message
 #
 # Output:
 #   Same JSON format as query-prometheus.sh (Prometheus API response)
@@ -35,6 +37,8 @@ NC='\033[0m'
 
 # Default options
 JSON_MODE=false
+VALIDATE_MODE=false
+COMPARE_WITH_FILE=""
 SERVICE_NAME=""
 
 # Grafana access (via Traefik ingress)
@@ -55,6 +59,16 @@ while [[ $# -gt 0 ]]; do
         --json)
             JSON_MODE=true
             shift
+            ;;
+        --validate)
+            VALIDATE_MODE=true
+            JSON_MODE=true  # Validation requires JSON mode
+            shift
+            ;;
+        --compare-with)
+            COMPARE_WITH_FILE="$2"
+            JSON_MODE=true  # Comparison requires JSON mode
+            shift 2
             ;;
         --help)
             show_help
@@ -80,6 +94,14 @@ if [[ -z "$SERVICE_NAME" ]]; then
     echo -e "${RED}❌ Error: Service name is required${NC}" >&2
     echo "Usage: $0 <service-name> [options]" >&2
     exit 1
+fi
+
+# Validate --compare-with file exists
+if [[ -n "$COMPARE_WITH_FILE" ]]; then
+    if [[ ! -f "$COMPARE_WITH_FILE" ]]; then
+        echo -e "${RED}❌ Error: Log file not found: $COMPARE_WITH_FILE${NC}" >&2
+        exit 1
+    fi
 fi
 
 # Pre-flight checks
@@ -126,7 +148,51 @@ fi
 
 # Output based on mode
 if [[ "$JSON_MODE" == true ]]; then
-    # JSON mode: output raw JSON (same format as query-prometheus.sh)
+    # JSON mode: Three-step validation sequence
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    # STEP 1: Verify Prometheus response has data (already done above at line 129-137)
+    # Query was successful and returned data, proceed with validation if requested
+
+    # STEP 2: Validate response against schema (if --validate flag provided)
+    if [[ "$VALIDATE_MODE" == true ]]; then
+        VALIDATOR_SCRIPT="$SCRIPT_DIR/../tests/validate-prometheus-response.py"
+
+        if [[ ! -f "$VALIDATOR_SCRIPT" ]]; then
+            echo -e "${RED}❌ Validator script not found: ${VALIDATOR_SCRIPT}${NC}" >&2
+            exit 1
+        fi
+
+        # Pipe query result to schema validator
+        echo "$QUERY_RESULT" | python3 "$VALIDATOR_SCRIPT" -
+        VALIDATE_EXIT=$?
+
+        if [[ $VALIDATE_EXIT -ne 0 ]]; then
+            # Schema validation failed, exit before consistency check
+            exit $VALIDATE_EXIT
+        fi
+
+        # If only validating (no --compare-with), exit successfully
+        if [[ -z "$COMPARE_WITH_FILE" ]]; then
+            exit 0
+        fi
+    fi
+
+    # STEP 3: Compare with log file for consistency (if --compare-with flag provided)
+    if [[ -n "$COMPARE_WITH_FILE" ]]; then
+        CONSISTENCY_SCRIPT="$SCRIPT_DIR/../tests/validate-prometheus-consistency.py"
+
+        if [[ ! -f "$CONSISTENCY_SCRIPT" ]]; then
+            echo -e "${RED}❌ Consistency validator not found: ${CONSISTENCY_SCRIPT}${NC}" >&2
+            exit 1
+        fi
+
+        # Pipe query result to consistency validator with log file
+        echo "$QUERY_RESULT" | python3 "$CONSISTENCY_SCRIPT" "$COMPARE_WITH_FILE" -
+        exit $?
+    fi
+
+    # No validation requested, just output raw JSON
     echo "$QUERY_RESULT"
 else
     # Human-readable mode

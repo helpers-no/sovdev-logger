@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Sovdev Logger - Trace Consistency Validator
+Sovdev Logger - Enhanced Trace Consistency Validator
 
-Cross-validates that trace_ids from file logs exist in Tempo backend.
-Ensures distributed tracing is working correctly and all traces are stored.
+Cross-validates that traces in Tempo match log entries field-by-field.
+Ensures distributed tracing is working correctly and trace content is accurate.
 
 Usage:
     # Compare file logs with Tempo response (human-readable output)
@@ -63,7 +63,8 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Set, Any
+from typing import Dict, List, Set, Any, Tuple
+from datetime import datetime
 
 # ANSI color codes
 class Colors:
@@ -86,6 +87,7 @@ class TraceConsistencyValidator:
         """
         self.json_mode = json_mode
         self.matches = []
+        self.mismatches = []
         self.missing_in_tempo = []
         self.extra_in_tempo = []
         self.errors = []
@@ -128,6 +130,264 @@ class TraceConsistencyValidator:
         # Pad with leading zeros to ensure 32 characters
         # This handles Tempo trace IDs that may be shorter than 32 chars
         return normalized.zfill(32)
+
+    def parse_timestamp(self, timestamp: str) -> int:
+        """Parse ISO timestamp to nanoseconds"""
+        try:
+            dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+            return int(dt.timestamp() * 1_000_000_000)
+        except:
+            return 0
+
+    def read_file_logs_with_spans(self, file_path: Path) -> Dict[Tuple[str, str], Dict[str, Any]]:
+        """
+        Read file logs that have span_id, indexed by (trace_id, span_id)
+
+        These are the log entries that should correspond to Tempo spans.
+        """
+        self.print_info(f"Reading log entries with spans from {file_path}...")
+        logs = {}
+        line_num = 0
+
+        try:
+            with open(file_path, 'r') as f:
+                for line in f:
+                    line_num += 1
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    try:
+                        log_entry = json.loads(line)
+                        trace_id = log_entry.get('trace_id')
+                        span_id = log_entry.get('span_id')
+
+                        # Only process logs with span_id (these create spans in Tempo)
+                        if trace_id and span_id:
+                            # Normalize trace_id for matching
+                            normalized_trace_id = self.normalize_trace_id(trace_id)
+                            key = (normalized_trace_id, span_id)
+                            logs[key] = log_entry
+
+                    except json.JSONDecodeError as e:
+                        self.print_warning(f"Line {line_num}: Invalid JSON - {e}")
+
+        except FileNotFoundError:
+            self.print_error(f"File not found: {file_path}")
+            return {}
+
+        self.print_success(f"Found {len(logs)} log entries with spans")
+        return logs
+
+    def read_tempo_spans(self, tempo_path: Path) -> Dict[Tuple[str, str], Dict[str, Any]]:
+        """
+        Read Tempo traces and extract all spans, indexed by (trace_id, span_id)
+
+        Returns a flat dictionary of all spans from all traces.
+        """
+        self.print_info(f"Reading Tempo spans from {tempo_path}...")
+        spans = {}
+
+        try:
+            if str(tempo_path) == '-':
+                tempo_data = json.load(sys.stdin)
+            else:
+                tempo_data = json.loads(tempo_path.read_text())
+        except json.JSONDecodeError as e:
+            self.print_error(f"Invalid Tempo JSON: {e}")
+            return {}
+        except FileNotFoundError:
+            self.print_error(f"File not found: {tempo_path}")
+            return {}
+
+        # Extract spans from all traces
+        traces = tempo_data.get('traces', [])
+        for trace in traces:
+            trace_id = trace.get('traceID')
+            if not trace_id:
+                continue
+
+            normalized_trace_id = self.normalize_trace_id(trace_id)
+
+            # Extract spans from spanSets
+            span_sets = trace.get('spanSets', [])
+            for span_set in span_sets:
+                spans_list = span_set.get('spans', [])
+                for span in spans_list:
+                    span_id = span.get('spanID')
+                    if span_id:
+                        key = (normalized_trace_id, span_id)
+                        spans[key] = {
+                            'trace_id': normalized_trace_id,
+                            'span_id': span_id,
+                            'operation_name': span.get('operationName', ''),
+                            'start_time_unix_nano': span.get('startTimeUnixNano', 0),
+                            'duration_nanos': span.get('durationNanos', 0),
+                            'attributes': span.get('attributes', []),
+                            'status': span.get('status', {}),
+                            'raw_span': span
+                        }
+
+        self.print_success(f"Found {len(spans)} spans in Tempo")
+        return spans
+
+    def compare_span_with_log(self, log_entry: Dict[str, Any],
+                              tempo_span: Dict[str, Any]) -> Dict[str, Tuple[Any, Any]]:
+        """
+        Compare a log entry with its corresponding Tempo span
+
+        Returns dictionary of mismatched fields
+        """
+        mismatches = {}
+
+        # 1. Compare operation name vs function_name
+        log_function = log_entry.get('function_name', '')
+        span_operation = tempo_span.get('operation_name', '')
+
+        if log_function != span_operation:
+            mismatches['operation_name'] = (log_function, span_operation)
+
+        # 2. Compare timestamp (allow 1 second tolerance for clock skew)
+        log_timestamp = log_entry.get('timestamp', '')
+        log_time_ns = self.parse_timestamp(log_timestamp)
+        span_time_ns_raw = tempo_span.get('start_time_unix_nano', 0)
+
+        # Convert span timestamp to int if it's a string
+        try:
+            span_time_ns = int(span_time_ns_raw) if span_time_ns_raw else 0
+        except (ValueError, TypeError):
+            span_time_ns = 0
+
+        if log_time_ns and span_time_ns:
+            time_diff_ms = abs(log_time_ns - span_time_ns) / 1_000_000
+            if time_diff_ms > 1000:  # More than 1 second difference
+                mismatches['timestamp'] = (
+                    f"{log_timestamp} ({log_time_ns}ns)",
+                    f"{span_time_ns}ns (diff: {time_diff_ms:.0f}ms)"
+                )
+
+        # 3. Compare peer_service in span attributes
+        log_peer_service = log_entry.get('peer_service', '')
+        span_attrs = tempo_span.get('attributes', [])
+        span_peer_service = None
+
+        for attr in span_attrs:
+            if attr.get('key') == 'peer_service':
+                span_peer_service = attr.get('value', {}).get('stringValue', '')
+                break
+
+        if log_peer_service and span_peer_service and log_peer_service != span_peer_service:
+            mismatches['peer_service'] = (log_peer_service, span_peer_service)
+
+        # 4. Compare error status
+        log_level = log_entry.get('level', 'info')
+        span_status = tempo_span.get('status', {})
+        span_status_code = span_status.get('code', 0)  # 0 = OK, 2 = ERROR
+
+        log_is_error = log_level in ['error', 'fatal']
+        span_is_error = span_status_code == 2
+
+        if log_is_error != span_is_error:
+            mismatches['error_status'] = (
+                f"log_level={log_level}",
+                f"span_status_code={span_status_code}"
+            )
+
+        # 5. Compare service_name in span attributes
+        log_service = log_entry.get('service_name', '')
+        span_service = None
+
+        for attr in span_attrs:
+            if attr.get('key') == 'service.name':
+                span_service = attr.get('value', {}).get('stringValue', '')
+                break
+
+        if log_service and span_service and log_service != span_service:
+            mismatches['service_name'] = (log_service, span_service)
+
+        return mismatches
+
+    def compare_logs_and_spans(self, file_logs: Dict, tempo_spans: Dict) -> bool:
+        """Compare file logs with Tempo spans"""
+        self.print_info("Comparing log entries with Tempo spans...")
+
+        file_keys = set(file_logs.keys())
+        tempo_keys = set(tempo_spans.keys())
+
+        # Find matches, mismatches, and missing
+        common_keys = file_keys & tempo_keys
+        missing_keys = file_keys - tempo_keys
+        extra_keys = tempo_keys - file_keys
+
+        # Compare common entries
+        for key in common_keys:
+            trace_id, span_id = key
+            log_entry = file_logs[key]
+            tempo_span = tempo_spans[key]
+
+            mismatch_fields = self.compare_span_with_log(log_entry, tempo_span)
+
+            if mismatch_fields:
+                self.mismatches.append({
+                    'trace_id': trace_id,
+                    'span_id': span_id,
+                    'mismatches': mismatch_fields
+                })
+            else:
+                self.matches.append({
+                    'trace_id': trace_id,
+                    'span_id': span_id
+                })
+
+        # Record missing spans
+        for key in missing_keys:
+            trace_id, span_id = key
+            log_entry = file_logs[key]
+            self.missing_in_tempo.append({
+                'trace_id': trace_id,
+                'span_id': span_id,
+                'function_name': log_entry.get('function_name', '(unknown)')
+            })
+
+        # Record extra spans
+        for key in extra_keys:
+            trace_id, span_id = key
+            tempo_span = tempo_spans[key]
+            self.extra_in_tempo.append({
+                'trace_id': trace_id,
+                'span_id': span_id,
+                'operation_name': tempo_span.get('operation_name', '(unknown)')
+            })
+
+        # Print results
+        if self.matches:
+            self.print_success(f"{len(self.matches)} spans match perfectly")
+
+        if self.mismatches:
+            self.print_error(f"{len(self.mismatches)} spans have field mismatches")
+            if not self.json_mode:
+                for m in self.mismatches[:3]:  # Show first 3
+                    print(f"  {m['trace_id'][:16]}.../{m['span_id'][:8]}:")
+                    for field, (log_val, tempo_val) in m['mismatches'].items():
+                        print(f"    {field}: log={log_val!r} tempo={tempo_val!r}")
+                if len(self.mismatches) > 3:
+                    print(f"  ... and {len(self.mismatches) - 3} more mismatches")
+
+        if self.missing_in_tempo:
+            self.print_error(f"{len(self.missing_in_tempo)} spans missing in Tempo")
+            if not self.json_mode:
+                for m in self.missing_in_tempo[:3]:
+                    print(f"  {m['trace_id'][:16]}.../{m['span_id'][:8]}: {m['function_name']}")
+                if len(self.missing_in_tempo) > 3:
+                    print(f"  ... and {len(self.missing_in_tempo) - 3} more missing")
+
+        if self.extra_in_tempo:
+            if not self.json_mode:
+                print(f"\n{Colors.BLUE}ℹ️  Note: {len(self.extra_in_tempo)} extra spans in Tempo (from previous runs){Colors.NC}")
+
+        # Validation passes if no mismatches and no missing spans
+        all_match = (len(self.mismatches) == 0 and len(self.missing_in_tempo) == 0)
+        return all_match
 
     def read_file_trace_ids(self, file_path: Path) -> Set[str]:
         """
@@ -286,8 +546,9 @@ class TraceConsistencyValidator:
                 self.print_error("TRACE CONSISTENCY VALIDATION FAILED")
             print()
             print(f"Total matches: {len(self.matches)}")
+            print(f"Total mismatches: {len(self.mismatches)}")
             print(f"Missing in Tempo: {len(self.missing_in_tempo)}")
-            print(f"Older traces in Tempo (from previous runs): {len(self.extra_in_tempo)}")
+            print(f"Extra in Tempo (from previous runs): {len(self.extra_in_tempo)}")
 
             if self.warnings:
                 print(f"\nWarnings: {len(self.warnings)}")
@@ -347,67 +608,18 @@ def main():
 
     # Run validation
     validator = TraceConsistencyValidator(json_mode=args.json)
-    file_trace_ids = validator.read_file_trace_ids(args.file_log)
-    tempo_trace_ids = validator.read_tempo_trace_ids(args.tempo_response)
+    file_logs = validator.read_file_logs_with_spans(args.file_log)
+    tempo_spans = validator.read_tempo_spans(args.tempo_response)
 
-    if not file_trace_ids:
-        print("ERROR: No valid trace_ids found in file", file=sys.stderr)
+    if not file_logs:
+        print("ERROR: No log entries with spans found in file", file=sys.stderr)
         sys.exit(2)
 
-    # CRITICAL: Empty Tempo when file has trace_ids indicates a problem
-    # This is NOT acceptable for production - distributed tracing is required
-    if not tempo_trace_ids:
-        validator.print_error("TRACE VALIDATION FAILED - No traces in Tempo")
-        print(file=sys.stderr)
-        validator.print_error(f"File logs contain {len(file_trace_ids)} trace_ids, but Tempo has 0 traces")
-        print(file=sys.stderr)
-
-        # Diagnostic information to help identify root cause
-        validator.print_info("Diagnostic: Implementation is creating trace_ids in logs")
-        validator.print_info("Problem: Traces are NOT reaching Tempo via OTLP")
-        print(file=sys.stderr)
-
-        validator.print_info("Possible causes:")
-        validator.print_info("  1. OTLP trace export not configured in implementation")
-        validator.print_info("  2. OTLP Collector not forwarding traces to Tempo")
-        validator.print_info("  3. Tempo not receiving/storing traces")
-        validator.print_info("  4. Trace ingestion very slow (try waiting longer)")
-        print(file=sys.stderr)
-
-        validator.print_info("Investigation steps:")
-        validator.print_info("  - Check OTLP trace export is enabled in code")
-        validator.print_info("  - Check OTEL Collector traces pipeline configuration")
-        validator.print_info("  - Check Tempo receiver is running and configured")
-        validator.print_info("  - Check OTEL Collector logs for trace export errors")
-        print(file=sys.stderr)
-
-        # Print summary
-        if not args.json:
-            print(file=sys.stderr)
-            validator.print_error("TRACE CONSISTENCY VALIDATION FAILED")
-            print(file=sys.stderr)
-            print(f"File trace_ids: {len(file_trace_ids)}", file=sys.stderr)
-            print(f"Tempo traces: 0", file=sys.stderr)
-            print(file=sys.stderr)
-            validator.print_error("Distributed tracing is broken - this blocks production deployment")
-
-        if args.json:
-            result = {
-                'validation': 'failed',
-                'reason': 'no_traces_in_tempo',
-                'summary': {
-                    'file_trace_ids': len(file_trace_ids),
-                    'tempo_trace_ids': 0
-                },
-                'errors': validator.errors,
-                'diagnostic': 'Implementation creates trace_ids but traces not reaching Tempo'
-            }
-            print(json.dumps(result, indent=2))
-
-        # Exit with error - this is a critical failure
+    if not tempo_spans:
+        validator.print_error("No spans found in Tempo")
         sys.exit(1)
 
-    all_match = validator.compare_trace_ids(file_trace_ids, tempo_trace_ids)
+    all_match = validator.compare_logs_and_spans(file_logs, tempo_spans)
 
     # Print results
     validator.print_summary(all_match)

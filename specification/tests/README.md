@@ -46,9 +46,9 @@ Complete table of all validation scripts:
 | [**validate-loki-response.py**](validate-loki-response.py) | Validate Loki API response against schema | `python3 validate-loki-response.py <response.json>` | Loki query response | Schema + snake_case validation | [`run-full-validation.sh`](../tools/run-full-validation.sh)<br/>[`run-grafana-validation.sh`](../tools/run-grafana-validation.sh) |
 | [**validate-prometheus-response.py**](validate-prometheus-response.py) | Validate Prometheus API response against schema | `python3 validate-prometheus-response.py <response.json>` | Prometheus query response | Schema + snake_case labels | [`run-full-validation.sh`](../tools/run-full-validation.sh)<br/>[`run-grafana-validation.sh`](../tools/run-grafana-validation.sh) |
 | [**validate-tempo-response.py**](validate-tempo-response.py) | Validate Tempo API response against schema | `python3 validate-tempo-response.py <response.json>` | Tempo search response | Schema + trace ID format | [`run-full-validation.sh`](../tools/run-full-validation.sh)<br/>[`run-grafana-validation.sh`](../tools/run-grafana-validation.sh) |
-| [**validate-log-consistency.py**](validate-log-consistency.py) | Cross-validate file logs vs Loki backend | `python3 validate-log-consistency.py <logfile> <loki-response.json>` | Log file + Loki response | Consistency report | [`run-full-validation.sh`](../tools/run-full-validation.sh)<br/>[`run-grafana-validation.sh`](../tools/run-grafana-validation.sh)<br/>[`run-full-validation-host.sh`](../tools/run-full-validation-host.sh) |
-| [**validate-metrics-consistency.py**](validate-metrics-consistency.py) | Cross-validate file logs vs Prometheus metrics | `python3 validate-metrics-consistency.py <logfile> <prom-response.json>` | Log file + Prometheus response | Metrics match report | [`run-full-validation.sh`](../tools/run-full-validation.sh)<br/>[`run-grafana-validation.sh`](../tools/run-grafana-validation.sh) |
-| [**validate-trace-consistency.py**](validate-trace-consistency.py) | Cross-validate file trace_ids vs Tempo traces | `python3 validate-trace-consistency.py <logfile> <tempo-response.json>` | Log file + Tempo response | Trace ID match report | [`run-full-validation.sh`](../tools/run-full-validation.sh)<br/>[`run-grafana-validation.sh`](../tools/run-grafana-validation.sh) |
+| [**validate-loki-consistency.py**](validate-loki-consistency.py) | Cross-validate file logs vs Loki backend | `python3 validate-loki-consistency.py <logfile> <loki-response.json>` | Log file + Loki response | Consistency report | [`run-full-validation.sh`](../tools/run-full-validation.sh)<br/>[`run-grafana-validation.sh`](../tools/run-grafana-validation.sh) |
+| [**validate-prometheus-consistency.py**](validate-prometheus-consistency.py) | Cross-validate file logs vs Prometheus metrics | `python3 validate-prometheus-consistency.py <logfile> <prom-response.json>` | Log file + Prometheus response | Metrics match report | [`run-full-validation.sh`](../tools/run-full-validation.sh)<br/>[`run-grafana-validation.sh`](../tools/run-grafana-validation.sh) |
+| [**validate-tempo-consistency.py**](validate-tempo-consistency.py) | Cross-validate file trace_ids vs Tempo traces | `python3 validate-tempo-consistency.py <logfile> <tempo-response.json>` | Log file + Tempo response | Trace ID match report | [`run-full-validation.sh`](../tools/run-full-validation.sh)<br/>[`run-grafana-validation.sh`](../tools/run-grafana-validation.sh) |
 
 **Common options for all validators:**
 - `--json` - Output JSON format for automation
@@ -62,6 +62,9 @@ Complete table of all validation scripts:
 ---
 
 ## Usage Examples
+
+**Note:** These examples show **manual direct usage** of validators for debugging and custom workflows.
+For standard validation, use query scripts with `--validate` and `--compare-with` flags (see "Complete Validation Workflow" section).
 
 ### Schema Validation
 
@@ -87,15 +90,15 @@ python3 validate-log-format.py /workspace/python/test/e2e/company-lookup/logs/er
 ```bash
 # Cross-validate file logs vs Loki backend
 ./query-loki.sh sovdev-test-company-lookup-python --json | \
-  python3 validate-log-consistency.py logs/dev.log -
+  python3 validate-loki-consistency.py logs/dev.log -
 
 # Cross-validate file logs vs Prometheus metrics
 ./query-prometheus.sh sovdev-test-company-lookup-python --json | \
-  python3 validate-metrics-consistency.py logs/dev.log -
+  python3 validate-prometheus-consistency.py logs/dev.log -
 
 # Cross-validate file trace_ids vs Tempo traces
 ./query-tempo.sh sovdev-test-company-lookup-python --json | \
-  python3 validate-trace-consistency.py logs/dev.log -
+  python3 validate-tempo-consistency.py logs/dev.log -
 ```
 
 ### JSON Output for Automation
@@ -113,23 +116,41 @@ cat validation-result.json | jq '.errors[]'
 
 ### Complete Validation Workflow
 
+**Recommended Approach: Use Built-in Validation Flags**
+
+Query scripts now have built-in validation via `--validate` and `--compare-with` flags:
+
 ```bash
-# Run full validation pipeline
+# Automated approach (recommended - used by run-full-validation.sh)
+LOG_FILE="python/test/e2e/company-lookup/logs/dev.log"
+SERVICE="sovdev-test-company-lookup-python"
+
+# Combined validation: schema + consistency in one query per backend
+./query-loki.sh "$SERVICE" --validate --compare-with "$LOG_FILE"
+./query-prometheus.sh "$SERVICE" --validate --compare-with "$LOG_FILE"
+./query-tempo.sh "$SERVICE" --validate --compare-with "$LOG_FILE"
+```
+
+**Manual Approach: Direct Validator Usage**
+
+For advanced debugging or custom workflows, you can call validators directly:
+
+```bash
 LOG_FILE="python/test/e2e/company-lookup/logs/dev.log"
 SERVICE="sovdev-test-company-lookup-python"
 
 # 1. Validate log file format
 python3 validate-log-format.py "$LOG_FILE"
 
-# 2. Validate backend responses
+# 2. Validate backend responses (schema only)
 ./query-loki.sh "$SERVICE" --json | python3 validate-loki-response.py -
 ./query-prometheus.sh "$SERVICE" --json | python3 validate-prometheus-response.py -
 ./query-tempo.sh "$SERVICE" --json | python3 validate-tempo-response.py -
 
-# 3. Cross-validate consistency
-./query-loki.sh "$SERVICE" --json | python3 validate-log-consistency.py "$LOG_FILE" -
-./query-prometheus.sh "$SERVICE" --json | python3 validate-metrics-consistency.py "$LOG_FILE" -
-./query-tempo.sh "$SERVICE" --json | python3 validate-trace-consistency.py "$LOG_FILE" -
+# 3. Cross-validate consistency (separate queries)
+./query-loki.sh "$SERVICE" --json | python3 validate-loki-consistency.py "$LOG_FILE" -
+./query-prometheus.sh "$SERVICE" --json | python3 validate-prometheus-consistency.py "$LOG_FILE" -
+./query-tempo.sh "$SERVICE" --json | python3 validate-tempo-consistency.py "$LOG_FILE" -
 ```
 
 ---
@@ -159,22 +180,30 @@ These validators are the core of the validation pipeline, connecting schemas to 
 
 **Tool integration:**
 
-| Tool | Validators Used |
-|------|-----------------|
-| `run-full-validation.sh` | All 7 validators (complete validation pipeline) |
-| `validate-log-format.sh` | `validate-log-format.py` (wrapper script) |
-| Direct query tools | Can pipe output to response validators |
+| Tool | Validators Used | Approach |
+|------|-----------------|----------|
+| `run-full-validation.sh` | All 7 validators | Built-in validation flags (combined schema + consistency) |
+| `run-grafana-validation.sh` | 6 validators (Grafana proxy) | Built-in validation flags (combined schema + consistency) |
+| `validate-log-format.sh` | `validate-log-format.py` | Direct wrapper |
+| Query tools (`query-*.sh`) | Response + consistency validators | Optional `--validate` and `--compare-with` flags |
 
-**Example from `run-full-validation.sh`:**
+**Example from `run-full-validation.sh` (current implementation):**
 ```bash
 # Step B: Validate log file
 ./validate-log-format.sh "$LOG_FILE"
 
-# Step C.1: Validate Loki response
-./query-loki.sh "$SERVICE" --json | python3 validate-loki-response.py -
+# Step C: Loki validation (combined schema + consistency)
+./query-loki.sh "$SERVICE" --validate --compare-with "$LOG_FILE"
 
-# Step C.2: Validate log consistency
-./query-loki.sh "$SERVICE" --json | python3 validate-log-consistency.py "$LOG_FILE" -
+# Step D: Prometheus validation (combined schema + consistency)
+./query-prometheus.sh "$SERVICE" --validate --compare-with "$LOG_FILE"
+
+# Step E: Tempo validation (combined schema + consistency)
+./query-tempo.sh "$SERVICE" --validate --compare-with "$LOG_FILE"
+
+# Internally, query scripts call validators automatically:
+# --validate flag → calls validate-loki-response.py (schema validation)
+# --compare-with flag → calls validate-loki-consistency.py (consistency validation)
 ```
 
 ---
