@@ -11,9 +11,29 @@
 #   service-name    Required. The service name to query (e.g., sovdev-test-python)
 #
 # Options:
-#   --json          Output raw JSON data for parsing/verification
-#   --metric NAME   Specific metric to query (default: sovdev_operations_total)
-#   --help          Show this help message
+#   --json              Output raw JSON data for parsing/verification
+#   --validate          Validate response against prometheus-response-schema.json
+#   --compare-with FILE Compare Prometheus metrics with log file for consistency
+#   --metric NAME       Specific metric to query (default: sovdev_operations_total)
+#   --time-range R      Time range lookback: 1h, 30m, 5m, etc. (default: instant query)
+#   --help              Show this help message
+#
+# Note on Time Range:
+#   By default, queries Prometheus for current/instant metric values.
+#   Use --time-range to query historical values from N time ago.
+#   Example: --time-range 5m queries metrics from 5 minutes ago
+#
+# Validation Sequence:
+#   The script performs validation in three sequential steps:
+#
+#   Step 1: Query Prometheus and verify response has data
+#           → Ensures metrics exist in backend (exits if no data)
+#
+#   Step 2: Validate response against prometheus-response-schema.json (if --validate)
+#           → Ensures Prometheus response structure is correct (exits if invalid)
+#
+#   Step 3: Compare with log file for consistency (if --compare-with)
+#           → Ensures metric counts match log entries (exits if mismatch)
 #
 # Output Modes:
 #   Human-readable (default): Color-coded status messages
@@ -30,20 +50,35 @@
 #     }
 #
 # Exit Codes:
-#   0 - Success
-#   1 - Error (service not found, query failed, etc.)
+#   0 - Success (all validations passed)
+#   1 - Error (query failed, validation failed, or consistency check failed)
 #
 # Examples:
-#   # Quick check (human-readable)
+#   # Step 1 only: Query and check for data (human-readable)
 #   ./query-prometheus.sh sovdev-test-python
 #
-#   # Get JSON for metric verification
+#   # Step 1 only: Query and get JSON output
+#   ./query-prometheus.sh sovdev-test-python --json
+#
+#   # Steps 1+2: Query + validate schema
+#   ./query-prometheus.sh sovdev-test-python --validate
+#
+#   # Steps 1+3: Query + compare with file (skip schema validation)
+#   ./query-prometheus.sh sovdev-test-python --compare-with logs/dev.log
+#
+#   # Steps 1+2+3: Full validation (query + schema + consistency)
+#   ./query-prometheus.sh sovdev-test-python --validate --compare-with logs/dev.log
+#
+#   # Advanced: Extract specific metric labels
 #   ./query-prometheus.sh sovdev-test-python --json | jq '.data.result[0].metric'
 #
-#   # Query specific metric
-#   ./query-prometheus.sh sovdev-test-python --metric sovdev_operations_total
+#   # Advanced: Query specific metric
+#   ./query-prometheus.sh sovdev-test-python --metric sovdev_errors_total
 #
-#   # Save evidence
+#   # Advanced: Query metrics from 5 minutes ago
+#   ./query-prometheus.sh sovdev-test-python --time-range 5m
+#
+#   # Advanced: Save JSON evidence for later analysis
 #   ./query-prometheus.sh sovdev-test-python --json > evidence/prometheus-output.json
 #
 ################################################################################
@@ -66,12 +101,15 @@ NC='\033[0m' # No Color
 
 # Default options
 METRIC_NAME="sovdev_operations_total"
+TIME_RANGE=""
 JSON_MODE=false
+VALIDATE_MODE=false
+COMPARE_WITH_FILE=""
 SERVICE_NAME=""
 
 # Parse arguments
 show_help() {
-    head -n 54 "$0" | grep "^#" | sed 's/^# \?//'
+    head -n 82 "$0" | grep "^#" | sed 's/^# \?//'
     exit 0
 }
 
@@ -81,8 +119,22 @@ while [[ $# -gt 0 ]]; do
             JSON_MODE=true
             shift
             ;;
+        --validate)
+            VALIDATE_MODE=true
+            JSON_MODE=true  # Validation requires JSON mode
+            shift
+            ;;
+        --compare-with)
+            COMPARE_WITH_FILE="$2"
+            JSON_MODE=true  # Comparison requires JSON mode
+            shift 2
+            ;;
         --metric)
             METRIC_NAME="$2"
+            shift 2
+            ;;
+        --time-range)
+            TIME_RANGE="$2"
             shift 2
             ;;
         --help)
@@ -112,6 +164,14 @@ if [[ -z "$SERVICE_NAME" ]]; then
     echo "Usage: $0 <service-name> [options]" >&2
     echo "Use --help for more information" >&2
     exit 1
+fi
+
+# Validate --compare-with file exists
+if [[ -n "$COMPARE_WITH_FILE" ]]; then
+    if [[ ! -f "$COMPARE_WITH_FILE" ]]; then
+        echo -e "${RED}❌ Error: Log file not found: $COMPARE_WITH_FILE${NC}" >&2
+        exit 1
+    fi
 fi
 
 # Pre-flight checks
@@ -145,24 +205,66 @@ fi
 # Build PromQL query
 PROMQL_QUERY="${METRIC_NAME}{service_name=\"${SERVICE_NAME}\"}"
 
+# Calculate query time if time-range is specified
+QUERY_TIME=""
+if [[ -n "$TIME_RANGE" ]]; then
+    # Parse time range (1h, 30m, 5m, etc.) and calculate unix timestamp
+    DURATION_SECONDS=0
+    if [[ $TIME_RANGE =~ ^([0-9]+)h$ ]]; then
+        DURATION_SECONDS=$((${BASH_REMATCH[1]} * 3600))
+    elif [[ $TIME_RANGE =~ ^([0-9]+)m$ ]]; then
+        DURATION_SECONDS=$((${BASH_REMATCH[1]} * 60))
+    elif [[ $TIME_RANGE =~ ^([0-9]+)s$ ]]; then
+        DURATION_SECONDS=${BASH_REMATCH[1]}
+    else
+        echo -e "${RED}❌ Invalid time range format: $TIME_RANGE${NC}" >&2
+        echo "Use format like: 1h, 30m, 5m" >&2
+        exit 1
+    fi
+
+    # Calculate timestamp (current time - duration)
+    QUERY_TIME=$(date -d "@$(($(date +%s) - DURATION_SECONDS))" +%s)
+fi
+
 # Query Prometheus
 if [[ "$JSON_MODE" == false ]]; then
     echo -e "${BLUE}📡 Querying Prometheus...${NC}"
+    if [[ -n "$QUERY_TIME" ]]; then
+        echo -e "${BLUE}   Time: ${TIME_RANGE} ago${NC}"
+    fi
 fi
 
 # Execute query using kubectl run with curl
-QUERY_RAW=$(kubectl run curl-prometheus-query --image=curlimages/curl --rm -i --restart=Never -n monitoring -- \
-    curl -s -G \
-    --data-urlencode "query=${PROMQL_QUERY}" \
-    http://prometheus-server.monitoring.svc.cluster.local:80/api/v1/query 2>&1) || {
-    if [[ "$JSON_MODE" == false ]]; then
-        echo -e "${RED}❌ Failed to query Prometheus${NC}" >&2
-        echo -e "${YELLOW}   Error: ${QUERY_RAW}${NC}" >&2
-    else
-        echo "{\"error\": \"Failed to query Prometheus\", \"details\": \"${QUERY_RAW}\"}" >&2
-    fi
-    exit 1
-}
+if [[ -n "$QUERY_TIME" ]]; then
+    # Query with time parameter (historical point in time)
+    QUERY_RAW=$(kubectl run curl-prometheus-query --image=curlimages/curl --rm -i --restart=Never -n monitoring -- \
+        curl -s -G \
+        --data-urlencode "query=${PROMQL_QUERY}" \
+        --data-urlencode "time=${QUERY_TIME}" \
+        http://prometheus-server.monitoring.svc.cluster.local:80/api/v1/query 2>&1) || {
+        if [[ "$JSON_MODE" == false ]]; then
+            echo -e "${RED}❌ Failed to query Prometheus${NC}" >&2
+            echo -e "${YELLOW}   Error: ${QUERY_RAW}${NC}" >&2
+        else
+            echo "{\"error\": \"Failed to query Prometheus\", \"details\": \"${QUERY_RAW}\"}" >&2
+        fi
+        exit 1
+    }
+else
+    # Instant query (no time parameter)
+    QUERY_RAW=$(kubectl run curl-prometheus-query --image=curlimages/curl --rm -i --restart=Never -n monitoring -- \
+        curl -s -G \
+        --data-urlencode "query=${PROMQL_QUERY}" \
+        http://prometheus-server.monitoring.svc.cluster.local:80/api/v1/query 2>&1) || {
+        if [[ "$JSON_MODE" == false ]]; then
+            echo -e "${RED}❌ Failed to query Prometheus${NC}" >&2
+            echo -e "${YELLOW}   Error: ${QUERY_RAW}${NC}" >&2
+        else
+            echo "{\"error\": \"Failed to query Prometheus\", \"details\": \"${QUERY_RAW}\"}" >&2
+        fi
+        exit 1
+    }
+fi
 
 # Filter out kubectl pod messages (appended to JSON without newline)
 # Common kubectl messages: pod deletion, namespace info, warnings, etc.
@@ -181,7 +283,51 @@ fi
 
 # Output based on mode
 if [[ "$JSON_MODE" == true ]]; then
-    # JSON mode: output raw JSON
+    # JSON mode: Three-step validation sequence
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    # STEP 1: Verify Prometheus response has data (already done above at line 218-228)
+    # Query was successful and returned data, proceed with validation if requested
+
+    # STEP 2: Validate response against schema (if --validate flag provided)
+    if [[ "$VALIDATE_MODE" == true ]]; then
+        VALIDATOR_SCRIPT="$SCRIPT_DIR/../tests/validate-prometheus-response.py"
+
+        if [[ ! -f "$VALIDATOR_SCRIPT" ]]; then
+            echo -e "${RED}❌ Validator script not found: ${VALIDATOR_SCRIPT}${NC}" >&2
+            exit 1
+        fi
+
+        # Pipe query result to schema validator
+        echo "$QUERY_RESULT" | python3 "$VALIDATOR_SCRIPT" -
+        VALIDATE_EXIT=$?
+
+        if [[ $VALIDATE_EXIT -ne 0 ]]; then
+            # Schema validation failed, exit before consistency check
+            exit $VALIDATE_EXIT
+        fi
+
+        # If only validating (no --compare-with), exit successfully
+        if [[ -z "$COMPARE_WITH_FILE" ]]; then
+            exit 0
+        fi
+    fi
+
+    # STEP 3: Compare with log file for consistency (if --compare-with flag provided)
+    if [[ -n "$COMPARE_WITH_FILE" ]]; then
+        CONSISTENCY_SCRIPT="$SCRIPT_DIR/../tests/validate-prometheus-consistency.py"
+
+        if [[ ! -f "$CONSISTENCY_SCRIPT" ]]; then
+            echo -e "${RED}❌ Consistency validator not found: ${CONSISTENCY_SCRIPT}${NC}" >&2
+            exit 1
+        fi
+
+        # Pipe query result to consistency validator with log file
+        echo "$QUERY_RESULT" | python3 "$CONSISTENCY_SCRIPT" "$COMPARE_WITH_FILE" -
+        exit $?
+    fi
+
+    # No validation requested, just output raw JSON
     echo "$QUERY_RESULT"
 else
     # Human-readable mode: parse and display

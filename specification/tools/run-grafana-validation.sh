@@ -81,97 +81,52 @@ LIMIT=$((ENTRY_COUNT + 10))  # Add buffer
 print_header "TASK 3.4: GRAFANA DATASOURCE QUERY VALIDATION"
 
 #
-# STEP 3.4.1-3: Loki via Grafana
+# STEP 3.4.1-2: Loki via Grafana
 #
-print_header "Step 3.4.1: Query Loki Via Grafana Datasource Proxy"
-print_step "Querying Loki through Grafana..."
+print_header "Steps 3.4.1-2: Query Loki Via Grafana + Validate Consistency"
+print_step "Querying Loki through Grafana with validation..."
 echo ""
 
-./query-grafana-loki.sh "$SERVICE_NAME" --limit "$LIMIT" --json | \
-    python3 "$TEST_SCRIPT_DIR/validate-loki-response.py" -
+./query-grafana-loki.sh "$SERVICE_NAME" --limit "$LIMIT" --validate --compare-with "$LOG_FILE"
 
 if [[ $? -ne 0 ]]; then
-    print_error "Loki query via Grafana failed"
+    print_error "Loki validation via Grafana failed"
     exit 1
 fi
 
-print_success "Loki query via Grafana validated"
-
-print_header "Step 3.4.2: Compare Grafana-Loki With Log File"
-print_step "Cross-validating Grafana-Loki logs match file logs..."
-echo ""
-
-./query-grafana-loki.sh "$SERVICE_NAME" --limit "$LIMIT" --json | \
-    python3 "$TEST_SCRIPT_DIR/validate-log-consistency.py" "$LOG_FILE" -
-
-if [[ $? -ne 0 ]]; then
-    print_error "Grafana-Loki consistency check failed"
-    exit 1
-fi
-
-print_success "Grafana-Loki consistency validated"
+print_success "Loki query and consistency validated via Grafana"
 
 #
 # STEP 3.4.3-4: Prometheus via Grafana
 #
-print_header "Step 3.4.3: Query Prometheus Via Grafana Datasource Proxy"
-print_step "Querying Prometheus through Grafana..."
+print_header "Steps 3.4.3-4: Query Prometheus Via Grafana + Validate Consistency"
+print_step "Querying Prometheus through Grafana with validation..."
 echo ""
 
-timeout 30 ./query-grafana-prometheus.sh "$SERVICE_NAME" --json 2>/dev/null | \
-    python3 "$TEST_SCRIPT_DIR/validate-prometheus-response.py" -
+timeout 30 ./query-grafana-prometheus.sh "$SERVICE_NAME" --validate --compare-with "$LOG_FILE" 2>/dev/null
 
 if [[ $? -ne 0 ]]; then
-    print_error "Prometheus query via Grafana failed"
+    print_error "Prometheus validation via Grafana failed"
     exit 1
 fi
 
-print_success "Prometheus query via Grafana validated"
-
-print_header "Step 3.4.4: Compare Grafana-Prometheus With Log File"
-print_step "Cross-validating Grafana-Prometheus metrics match file logs..."
-echo ""
-
-timeout 30 ./query-grafana-prometheus.sh "$SERVICE_NAME" --json 2>/dev/null | \
-    python3 "$TEST_SCRIPT_DIR/validate-metrics-consistency.py" "$LOG_FILE" -
-
-if [[ $? -ne 0 ]]; then
-    print_error "Grafana-Prometheus consistency check failed"
-    exit 1
-fi
-
-print_success "Grafana-Prometheus consistency validated"
+print_success "Prometheus query and consistency validated via Grafana"
 
 #
 # STEP 3.4.5-6: Tempo via Grafana
 #
-print_header "Step 3.4.5: Query Tempo Via Grafana Datasource Proxy"
-print_step "Querying Tempo through Grafana..."
+print_header "Steps 3.4.5-6: Query Tempo Via Grafana + Validate Consistency"
+print_step "Querying Tempo through Grafana with validation..."
 echo ""
 
-timeout 30 ./query-grafana-tempo.sh "$SERVICE_NAME" --limit 50 --json 2>/dev/null | \
-    python3 "$TEST_SCRIPT_DIR/validate-tempo-response.py" -
+timeout 30 ./query-grafana-tempo.sh "$SERVICE_NAME" --limit 50 --validate --compare-with "$LOG_FILE" 2>/dev/null
 
 if [[ $? -ne 0 ]]; then
-    print_error "Tempo query via Grafana failed"
+    print_error "Tempo validation via Grafana failed"
     exit 1
 fi
 
-print_success "Tempo query via Grafana validated"
-
-print_header "Step 3.4.6: Compare Grafana-Tempo With Log File"
-print_step "Cross-validating Grafana-Tempo traces match file trace_ids..."
-echo ""
-
-timeout 30 ./query-grafana-tempo.sh "$SERVICE_NAME" --limit 50 --json 2>/dev/null | \
-    python3 "$TEST_SCRIPT_DIR/validate-trace-consistency.py" "$LOG_FILE" -
-
-if [[ $? -ne 0 ]]; then
-    print_error "Grafana-Tempo consistency check failed"
-    exit 1
-fi
-
-print_success "Grafana-Tempo consistency validated"
+print_success "Tempo query and consistency validated via Grafana"
 
 #
 # SUCCESS
@@ -186,12 +141,9 @@ echo "  Log file: $LOG_FILE"
 echo "  Entries: $ENTRY_COUNT"
 echo ""
 echo "Validation steps completed:"
-echo "  3.4.1) ✅ Query Loki via Grafana datasource proxy"
-echo "  3.4.2) ✅ Compare Grafana-Loki with log file"
-echo "  3.4.3) ✅ Query Prometheus via Grafana datasource proxy"
-echo "  3.4.4) ✅ Compare Grafana-Prometheus with log file"
-echo "  3.4.5) ✅ Query Tempo via Grafana datasource proxy"
-echo "  3.4.6) ✅ Compare Grafana-Tempo with log file"
+echo "  3.4.1-2) ✅ Loki: Query + Schema + Consistency"
+echo "  3.4.3-4) ✅ Prometheus: Query + Schema + Consistency"
+echo "  3.4.5-6) ✅ Tempo: Query + Schema + Consistency"
 echo ""
 echo "✅ Grafana can correctly query all backends with snake_case fields"
 echo ""
