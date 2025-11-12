@@ -63,6 +63,7 @@ All sovdev-logger implementations **MUST** follow this standardized directory st
 
 ```
 {language}/
+├── Makefile                                # Consistent interface (optional but recommended)
 ├── src/                                    # Source code (implementation-specific)
 ├── test/
 │   ├── unit/                               # Unit tests (language-specific framework)
@@ -71,7 +72,7 @@ All sovdev-logger implementations **MUST** follow this standardized directory st
 │       └── company-lookup/        # ⚠️ REQUIRED - Used by verification tools
 │           ├── run-test.sh                 # Entry point script (MUST exist)
 │           ├── company-lookup.*            # E2E test implementation
-│           ├── .env                        # OTLP endpoint configuration
+│           ├── .env                        # OTLP configuration (MUST exist)
 │           └── logs/                       # Test output directory
 ```
 
@@ -82,9 +83,9 @@ All sovdev-logger implementations **MUST** follow this standardized directory st
 - This enables language-agnostic verification tools
 - Verification scripts and templates depend on this convention
 
-**2. run-test.sh Script**
-- Entry point for running the full-stack E2E test
-- Loads `.env` configuration
+**2. run-test.sh Script (MUST EXIST)**
+- **REQUIRED file** - Entry point for running the full-stack E2E test
+- Loads `.env` configuration (also REQUIRED)
 - Executes language-specific test command (e.g., `python3 company-lookup.py`, `npx tsx company-lookup.ts`)
 - Returns exit code (0=success, non-zero=failure)
 
@@ -94,7 +95,8 @@ All sovdev-logger implementations **MUST** follow this standardized directory st
 - Demonstrates best practices (FUNCTIONNAME constant, variable reuse, etc.)
 - File extension matches language (.py, .ts, .go, .java, etc.)
 
-**4. .env Configuration**
+**4. .env Configuration (MUST EXIST)**
+- **REQUIRED file** - MUST be present in `test/e2e/company-lookup/.env`
 - Contains OTLP endpoint URLs and configuration
 - Format: `KEY=value` (standard shell format)
 - Example:
