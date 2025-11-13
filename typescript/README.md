@@ -844,6 +844,152 @@ main().catch(async (error) => {
 
 ---
 
+## Optional Diagnostic Functions
+
+⚠️ **These functions are optional and primarily useful during development and debugging.**
+
+### sovdev_validate_config
+
+```typescript
+sovdev_validate_config(): {
+  valid: boolean;
+  missing: string[];
+  warnings: string[];
+  config: {
+    serviceName: string | undefined;
+    logsEndpoint: string | undefined;
+    metricsEndpoint: string | undefined;
+    tracesEndpoint: string | undefined;
+    headers: string | undefined;
+    protocol: string | undefined;
+  };
+}
+```
+
+Validate that all required OpenTelemetry environment variables are set and properly formatted.
+
+**Returns:**
+- `valid` - `true` if all required variables are set, `false` otherwise
+- `missing` - Array of missing required environment variable names
+- `warnings` - Array of configuration warnings
+- `config` - Current configuration values
+
+**Checks for Required Variables:**
+- `OTEL_SERVICE_NAME`
+- `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`
+- `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`
+- `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
+- `OTEL_EXPORTER_OTLP_HEADERS` (must be valid JSON with Host header)
+
+**Example:**
+
+```typescript
+import { sovdev_validate_config, sovdev_initialize } from '@sovdev/logger';
+
+// Validate configuration before initialization
+const validation = sovdev_validate_config();
+
+if (!validation.valid) {
+  console.warn('⚠️  OTLP configuration incomplete:');
+  validation.missing.forEach(v => console.warn(`    - ${v}`));
+  console.warn('    File logging will work, but OTLP export may be disabled.');
+}
+
+if (validation.warnings.length > 0) {
+  console.warn('⚠️  Configuration warnings:');
+  validation.warnings.forEach(w => console.warn(`    - ${w}`));
+}
+
+// Proceed with initialization (file logging still works without OTLP)
+sovdev_initialize('my-service', '1.0.0');
+```
+
+**When to Use:**
+- ✅ During development to verify .env file is configured correctly
+- ✅ In deployment scripts to validate environment before starting service
+- ✅ When debugging "why aren't logs appearing in Loki/Prometheus/Tempo?"
+- ❌ NOT required for normal application operation
+
+---
+
+### sovdev_test_otlp_connection
+
+```typescript
+async sovdev_test_otlp_connection(timeout?: number): Promise<{
+  success: boolean;
+  logs: { reachable: boolean; error?: string };
+  metrics: { reachable: boolean; error?: string };
+  traces: { reachable: boolean; error?: string };
+}>
+```
+
+Test connectivity to all three OTLP endpoints by sending properly formatted test data.
+
+**Parameters:**
+- `timeout` - Optional timeout in milliseconds (default: 5000ms)
+
+**Returns:** Promise resolving to object containing:
+- `success` - `true` if ALL three endpoints are reachable
+- `logs` - Connectivity result for logs endpoint
+- `metrics` - Connectivity result for metrics endpoint
+- `traces` - Connectivity result for traces endpoint
+
+**Example:**
+
+```typescript
+import { sovdev_test_otlp_connection, sovdev_initialize } from '@sovdev/logger';
+
+// Test connectivity before initialization
+console.log('🔌 Testing OTLP connectivity...');
+const connectivityTest = await sovdev_test_otlp_connection(5000);
+
+if (!connectivityTest.success) {
+  console.warn('⚠️  OTLP connectivity issues detected:');
+
+  if (!connectivityTest.logs.reachable) {
+    console.warn(`    Logs: ${connectivityTest.logs.error}`);
+  }
+
+  if (!connectivityTest.metrics.reachable) {
+    console.warn(`    Metrics: ${connectivityTest.metrics.error}`);
+  }
+
+  if (!connectivityTest.traces.reachable) {
+    console.warn(`    Traces: ${connectivityTest.traces.error}`);
+  }
+
+  console.warn('    Proceeding anyway (file logging will still work)...');
+} else {
+  console.log('✅ All OTLP endpoints reachable');
+}
+
+// Proceed with initialization
+sovdev_initialize('my-service', '1.0.0');
+```
+
+**Common Errors:**
+- **404 Not Found** - Usually indicates missing `Host: otel.localhost` header in `OTEL_EXPORTER_OTLP_HEADERS`
+- **Connection refused** - OTLP collector not running or wrong endpoint URL
+- **Timeout** - Network issue or endpoint unreachable
+
+**When to Use:**
+- ✅ During development to verify OTLP collector is running and accessible
+- ✅ In deployment health checks to validate infrastructure connectivity
+- ✅ When debugging OTLP connection issues (404, connection refused, timeouts)
+- ✅ In CI/CD pipelines to validate deployment environment
+- ❌ NOT required for normal application operation
+
+**Why Three Separate Endpoints?**
+
+OpenTelemetry OTLP collector exposes three separate endpoints by design:
+- `/v1/logs` - Log records
+- `/v1/metrics` - Metric data points
+- `/v1/traces` - Trace spans
+
+Each signal type has different structure and backend routing requirements. This is OpenTelemetry specification standard, not an implementation choice.
+
+---
+
 ## Configuration
 
 ### Scenario 1: Local Development (Console + File Only)

@@ -55,6 +55,8 @@
 // 9. create_peer_services()      - Define external system mappings
 
 import {
+  sovdev_validate_config,    // NEW: Validate OTLP configuration
+  sovdev_test_otlp_connection, // NEW: Test OTLP connectivity
   sovdev_initialize,         // Function 1: Initialize logger with service info
   sovdev_log,                // Function 2: General logging (transactions, errors, etc.)
   sovdev_log_job_status,     // Function 3: Job lifecycle (started/completed)
@@ -506,6 +508,71 @@ async function batchLookup(orgNumbers: string[]): Promise<void> {
 
 async function main() {
   const FUNCTIONNAME = 'main';
+
+  console.log('='.repeat(80));
+  console.log('Company-Lookup E2E Test');
+  console.log('='.repeat(80));
+  console.log('');
+
+  // ============================================================================
+  // PRE-FLIGHT CHECKS: Validate Configuration and Connectivity
+  // ============================================================================
+  // DEMONSTRATES: sovdev_validate_config() and sovdev_test_otlp_connection()
+  //
+  // WHY: Catch configuration issues BEFORE running the test
+  //   - Missing .env file → warns early instead of failing silently
+  //   - Wrong OTLP endpoints → identifies connectivity issues immediately
+  //   - Saves hours of debugging "why isn't data appearing in Grafana?"
+  //
+  // CROSS-LANGUAGE: All language implementations SHOULD add these checks
+
+  console.log('🔍 Step 1: Validating environment configuration...');
+  const configValidation = sovdev_validate_config();
+
+  if (!configValidation.valid) {
+    console.warn('⚠️  OTLP configuration incomplete:');
+    configValidation.missing.forEach(v => console.warn(`    - ${v}`));
+    console.warn('    File logging will work, but OTLP export may be disabled.');
+    console.warn('');
+  } else {
+    console.log('✅ Configuration valid');
+    console.log(`    Service: ${configValidation.config.serviceName}`);
+    console.log(`    Logs endpoint: ${configValidation.config.logsEndpoint}`);
+  }
+
+  if (configValidation.warnings.length > 0) {
+    console.warn('⚠️  Configuration warnings:');
+    configValidation.warnings.forEach(w => console.warn(`    - ${w}`));
+    console.warn('');
+  }
+
+  console.log('');
+  console.log('🔌 Step 2: Testing OTLP connectivity (optional)...');
+  const connectivityTest = await sovdev_test_otlp_connection(5000);
+
+  if (!connectivityTest.success) {
+    console.warn('⚠️  OTLP connectivity issues detected:');
+    if (!connectivityTest.logs.reachable) {
+      console.warn(`    Logs: ${connectivityTest.logs.error}`);
+    }
+    if (!connectivityTest.metrics.reachable) {
+      console.warn(`    Metrics: ${connectivityTest.metrics.error}`);
+    }
+    if (!connectivityTest.traces.reachable) {
+      console.warn(`    Traces: ${connectivityTest.traces.error}`);
+    }
+    console.warn('    Proceeding anyway (file logging will still work)...');
+    console.warn('');
+  } else {
+    console.log('✅ All OTLP endpoints reachable');
+    console.log('    ✓ Logs endpoint');
+    console.log('    ✓ Metrics endpoint');
+    console.log('    ✓ Traces endpoint');
+  }
+
+  console.log('');
+  console.log('='.repeat(80));
+  console.log('');
 
   // ============================================================================
   // INITIALIZATION - Configure sovdev-logger (ONE TIME at startup)
