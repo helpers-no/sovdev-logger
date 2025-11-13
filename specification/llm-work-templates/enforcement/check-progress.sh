@@ -13,15 +13,21 @@
 #
 # This script:
 # 1. Checks if ROADMAP.md exists
-# 2. Parses task completion status
-# 3. Validates phase completion before allowing next phase
-# 4. Blocks validation if ROADMAP.md not being updated
-# 5. Provides helpful feedback about progress
+# 2. Checks if .env file exists and is properly configured (for Task 6+)
+# 3. Parses task completion status
+# 4. Validates phase completion before allowing next phase
+# 5. Blocks validation if ROADMAP.md not being updated
+# 6. Provides helpful feedback about progress
 #
 # Exit codes:
 #   0 - Progress is satisfactory, may proceed
 #   1 - Progress check failed, must update ROADMAP.md
 #   2 - Invalid arguments or missing files
+#
+# Changelog:
+#   2025-11-12: Added .env file validation (prevents missing .env issue from C# implementation)
+#   2025-11-12: Fixed regex to support decimal progress values (e.g., "1.5/4")
+#   2025-11-12: Fixed arithmetic error in count_phase_tasks (double-zero output bug)
 #
 
 set -e  # Exit on error (but we handle errors explicitly)
@@ -88,6 +94,110 @@ fi
 echo -e "${GREEN}✓${NC} Found ROADMAP.md: $ROADMAP_FILE"
 echo ""
 
+# Check if .env file exists (mandatory for Task 5 and beyond)
+ENV_FILE="$PROJECT_ROOT/$LANGUAGE/test/e2e/company-lookup/.env"
+
+echo -e "${BLUE}Checking .env file...${NC}"
+
+# Check if we're past Task 5 (project structure setup)
+# If any Task 6+ is in progress or complete, .env MUST exist
+task_6_or_later=$(grep -E "^- \[(x|-)\].*6\. Implement OTLP" "$ROADMAP_FILE" || echo "")
+
+if [ -n "$task_6_or_later" ]; then
+    # Task 6+ has been started or completed, .env is MANDATORY
+    if [ ! -f "$ENV_FILE" ]; then
+        echo -e "${RED}❌ .env FILE MISSING${NC}"
+        echo -e "${RED}Expected location: $ENV_FILE${NC}"
+        echo ""
+        echo -e "${RED}${BOLD}Task 6 (OTLP exporters) has been started but .env file doesn't exist!${NC}"
+        echo ""
+        echo -e "${YELLOW}This is EXACTLY what happened in C# implementation:${NC}"
+        echo -e "${YELLOW}  - Spent 4+ hours debugging 'why no logs in Loki?'${NC}"
+        echo -e "${YELLOW}  - Answer: .env file was never created${NC}"
+        echo -e "${YELLOW}  - OTLP endpoints were wrong/missing${NC}"
+        echo ""
+        echo -e "${BLUE}To fix:${NC}"
+        echo -e "  1. Copy TypeScript .env as template:"
+        echo -e "     cp typescript/test/e2e/company-lookup/.env $ENV_FILE"
+        echo ""
+        echo -e "  2. Update service name to: sovdev-test-company-lookup-${LANGUAGE}"
+        echo ""
+        echo -e "  3. Verify required variables:"
+        echo -e "     - OTEL_SERVICE_NAME"
+        echo -e "     - OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"
+        echo -e "     - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
+        echo -e "     - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"
+        echo -e "     - OTEL_EXPORTER_OTLP_HEADERS"
+        echo ""
+        echo -e "  4. See task-05-setup-project.md for language-specific adaptations"
+        echo ""
+        exit 1
+    fi
+
+    # .env exists, validate content
+    echo -e "${GREEN}✓${NC} Found .env file: $ENV_FILE"
+
+    # Check for required variables
+    missing_vars=()
+
+    if ! grep -q "OTEL_SERVICE_NAME" "$ENV_FILE"; then
+        missing_vars+=("OTEL_SERVICE_NAME")
+    fi
+
+    if ! grep -q "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT" "$ENV_FILE"; then
+        missing_vars+=("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT")
+    fi
+
+    if ! grep -q "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT" "$ENV_FILE"; then
+        missing_vars+=("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT")
+    fi
+
+    if ! grep -q "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT" "$ENV_FILE"; then
+        missing_vars+=("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+    fi
+
+    if ! grep -q "OTEL_EXPORTER_OTLP_HEADERS" "$ENV_FILE"; then
+        missing_vars+=("OTEL_EXPORTER_OTLP_HEADERS")
+    fi
+
+    if [ ${#missing_vars[@]} -gt 0 ]; then
+        echo -e "${RED}❌ .env FILE INCOMPLETE${NC}"
+        echo ""
+        echo -e "${RED}Missing required variables:${NC}"
+        for var in "${missing_vars[@]}"; do
+            echo -e "  ${RED}  - $var${NC}"
+        done
+        echo ""
+        echo -e "${YELLOW}Copy complete template from typescript/test/e2e/company-lookup/.env${NC}"
+        echo ""
+        exit 1
+    fi
+
+    # Check service name includes language
+    service_name=$(grep "OTEL_SERVICE_NAME" "$ENV_FILE" | cut -d '=' -f2)
+    if ! echo "$service_name" | grep -qi "$LANGUAGE"; then
+        echo -e "${YELLOW}⚠ WARNING: Service name doesn't include language${NC}"
+        echo -e "${YELLOW}  Current: $service_name${NC}"
+        echo -e "${YELLOW}  Expected: sovdev-test-company-lookup-${LANGUAGE}${NC}"
+        echo ""
+        echo -e "${YELLOW}You may want to update this for easier filtering in Grafana.${NC}"
+        echo ""
+        # Don't fail, just warn
+    fi
+
+    echo -e "${GREEN}✓${NC} .env file contains all required variables"
+    echo ""
+else
+    # Task 6 not started yet, .env is optional but recommended
+    if [ -f "$ENV_FILE" ]; then
+        echo -e "${GREEN}✓${NC} .env file exists (good preparation!)"
+        echo ""
+    else
+        echo -e "${BLUE}ℹ${NC} .env file not created yet (will be required for Task 6)"
+        echo ""
+    fi
+fi
+
 # Function to count tasks in a phase
 count_phase_tasks() {
     local phase="$1"
@@ -96,20 +206,27 @@ count_phase_tasks() {
     # Extract phase section
     local phase_section=$(sed -n "/^## Phase $phase:/,/^## /p" "$ROADMAP_FILE")
 
+    # FIX 2025-11-12: Capture count in variable before echoing to avoid double-zero output
+    # Previous: grep -c || echo "0" caused "0\n0" when no matches (grep outputs 0 and exits 1)
+    # This caused arithmetic errors like: "0 0: syntax error in expression"
+    local count
     case "$status" in
         "all")
-            echo "$phase_section" | grep -c "^- \[" || echo "0"
+            count=$(echo "$phase_section" | grep -c "^- \[" || true)
             ;;
         "completed")
-            echo "$phase_section" | grep -c "^- \[x\]" || echo "0"
+            count=$(echo "$phase_section" | grep -c "^- \[x\]" || true)
             ;;
         "in_progress")
-            echo "$phase_section" | grep -c "^- \[-\]" || echo "0"
+            count=$(echo "$phase_section" | grep -c "^- \[-\]" || true)
             ;;
         "pending")
-            echo "$phase_section" | grep -c "^- \[ \]" || echo "0"
+            count=$(echo "$phase_section" | grep -c "^- \[ \]" || true)
             ;;
     esac
+
+    # Ensure we return a number (default to 0 if empty)
+    echo "${count:-0}"
 }
 
 # Function to check if phase is locked
@@ -128,11 +245,12 @@ is_phase_locked() {
 get_phase_progress() {
     local phase="$1"
 
-    # Extract phase progress line like "Phase 0: Planning (2/4 complete)"
+    # Extract phase progress line like "Phase 0: Planning (2/4 complete)" or "Phase 1: (1.5/4 complete)"
     local progress_line=$(grep "^## Phase $phase:" "$ROADMAP_FILE" | head -1)
 
-    # Extract "2/4" pattern
-    if [[ "$progress_line" =~ \(([0-9]+)/([0-9]+) ]]; then
+    # Extract "2/4" or "1.5/4" pattern (supports decimals)
+    # FIX 2025-11-12: Changed from ([0-9]+) to ([0-9.]+) to support decimal progress like "1.5/4"
+    if [[ "$progress_line" =~ \(([0-9.]+)/([0-9]+) ]]; then
         local completed="${BASH_REMATCH[1]}"
         local total="${BASH_REMATCH[2]}"
         echo "$completed/$total"
@@ -187,6 +305,8 @@ echo ""
 total_completed=0
 for phase in 0 1 2 3; do
     phase_completed=$(count_phase_tasks $phase "completed")
+    # Ensure we have a number (default to 0 if empty)
+    phase_completed=${phase_completed:-0}
     total_completed=$((total_completed + phase_completed))
 done
 

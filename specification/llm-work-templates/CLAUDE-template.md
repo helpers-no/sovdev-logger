@@ -66,6 +66,66 @@ Use the **Edit tool** to:
 
 ---
 
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ ⛔ MANDATORY: .env File Checkpoint                                 ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+**CRITICAL BLOCKING REQUIREMENT**
+
+Before implementing OTLP exporters (Task 6), you MUST create the .env file:
+
+### Location
+```
+[LANGUAGE]/test/e2e/company-lookup/.env
+```
+
+### Why This Is Blocking
+
+**Real example**: C# implementation spent 4+ hours debugging "why aren't logs appearing in Loki?" The answer: **.env file was never created**.
+
+Without .env:
+- ❌ OTLP endpoints wrong or missing
+- ❌ Headers not configured → Traefik routing fails (404 errors)
+- ❌ Service name incorrect → Can't query data in Grafana
+- ❌ Hours wasted debugging configuration issues
+
+### Checkpoint: Task 5 Complete?
+
+Before marking Task 5 (Setup project structure) complete, verify:
+
+```bash
+# Check file exists
+ls -la [LANGUAGE]/test/e2e/company-lookup/.env
+
+# Check content
+cat [LANGUAGE]/test/e2e/company-lookup/.env | grep OTEL_SERVICE_NAME
+cat [LANGUAGE]/test/e2e/company-lookup/.env | grep OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+cat [LANGUAGE]/test/e2e/company-lookup/.env | grep OTEL_EXPORTER_OTLP_HEADERS
+
+# Run validation
+cd /workspace/specification/llm-work-templates/enforcement
+./check-progress.sh [LANGUAGE]
+```
+
+### Template Source
+
+**Copy from TypeScript**: `typescript/test/e2e/company-lookup/.env`
+
+See **task-05-setup-project.md** for complete .env file template and language-specific adaptations.
+
+### ⛔ Enforcement Rule
+
+**Task 6 CANNOT start until .env file exists and validation passes.**
+
+If you try to start Task 6 without .env:
+1. STOP immediately
+2. Go back to Task 5
+3. Create .env file
+4. Validate with check-progress.sh
+5. THEN start Task 6
+
+---
+
 ## 🎯 Primary Directive
 
 **ROADMAP.md is your master checklist**

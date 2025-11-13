@@ -418,9 +418,18 @@ Always start each session by reading ROADMAP.md!
 
 **What it checks:**
 1. ROADMAP.md exists
-2. At least one task marked complete (not 0/13)
-3. Phases completed in order (optional, warns if violated)
-4. "Last updated" date exists and is reasonably recent
+2. `.env` file exists and is properly configured (for Task 6+)
+3. At least one task marked complete (not 0/13)
+4. Phases completed in order (optional, warns if violated)
+5. "Last updated" date exists and is reasonably recent
+
+**Recent Enhancements (2025-11-12):**
+- Added `.env` file validation (required after Task 6 - OTLP exporters)
+- Checks for all required OTLP environment variables
+- Validates service name includes language identifier
+- Prevents "missing .env" issue that cost 4+ hours in C# implementation
+- Fixed: Support for decimal progress values (e.g., "1.5/4")
+- Fixed: Arithmetic error when counting completed tasks (double-zero output)
 
 **Exit codes:**
 - 0 - Progress check passed, may proceed
@@ -757,6 +766,6 @@ When improving this system:
 
 ---
 
-**Last updated:** 2025-11-08
+**Last updated:** 2025-11-12
 **Maintainer:** sovdev-logger project
 **License:** Same as project

@@ -920,6 +920,367 @@ let globalLoggerProvider: LoggerProvider | null = null;
  */
 // let globalSessionId: string | null = null;
 
+// =============================================================================
+// CONFIGURATION VALIDATION FUNCTIONS
+// =============================================================================
+
+/**
+ * Validate environment configuration for OTLP exporters
+ *
+ * Returns validation results without throwing errors or exiting.
+ * Useful for:
+ * - Debugging why OTLP data isn't appearing in Loki/Prometheus/Tempo
+ * - Verifying .env file is loaded correctly
+ * - Pre-flight checks in test programs
+ *
+ * NOTE: File logging works without OTLP config, so missing variables
+ * are warnings, not errors.
+ *
+ * @returns Validation results object
+ *
+ * @example
+ * ```typescript
+ * const validation = sovdev_validate_config();
+ *
+ * if (!validation.valid) {
+ *   console.warn('⚠️  OTLP configuration incomplete:');
+ *   validation.missing.forEach(v => console.warn(`  - ${v}`));
+ *   console.warn('File logging will work, but OTLP export disabled.');
+ * }
+ * ```
+ */
+export function sovdev_validate_config(): {
+  valid: boolean;
+  missing: string[];
+  warnings: string[];
+  config: {
+    serviceName: string | undefined;
+    logsEndpoint: string | undefined;
+    metricsEndpoint: string | undefined;
+    tracesEndpoint: string | undefined;
+    headers: string | undefined;
+    protocol: string | undefined;
+  };
+} {
+  const missing: string[] = [];
+  const warnings: string[] = [];
+
+  // Read environment variables
+  const serviceName = process.env.OTEL_SERVICE_NAME;
+  const logsEndpoint = process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT;
+  const metricsEndpoint = process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT;
+  const tracesEndpoint = process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT;
+  const headers = process.env.OTEL_EXPORTER_OTLP_HEADERS;
+  const protocol = process.env.OTEL_EXPORTER_OTLP_PROTOCOL;
+
+  // Check required variables
+  if (!serviceName) missing.push('OTEL_SERVICE_NAME');
+  if (!logsEndpoint) missing.push('OTEL_EXPORTER_OTLP_LOGS_ENDPOINT');
+  if (!metricsEndpoint) missing.push('OTEL_EXPORTER_OTLP_METRICS_ENDPOINT');
+  if (!tracesEndpoint) missing.push('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT');
+
+  // Check headers (required for Traefik routing)
+  if (!headers) {
+    missing.push('OTEL_EXPORTER_OTLP_HEADERS');
+  } else if (!headers.includes('Host')) {
+    warnings.push('OTEL_EXPORTER_OTLP_HEADERS does not contain Host header (required for Traefik routing)');
+  }
+
+  // Check protocol (optional but recommended)
+  if (!protocol) {
+    warnings.push('OTEL_EXPORTER_OTLP_PROTOCOL not set (default: grpc, recommended: http/protobuf)');
+  }
+
+  return {
+    valid: missing.length === 0,
+    missing,
+    warnings,
+    config: {
+      serviceName,
+      logsEndpoint,
+      metricsEndpoint,
+      tracesEndpoint,
+      headers,
+      protocol
+    }
+  };
+}
+
+/**
+ * Generate minimal valid OTLP logs payload
+ */
+function generateOtlpLogsPayload(): string {
+  const now = Date.now() * 1000000; // Convert to nanoseconds
+  return JSON.stringify({
+    resourceLogs: [
+      {
+        resource: {
+          attributes: [{ key: 'service.name', value: { stringValue: 'connectivity-test' } }]
+        },
+        scopeLogs: [
+          {
+            scope: { name: 'connectivity-test' },
+            logRecords: [
+              {
+                timeUnixNano: now.toString(),
+                severityNumber: 9,
+                severityText: 'INFO',
+                body: { stringValue: 'OTLP connectivity test' }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+}
+
+/**
+ * Generate minimal valid OTLP metrics payload
+ */
+function generateOtlpMetricsPayload(): string {
+  const now = Date.now() * 1000000; // Convert to nanoseconds
+  return JSON.stringify({
+    resourceMetrics: [
+      {
+        resource: {
+          attributes: [{ key: 'service.name', value: { stringValue: 'connectivity-test' } }]
+        },
+        scopeMetrics: [
+          {
+            scope: { name: 'connectivity-test' },
+            metrics: [
+              {
+                name: 'connectivity.test',
+                sum: {
+                  dataPoints: [
+                    {
+                      asInt: '1',
+                      timeUnixNano: now.toString()
+                    }
+                  ],
+                  aggregationTemporality: 2,
+                  isMonotonic: true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+}
+
+/**
+ * Generate minimal valid OTLP traces payload
+ */
+function generateOtlpTracesPayload(): string {
+  const now = Date.now() * 1000000; // Convert to nanoseconds
+  const traceId = '0123456789abcdef0123456789abcdef';
+  const spanId = '0123456789abcdef';
+
+  return JSON.stringify({
+    resourceSpans: [
+      {
+        resource: {
+          attributes: [{ key: 'service.name', value: { stringValue: 'connectivity-test' } }]
+        },
+        scopeSpans: [
+          {
+            scope: { name: 'connectivity-test' },
+            spans: [
+              {
+                traceId: traceId,
+                spanId: spanId,
+                name: 'connectivity-test',
+                kind: 1,
+                startTimeUnixNano: now.toString(),
+                endTimeUnixNano: (now + 1000000).toString(),
+                status: { code: 1 }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+}
+
+/**
+ * Helper function to test a single OTLP endpoint
+ * Sends minimal valid OTLP payload to verify endpoint is reachable
+ *
+ * NOTE: Uses Node.js http/https module instead of fetch() because
+ * fetch() doesn't allow setting the Host header (restricted header)
+ */
+async function testEndpoint(
+  endpoint: string,
+  headers: string,
+  timeout: number
+): Promise<{ reachable: boolean; error?: string }> {
+  return new Promise((resolve) => {
+    try {
+      // Parse headers from JSON string
+      let headerObj: Record<string, string> = {};
+      try {
+        headerObj = JSON.parse(headers);
+      } catch {
+        resolve({ reachable: false, error: 'Invalid OTEL_EXPORTER_OTLP_HEADERS format (must be JSON)' });
+        return;
+      }
+
+      // Determine payload type based on endpoint URL
+      let payload: string;
+      if (endpoint.includes('/v1/logs')) {
+        payload = generateOtlpLogsPayload();
+      } else if (endpoint.includes('/v1/metrics')) {
+        payload = generateOtlpMetricsPayload();
+      } else if (endpoint.includes('/v1/traces')) {
+        payload = generateOtlpTracesPayload();
+      } else {
+        payload = '{}';
+      }
+
+      // Parse URL
+      const url = new URL(endpoint);
+      const isHttps = url.protocol === 'https:';
+      const httpModule = isHttps ? require('https') : require('http');
+
+      // Prepare request options
+      const options = {
+        hostname: url.hostname,
+        port: url.port || (isHttps ? 443 : 80),
+        path: url.pathname,
+        method: 'POST',
+        headers: {
+          ...headerObj,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        },
+        timeout: timeout
+      };
+
+      const req = httpModule.request(options, (res: any) => {
+        let data = '';
+        res.on('data', (chunk: any) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          if (res.statusCode === 200 || res.statusCode === 202) {
+            resolve({ reachable: true });
+          } else if (res.statusCode === 404) {
+            resolve({
+              reachable: false,
+              error: '404 Not Found - Check Host header in OTEL_EXPORTER_OTLP_HEADERS'
+            });
+          } else if (res.statusCode === 400) {
+            // 400 might mean endpoint is reachable but payload format issue
+            resolve({ reachable: true });
+          } else {
+            resolve({
+              reachable: false,
+              error: `HTTP ${res.statusCode}: ${res.statusMessage || 'Unknown error'}`
+            });
+          }
+        });
+      });
+
+      req.on('error', (error: any) => {
+        resolve({
+          reachable: false,
+          error: error.message || 'Connection failed'
+        });
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        resolve({
+          reachable: false,
+          error: `Connection timeout after ${timeout}ms`
+        });
+      });
+
+      // Send payload
+      req.write(payload);
+      req.end();
+    } catch (error: any) {
+      resolve({
+        reachable: false,
+        error: error.message || 'Connection failed'
+      });
+    }
+  });
+}
+
+/**
+ * Test connectivity to OTLP collector endpoints
+ *
+ * OPTIONAL: Only call this if you want to verify OTLP endpoints are reachable.
+ *
+ * Sends minimal test requests to each OTLP endpoint to verify:
+ * - Endpoint URLs are correct
+ * - Network connectivity works
+ * - Traefik routing (Host header) is configured correctly
+ *
+ * Useful for debugging "why isn't data appearing in Grafana?"
+ *
+ * @param timeout - Timeout in milliseconds (default: 5000)
+ * @returns Connectivity test results for all three endpoints
+ *
+ * @example
+ * ```typescript
+ * const connectivity = await sovdev_test_otlp_connection();
+ *
+ * if (!connectivity.success) {
+ *   console.warn('⚠️  OTLP endpoints not reachable:');
+ *   if (!connectivity.logs.reachable) {
+ *     console.warn(`  Logs: ${connectivity.logs.error}`);
+ *   }
+ *   console.warn('Proceeding with file logging only...');
+ * }
+ * ```
+ */
+export async function sovdev_test_otlp_connection(
+  timeout: number = 5000
+): Promise<{
+  success: boolean;
+  logs: { reachable: boolean; error?: string };
+  metrics: { reachable: boolean; error?: string };
+  traces: { reachable: boolean; error?: string };
+}> {
+  const config = sovdev_validate_config();
+
+  // If config is invalid, return early with config errors
+  if (!config.valid) {
+    const configError = `Missing config: ${config.missing.join(', ')}`;
+    return {
+      success: false,
+      logs: { reachable: false, error: configError },
+      metrics: { reachable: false, error: configError },
+      traces: { reachable: false, error: configError }
+    };
+  }
+
+  // Test each endpoint in parallel
+  const [logs, metrics, traces] = await Promise.all([
+    testEndpoint(config.config.logsEndpoint!, config.config.headers!, timeout),
+    testEndpoint(config.config.metricsEndpoint!, config.config.headers!, timeout),
+    testEndpoint(config.config.tracesEndpoint!, config.config.headers!, timeout)
+  ]);
+
+  return {
+    success: logs.reachable && metrics.reachable && traces.reachable,
+    logs,
+    metrics,
+    traces
+  };
+}
+
+// =============================================================================
+// INITIALIZATION FUNCTION
+// =============================================================================
+
 /**
  * Initialize the Sovdev logger with system identifier and OpenTelemetry SDK
  * Must be called once at application startup
