@@ -8,6 +8,8 @@
 
 // Export main logging functions (with sovdev_ prefix for consistency with Python implementation)
 export {
+  sovdev_validate_config,        // NEW: Validate OTLP configuration
+  sovdev_test_otlp_connection,   // NEW: Test OTLP connectivity
   sovdev_initialize,
   sovdev_flush,
   sovdev_log,
