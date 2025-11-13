@@ -36,14 +36,17 @@
 
 **Unlocked after Phase 0: 4/4 complete**
 
-- [ ] 5. Setup project structure
+- [ ] 5. Setup project structure → [Details](task-05-setup-project.md)
   - Create directory structure
   - Install dependencies
   - Configure build system (Makefile with lint, lint-fix, build, test targets)
   - Setup linting (see specification/10-code-quality.md)
+  - ⚠️ **MANDATORY**: Create .env file in test/e2e/company-lookup/.env
+  - ⛔ **BLOCKING**: Task 6 cannot start without .env file
   - Expected: 45 minutes
 
 - [ ] 6. Implement OTLP exporters → [Details](task-06-implement-otlp.md)
+  - ⛔ **PREREQUISITE**: .env file must exist (from Task 5)
   - OTLP logs exporter
   - OTLP metrics exporter
   - OTLP traces exporter
