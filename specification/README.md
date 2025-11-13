@@ -18,11 +18,12 @@ If you're using Claude Code, you can leverage automatic skills that guide you th
 
 ### Available Skills
 
-**1. implement-language** - Systematic 7-phase implementation
+**1. implement-language** - Systematic 4-phase implementation
 - **Invoke**: "implement sovdev-logger in {language}"
-- Automatically guides through Phase 0-6 with checklist tracking
+- Automatically initializes workspace with ROADMAP.md (13 tasks, 4 phases)
 - Prevents common mistakes (toolchain, SDK comparison, Grafana validation)
 - Enforces completion criteria before claiming "complete"
+- Uses hierarchical task management (v2.0) with enforcement
 
 **2. validate-implementation** - Complete validation suite
 - **Invoke**: "validate the implementation"
@@ -30,9 +31,10 @@ If you're using Claude Code, you can leverage automatic skills that guide you th
 - Ensures ALL 3 Grafana panels show data (often skipped!)
 - Compares metric labels with TypeScript
 
-**3. development-loop** - Iterative 4-step workflow
+**3. development-loop** - Test-driven iterative workflow (6 steps)
 - **Invoke**: "test changes" or "run the development loop"
-- Guides: Build → Run → Validate logs FIRST → Validate OTLP SECOND
+- Guides: Edit → Lint → Build → Run → Validate (8-step sequence) → Iterate
+- Emphasizes test-driven development: when validation fails, go back to Edit
 - Optimized for fast feedback (file validation is instant)
 
 **See**: `.claude/skills/README.md` for complete skills documentation
@@ -50,43 +52,27 @@ If you're using Claude Code, you can leverage automatic skills that guide you th
 
 ## Quick Start: Implementing a New Language
 
-### For Claude Code Users (Easiest)
+### For Claude Code Users
 
-Simply ask Claude Code:
+Ask Claude Code: `"Implement sovdev-logger in {language}"`
+
+The implement-language skill will guide you through the systematic process.
+
+### Manual Approach
+
+**Complete implementation workflow**: See `specification/llm-work-templates/README.md`
+
+**Quick version:**
+```bash
+# 1. Initialize workspace
+./specification/llm-work-templates/enforcement/init-language-workspace.sh {language}
+
+# 2. Read instructions
+cat {language}/llm-work/CLAUDE.md
+cat {language}/llm-work/ROADMAP.md
+
+# 3. Follow ROADMAP.md systematically (13 tasks, 4 phases)
 ```
-"Implement sovdev-logger in {language}"
-```
-
-Claude Code will automatically use the `implement-language` skill to guide you through the 7-phase process systematically, referencing all critical documents and enforcing validation criteria.
-
-### Manual Approach (Without Claude Code Skills)
-
-### The 5-Step Process
-
-1. **Read Critical Documents**
-   - ⚠️ **CRITICAL:** `10-otel-sdk.md` - OpenTelemetry SDK differences (prevents major issues)
-   - ⚠️ **CRITICAL:** `11-llm-checklist-template.md` - Copy to `{language}/llm-work/llm-checklist-{language}.md`
-   - `00-design-principles.md` - Core philosophy
-   - `01-api-contract.md` - API requirements
-   - `09-development-loop.md` - Iterative workflow
-
-2. **Study the Reference Implementation**
-   - Read `typescript/src/logger.ts` - The source of truth
-   - Study TypeScript OTEL SDK behavior
-   - Compare with target language OTEL SDK documentation
-
-3. **Implement the 8 API Functions**
-   - See `01-api-contract.md` for complete specifications
-   - Create SDK comparison document in `{language}/llm-work/`
-
-4. **Implement E2E Test**
-   - Follow `08-testprogram-company-lookup.md` specification
-   - Must produce 17 log entries matching TypeScript structure
-
-5. **Validate**
-   - Run: `./specification/tools/run-full-validation.sh {language}`
-   - Verify Grafana dashboard shows data in ALL 3 panels
-   - Follow checklist in `{language}/llm-work/llm-checklist-{language}.md`
 
 ---
 
@@ -97,8 +83,8 @@ Claude Code will automatically use the `implement-language` skill to guide you t
 | Document | Purpose |
 |----------|---------|
 | **[00-design-principles.md](./00-design-principles.md)** | Core philosophy and design goals |
-| **[10-otel-sdk.md](./10-otel-sdk.md)** ⚠️ **CRITICAL** | OpenTelemetry SDK differences between languages |
-| **[11-llm-checklist-template.md](./11-llm-checklist-template.md)** ⚠️ **CRITICAL** | Systematic implementation checklist |
+| **[llm-work-templates/research-otel-sdk-guide.md](./llm-work-templates/research-otel-sdk-guide.md)** ⚠️ **CRITICAL** | OpenTelemetry SDK differences between languages |
+| **[llm-work-templates/](./llm-work-templates/)** ⚠️ **CRITICAL** | Task management templates (ROADMAP, task files, enforcement) |
 | **[01-api-contract.md](./01-api-contract.md)** | Public API that all languages MUST implement |
 | **[09-development-loop.md](./09-development-loop.md)** | Iterative development workflow |
 
@@ -113,31 +99,34 @@ Claude Code will automatically use the `implement-language` skill to guide you t
 | **[06-test-scenarios.md](./06-test-scenarios.md)** | Test scenarios and verification procedures |
 | **[07-anti-patterns.md](./07-anti-patterns.md)** | Common mistakes to avoid |
 | **[08-testprogram-company-lookup.md](./08-testprogram-company-lookup.md)** | E2E test specification (MUST implement) |
-| **[12-code-quality.md](./12-code-quality.md)** | Code linting standards and quality rules (MANDATORY) |
+| **[10-code-quality.md](./10-code-quality.md)** | Code linting standards and quality rules (MANDATORY) |
 
 ---
 
 ## Development Environment
 
-**⚠️ CRITICAL:** All code execution MUST use DevContainer via `in-devcontainer.sh`.
+**⚠️ CRITICAL for Claude Code (LLM):** You run **inside** the DevContainer at `/workspace/`. Execute all commands directly.
 
 **Architecture Overview:**
-- **Host Machine:** Where you edit files (LLM tools or VSCode)
-- **DevContainer:** Where code executes (language runtimes, tests, OTLP export)
+- **Host Machine:** Where files physically exist (project repository)
+- **DevContainer:** Where Claude Code and code both execute (language runtimes, tests, OTLP export)
 - **Kubernetes Cluster:** Monitoring stack (Loki, Prometheus, Tempo, Grafana via Traefik)
+- **Bind Mount:** Host project directory → `/workspace/` in container (same filesystem, instant sync)
 
 **For architecture diagram and complete details**, see:
 - `05-environment-configuration.md` → **Architecture Diagram** section (visual overview)
 - `05-environment-configuration.md` → Component 1 & 2 (detailed configuration)
 - `tools/README.md` - Validation tool usage and examples
 
-**Key principle:** File operations on host, code execution in DevContainer.
+**Key principle:** You (Claude Code) work at `/workspace/` inside the container. Files are bind-mounted from host.
 
 ---
 
 ## Implementation Workflow
 
-**For detailed workflow**, see `09-development-loop.md` and `11-llm-checklist-template.md`.
+**For detailed workflow**, see `09-development-loop.md` and `llm-work-templates/README.md`.
+
+**Key workflow principle:** Test-driven development with iterative feedback loop. See `09-development-loop.md` → "Test-Driven Development: The Iterative Feedback Loop" section.
 
 ### Quick Reference
 
@@ -146,15 +135,15 @@ Claude Code will automatically use the `implement-language` skill to guide you t
 # Create workspace
 mkdir -p {language}/llm-work {language}/test/e2e/company-lookup
 
-# Copy checklist
-cp specification/11-llm-checklist-template.md {language}/llm-work/llm-checklist-{language}.md
+# Initialize workspace with templates
+./specification/llm-work-templates/enforcement/init-language-workspace.sh {language}
 
 # Copy .env template
 cp typescript/test/e2e/company-lookup/.env {language}/test/e2e/company-lookup/
 ```
 
 **Read before coding:**
-- `10-otel-sdk.md` - Understand OTEL SDK differences
+- `llm-work-templates/research-otel-sdk-guide.md` - Understand OTEL SDK differences
 - `05-environment-configuration.md` - Verify language toolchain installed
 - TypeScript reference: `typescript/src/logger.ts`
 - Target language OTEL SDK documentation
@@ -162,7 +151,7 @@ cp typescript/test/e2e/company-lookup/.env {language}/test/e2e/company-lookup/
 **2. Implementation**
 - Follow `01-api-contract.md` for 8 API functions
 - Document SDK differences in `{language}/llm-work/otel-sdk-comparison.md`
-- Update checklist as you progress
+- Update ROADMAP.md checkboxes as you progress
 
 **3. Testing**
 - Implement E2E test per `08-testprogram-company-lookup.md`
@@ -186,12 +175,12 @@ An implementation is **complete and correct** when:
 3. ✅ Metric labels match TypeScript exactly (peer_service, log_type, log_level with underscores)
 4. ✅ Duration values in milliseconds (histogram unit specified)
 5. ✅ Output structure identical to TypeScript reference
-6. ✅ Complete checklist (`{language}/llm-work/llm-checklist-{language}.md`) shows all items checked
+6. ✅ All tasks in ROADMAP.md marked complete (13/13, 100%)
 
 **For detailed validation procedures**, see:
 - `09-development-loop.md` - Validation workflow
-- `10-otel-sdk.md` - Cross-language Grafana validation
-- `11-llm-checklist-template.md` - Phase 5: Validation section
+- `llm-work-templates/research-otel-sdk-guide.md` - Cross-language Grafana validation
+- `llm-work-templates/task-templates/task-12-validation.md` - Backend validation procedures
 
 ---
 
@@ -226,35 +215,35 @@ An implementation is **complete and correct** when:
 2. **Specification is Source of Truth** - TypeScript shows HOW, specification defines WHAT
 3. **OTEL SDK Differences** - Each language SDK behaves differently; study both before coding
 4. **Grafana Validation is Critical** - File logs passing ≠ implementation complete
-5. **Systematic Progress Tracking** - Use the checklist to prevent premature "complete" claims
+5. **Systematic Progress Tracking** - ROADMAP.md with enforcement prevents premature "complete" claims
 6. **DevContainer for All Execution** - Ensures consistent environment across all developers
 
 ---
 
 ## Common Pitfalls
 
-**For complete list**, see `10-otel-sdk.md` Common Pitfalls section.
+**For complete list**, see `llm-work-templates/research-otel-sdk-guide.md` Common Pitfalls section.
 
 **Top 3 issues from Go implementation:**
 1. ❌ Not verifying language toolchain installed first
 2. ❌ Using semantic convention defaults (dots) instead of underscores (peer_service, log_type, log_level)
 3. ❌ Claiming "complete" without Grafana dashboard validation (all 3 panels must show data)
 
-**Prevention:** Read `10-otel-sdk.md` and follow `11-llm-checklist-template.md` systematically.
+**Prevention:** Read `llm-work-templates/research-otel-sdk-guide.md` and follow ROADMAP.md systematically (task-03 guides SDK research).
 
 ---
 
 ## Getting Help
 
-- **Specification issues:** Check `specification/` documents (00-12)
+- **Specification issues:** Check `specification/` documents (00-09, 12)
 - **Tool usage:** See `specification/tools/README.md`
 - **DevContainer problems:** See `05-environment-configuration.md`
-- **OTEL SDK issues:** See `10-otel-sdk.md` Language-Specific Known Issues
+- **OTEL SDK issues:** See `llm-work-templates/research-otel-sdk-guide.md` Language-Specific Known Issues
 
 ---
 
-**Specification Status:** ✅ v1.1.0 COMPLETE
-**Last Updated:** 2025-10-15
+**Specification Status:** ✅ v2.0.0 COMPLETE
+**Last Updated:** 2025-11-08
 **Reference Implementation:** TypeScript (`typescript/`)
 **Development Environment:** DevContainer Toolbox (required)
-**New in v1.1.0:** OTEL SDK implementation guide (`10-otel-sdk.md`) and systematic checklist (`11-llm-checklist-template.md`) based on Go implementation experience
+**New in v2.0.0:** Hierarchical task management system (`llm-work-templates/`) with enforcement. Uses 13-task ROADMAP.md + detailed task files for systematic implementation. Progress enforcement blocks validation if checklist not followed.

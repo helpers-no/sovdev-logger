@@ -99,8 +99,8 @@ Help them get home to their family. Help yourself build a reputation as someone 
 **→ Implementation Guide:**
 1. **Understand the development environment** - [specification/05-environment-configuration.md](specification/05-environment-configuration.md)
 2. Read [specification/README.md](specification/README.md) - Complete implementation guide
-3. Read [specification/10-otel-sdk.md](specification/10-otel-sdk.md) ⚠️ **CRITICAL**: OTEL SDK differences
-4. Copy [specification/11-llm-checklist-template.md](specification/11-llm-checklist-template.md) to track progress
+3. Read [specification/llm-work-templates/research-otel-sdk-guide.md](specification/llm-work-templates/research-otel-sdk-guide.md) ⚠️ **CRITICAL**: OTEL SDK differences
+4. Initialize workspace with [specification/llm-work-templates/ROADMAP-template.md](specification/llm-work-templates/ROADMAP-template.md) - 13-task workflow
 5. Study [typescript/src/logger.ts](typescript/src/logger.ts) - Reference implementation
 
 **Current implementations:**
@@ -110,11 +110,8 @@ Help them get home to their family. Help yourself build a reputation as someone 
 
 **Validation (run in DevContainer):**
 ```bash
-# Direct (if inside VSCode DevContainer)
-./specification/tools/run-company-lookup-validate.sh {language}
-
-# Or via wrapper (from host machine)
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-company-lookup-validate.sh {language}"
+# From inside DevContainer at /workspace/
+cd /workspace/specification/tools && ./run-company-lookup-validate.sh {language}
 ```
 
 ---
@@ -228,10 +225,12 @@ All sovdev-logger implementations produce **identical log structures** with **sn
   "message": "Human-readable message",
   "timestamp": "2025-10-10T19:38:39.109Z",
   "trace_id": "32-char-hex-trace-identifier",
-  "span_id": "16-char-hex-span-identifier",
+  "span_id": "16-char-hex-span-identifier",  // Optional: only present when logging within an active span
   "peer_service": "external-system-identifier"
 }
 ```
+
+**Note:** `span_id` is only included when the log is emitted within an active OpenTelemetry span. Logs outside of spans will not have this field.
 
 ### Contextual Fields (Optional)
 

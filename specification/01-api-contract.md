@@ -4,6 +4,20 @@
 
 All sovdev-logger implementations MUST provide these 8 core functions with identical behavior across languages. Function names and parameter names are standardized, but parameter types should follow language conventions (e.g., `string | undefined` in TypeScript, `Optional<String>` in Java, `Option<String>` in Rust).
 
+**Core Functions** (Mandatory):
+1. `sovdev_initialize()` - Initialize logger with service info
+2. `sovdev_log()` - Log a transaction
+3. `sovdev_log_job_status()` - Log job lifecycle events
+4. `sovdev_log_job_progress()` - Log job progress
+5. `sovdev_flush()` - Flush logs to backends
+6. `sovdev_start_span()` - Start distributed trace span
+7. `sovdev_end_span()` - End distributed trace span
+8. `create_peer_services()` - Create peer service mappings
+
+**Optional Diagnostic Functions** (Recommended for development):
+9. `sovdev_validate_config()` - Validate OTLP environment configuration
+10. `sovdev_test_otlp_connection()` - Test connectivity to OTLP endpoints
+
 **NOTE**: This specification has been updated to use OpenTelemetry spans for distributed tracing instead of manual trace_id management. See sections 6-7 for `sovdev_start_span()` and `sovdev_end_span()`.
 
 ---
@@ -863,6 +877,261 @@ sovdev_initialize(
 
 ---
 
+## Optional Diagnostic Functions
+
+⚠️ **These functions are OPTIONAL and NOT part of the mandatory 8-function API contract.**
+
+These diagnostic functions help validate OTLP configuration and connectivity during development and deployment. They are designed to be called **before** `sovdev_initialize()` to catch configuration issues early.
+
+**Key Principles**:
+- **Optional**: Implementations MAY provide these functions
+- **Non-blocking**: These functions MUST NOT exit the process or throw unhandled exceptions
+- **Warn-only**: They should log warnings but allow execution to continue
+- **Pre-initialization**: Can be called before `sovdev_initialize()`
+- **Development aid**: Primarily useful during implementation and debugging
+
+---
+
+### 9. sovdev_validate_config
+
+**Purpose**: Validate that all required OpenTelemetry environment variables are set and properly formatted.
+
+**TypeScript Signature**:
+```typescript
+sovdev_validate_config(): {
+  valid: boolean;
+  missing: string[];
+  warnings: string[];
+  config: {
+    serviceName: string | undefined;
+    logsEndpoint: string | undefined;
+    metricsEndpoint: string | undefined;
+    tracesEndpoint: string | undefined;
+    headers: string | undefined;
+    protocol: string | undefined;
+  };
+}
+```
+
+**Parameters**: None
+
+**Returns**: Object containing:
+- `valid`: `true` if all required environment variables are set, `false` otherwise
+- `missing`: Array of missing required environment variable names
+- `warnings`: Array of configuration warnings (e.g., missing optional variables)
+- `config`: Object containing current configuration values (may contain `undefined` values)
+
+**Checks for Required Variables**:
+1. `OTEL_SERVICE_NAME` - Service identifier
+2. `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` - Logs endpoint URL
+3. `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` - Metrics endpoint URL
+4. `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` - Traces endpoint URL
+5. `OTEL_EXPORTER_OTLP_HEADERS` - HTTP headers (must be JSON format)
+
+**Checks for Optional Variables**:
+- `OTEL_EXPORTER_OTLP_PROTOCOL` - Protocol type (default: grpc, recommended: http/protobuf)
+
+**Validates**:
+- Headers contain `Host` header (required for Traefik routing)
+- Headers are valid JSON format
+
+**Behavior**:
+- MUST check all required environment variables
+- MUST NOT exit process or throw exceptions
+- MUST return validation results as structured object
+- MAY log warnings to console
+- SHOULD validate header format (JSON)
+- SHOULD check for common misconfigurations
+
+**Example Usage**:
+```typescript
+// Validate configuration before initialization
+const validation = sovdev_validate_config();
+
+if (!validation.valid) {
+  console.warn('⚠️  OTLP configuration incomplete:');
+  validation.missing.forEach(v => console.warn(`    - ${v}`));
+  console.warn('    File logging will work, but OTLP export may be disabled.');
+}
+
+if (validation.warnings.length > 0) {
+  console.warn('⚠️  Configuration warnings:');
+  validation.warnings.forEach(w => console.warn(`    - ${w}`));
+}
+
+// Proceed with initialization anyway (file logging still works)
+sovdev_initialize('my-service', '1.0.0');
+```
+
+**When to Use**:
+- ✅ During development to verify .env file is configured correctly
+- ✅ In deployment scripts to validate environment before starting service
+- ✅ In health check endpoints to report configuration status
+- ✅ When debugging "why aren't logs appearing in Loki/Prometheus/Tempo?"
+- ❌ NOT required for normal application operation
+
+---
+
+### 10. sovdev_test_otlp_connection
+
+**Purpose**: Test connectivity to all three OTLP endpoints (logs, metrics, traces) by sending properly formatted test data.
+
+**TypeScript Signature**:
+```typescript
+sovdev_test_otlp_connection(timeout?: number): Promise<{
+  success: boolean;
+  logs: { reachable: boolean; error?: string };
+  metrics: { reachable: boolean; error?: string };
+  traces: { reachable: boolean; error?: string };
+}>
+```
+
+**Parameters**:
+- `timeout`: Optional timeout in milliseconds (default: 5000ms)
+
+**Returns**: Promise resolving to object containing:
+- `success`: `true` if ALL three endpoints are reachable, `false` if ANY fail
+- `logs`: Connectivity result for logs endpoint
+  - `reachable`: `true` if endpoint responds with 200/202 status
+  - `error`: Error message if unreachable (optional)
+- `metrics`: Connectivity result for metrics endpoint
+- `traces`: Connectivity result for traces endpoint
+
+**Behavior**:
+- MUST send properly formatted OTLP JSON payloads (not empty payloads)
+- MUST test all three endpoints: `/v1/logs`, `/v1/metrics`, `/v1/traces`
+- MUST include all required headers (including `Host` header for Traefik)
+- MUST respect timeout parameter
+- MUST NOT exit process or throw unhandled exceptions
+- MUST return structured results even if all endpoints fail
+- SHOULD send minimal valid OTLP data (single log record, metric data point, span)
+- SHOULD use language-native HTTP client that allows custom headers
+
+**OTLP Payload Format**:
+The function must send valid OTLP/JSON payloads as defined by OpenTelemetry spec:
+
+**Logs Payload** (`/v1/logs`):
+```json
+{
+  "resourceLogs": [{
+    "resource": {
+      "attributes": [{"key": "service.name", "value": {"stringValue": "connectivity-test"}}]
+    },
+    "scopeLogs": [{
+      "scope": {"name": "connectivity-test"},
+      "logRecords": [{
+        "timeUnixNano": "1699999999000000000",
+        "severityNumber": 9,
+        "severityText": "INFO",
+        "body": {"stringValue": "OTLP connectivity test"}
+      }]
+    }]
+  }]
+}
+```
+
+**Metrics Payload** (`/v1/metrics`):
+```json
+{
+  "resourceMetrics": [{
+    "resource": {
+      "attributes": [{"key": "service.name", "value": {"stringValue": "connectivity-test"}}]
+    },
+    "scopeMetrics": [{
+      "scope": {"name": "connectivity-test"},
+      "metrics": [{
+        "name": "connectivity.test",
+        "sum": {
+          "dataPoints": [{"asInt": "1", "timeUnixNano": "1699999999000000000"}],
+          "aggregationTemporality": 2,
+          "isMonotonic": true
+        }
+      }]
+    }]
+  }]
+}
+```
+
+**Traces Payload** (`/v1/traces`):
+```json
+{
+  "resourceSpans": [{
+    "resource": {
+      "attributes": [{"key": "service.name", "value": {"stringValue": "connectivity-test"}}]
+    },
+    "scopeSpans": [{
+      "scope": {"name": "connectivity-test"},
+      "spans": [{
+        "traceId": "0123456789abcdef0123456789abcdef",
+        "spanId": "0123456789abcdef",
+        "name": "connectivity-test",
+        "kind": 1,
+        "startTimeUnixNano": "1699999999000000000",
+        "endTimeUnixNano": "1699999999001000000",
+        "status": {"code": 1}
+      }]
+    }]
+  }]
+}
+```
+
+**HTTP Status Codes**:
+- `200 OK` or `202 Accepted`: Endpoint is reachable and accepting data ✅
+- `400 Bad Request`: Endpoint is reachable but may reject malformed data (still consider reachable) ✅
+- `404 Not Found`: Usually indicates missing `Host` header or incorrect routing ❌
+- `Timeout`: Network issue or endpoint unreachable ❌
+- `Connection refused`: Service not running ❌
+
+**Example Usage**:
+```typescript
+// Test connectivity before initialization
+console.log('🔌 Testing OTLP connectivity...');
+const connectivityTest = await sovdev_test_otlp_connection(5000);
+
+if (!connectivityTest.success) {
+  console.warn('⚠️  OTLP connectivity issues detected:');
+
+  if (!connectivityTest.logs.reachable) {
+    console.warn(`    Logs: ${connectivityTest.logs.error}`);
+  }
+
+  if (!connectivityTest.metrics.reachable) {
+    console.warn(`    Metrics: ${connectivityTest.metrics.error}`);
+  }
+
+  if (!connectivityTest.traces.reachable) {
+    console.warn(`    Traces: ${connectivityTest.traces.error}`);
+  }
+
+  console.warn('    Proceeding anyway (file logging will still work)...');
+} else {
+  console.log('✅ All OTLP endpoints reachable');
+}
+
+// Proceed with initialization anyway
+sovdev_initialize('my-service', '1.0.0');
+```
+
+**When to Use**:
+- ✅ During development to verify OTLP collector is running and accessible
+- ✅ In deployment health checks to validate infrastructure connectivity
+- ✅ When debugging "404 Not Found" errors (likely missing Host header)
+- ✅ When debugging "connection refused" errors (collector not running)
+- ✅ In CI/CD pipelines to validate deployment environment
+- ❌ NOT required for normal application operation
+- ❌ NOT a replacement for proper monitoring
+
+**Implementation Note**:
+Some HTTP client libraries (e.g., `fetch()` in Node.js) restrict certain headers like `Host` for security reasons. Implementations should use native HTTP clients (e.g., `http`/`https` modules in Node.js, `HttpClient` in C#, `net/http` in Go) that allow full header control.
+
+**Why Three Separate Endpoints?**
+OpenTelemetry OTLP collector exposes three separate endpoints by design:
+- Each signal type (logs, metrics, traces) has different structure and backend routing
+- Different signals may be sent to different backends (e.g., Loki for logs, Prometheus for metrics, Tempo for traces)
+- This is OpenTelemetry specification standard, not an implementation choice
+
+---
+
 ## Log Levels
 
 All implementations MUST support these 6 log levels:
@@ -990,6 +1259,10 @@ This API contract is **version 1.0.0**.
 
 ---
 
-**Document Status:** ✅ v1.0.0 COMPLETE
-**Last Updated:** 2025-10-27
-**Part of:** sovdev-logger specification v1.1.0
+**Document Status:** ✅ v1.1.0 COMPLETE
+**Last Updated:** 2025-11-12
+**Part of:** sovdev-logger specification v1.2.0
+
+**Changelog**:
+- v1.1.0 (2025-11-12): Added Optional Diagnostic Functions section (sovdev_validate_config, sovdev_test_otlp_connection)
+- v1.0.0 (2025-10-27): Initial release with 8 mandatory functions

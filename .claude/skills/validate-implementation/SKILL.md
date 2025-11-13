@@ -1,17 +1,17 @@
 ---
 description: "Run complete validation suite for sovdev-logger implementation. Validates file logs, OTLP backends, and Grafana dashboard. Use when validating any language implementation."
-version: "1.2.0"
-last_updated: "2025-10-27"
+version: "3.0.0"
+last_updated: "2025-10-31"
 references:
-  - specification/11-llm-checklist-template.md
+  - specification/llm-work-templates/validation-sequence.md
   - specification/tools/README.md
-  - specification/10-otel-sdk.md
+  - specification/llm-work-templates/research-otel-sdk-guide.md
   - .claude/skills/_SHARED.md
 ---
 
 # Validate Implementation Skill
 
-When the user asks to validate a sovdev-logger implementation, run the complete validation sequence defined in the specification.
+When the user asks to validate a sovdev-logger implementation, guide them through the complete 8-step validation sequence.
 
 ## ⚠️ IMPORTANT: Directory Restrictions
 
@@ -19,20 +19,29 @@ When the user asks to validate a sovdev-logger implementation, run the complete 
 
 **Summary:** Only use `specification/`, `typescript/`, and `{language}/` directories. Do NOT access `terchris/` or `topsecret/`.
 
-## Validation Workflow
+## 📚 Authoritative Documentation
 
-**CRITICAL:** Follow the complete 8-step validation sequence.
+**Primary:** `specification/llm-work-templates/validation-sequence.md`
+- Complete 8-step validation sequence
+- All commands with examples
+- Step-by-step blocking points
+- Success criteria
+- Common issues and fixes
 
-**AUTHORITATIVE VALIDATION GUIDE:** `specification/11-llm-checklist-template.md` → **Phase 5: Validation**
+**Tools reference:** `specification/tools/README.md`
+- Complete tool documentation
+- Common debugging scenarios
+- Query tools for debugging
 
-This section contains:
-- ✅ Complete 8-step validation sequence (Steps 1-8)
-- ✅ Blocking points between steps (don't skip ahead)
-- ✅ What each step checks and which tool to use
-- ✅ Pass/Fail checkboxes for tracking progress
-- ✅ Automated validation (Steps 1-7) vs Manual validation (Step 8)
+**OTLP issues:** `specification/llm-work-templates/research-otel-sdk-guide.md`
+- SDK-specific issues
+- Common pitfalls (metric labels, HTTP headers)
 
-**The 8 steps are:**
+## The 8-Step Validation Sequence
+
+**Read `specification/llm-work-templates/validation-sequence.md` for complete details and commands.**
+
+**The sequence:**
 1. Validate Log Files (INSTANT) ⚡
 2. Verify Logs in Loki (OTLP → Loki) 🔄
 3. Verify Metrics in Prometheus (OTLP → Prometheus) 🔄
@@ -40,57 +49,36 @@ This section contains:
 5. Verify Grafana-Loki Connection (Grafana → Loki) 🔄
 6. Verify Grafana-Prometheus Connection (Grafana → Prometheus) 🔄
 7. Verify Grafana-Tempo Connection (Grafana → Tempo) 🔄
-8. Verify Grafana Dashboard (Visual Verification) 👁️
+8. Verify Grafana Dashboard (Visual Verification) 👁️ MANDATORY
 
 **⛔ DO NOT skip steps or proceed until each step passes**
-
-**See:** `specification/tools/README.md` → "🔢 Validation Sequence (Step-by-Step)"
-
-## Quick Validation Commands
-
-<!-- Commands below duplicated from specification/tools/README.md for immediate LLM execution convenience -->
-
-**Automated validation (Steps 1-7):**
-```bash
-./specification/tools/in-devcontainer.sh -e "cd /workspace/specification/tools && ./run-full-validation.sh {language}"
-```
-
-**Manual Step 8: Grafana Dashboard**
-- Open http://grafana.localhost
-- Navigate to Structured Logging Testing Dashboard
-- Verify ALL 3 panels show data for BOTH TypeScript AND {language}
-
-**See:** `specification/11-llm-checklist-template.md` → "Phase 5" (complete step-by-step instructions)
 
 ## Success Criteria
 
 Implementation is validated when:
-- ✅ ALL 8 steps from Phase 5 checklist are complete
-- ✅ Each step shows ✅ PASS
+- ✅ ALL 8 steps complete (each shows ✅ PASS)
 - ✅ Grafana dashboard shows data in ALL 3 panels
-- ✅ `{language}/llm-work/llm-checklist-{language}.md` Phase 5 fully checked
+- ✅ All checkboxes in validation-sequence.md are checked
 
-## Debugging
+**Do NOT claim complete until Step 8 (Grafana) is verified.**
 
-**See:** `specification/tools/README.md` → "Common Debugging Scenarios" (complete debugging workflows)
+## Debugging Failed Validation
 
-**See:** `specification/10-otel-sdk.md` (OTLP SDK issues)
+**For debugging workflows:**
+**Read:** `specification/tools/README.md` → "Common Debugging Scenarios"
 
-<!-- Tool names below duplicated from specification/tools/README.md for quick reference -->
+**For OTLP issues:**
+**Read:** `specification/llm-work-templates/research-otel-sdk-guide.md`
 
-**Individual query tools (for debugging):**
-- `query-loki.sh sovdev-test-company-lookup-{language}`
-- `query-prometheus.sh 'sovdev_operations_total'`
-- `query-tempo.sh sovdev-test-company-lookup-{language}`
-
-**All query tool documentation:** See `specification/tools/README.md` → "Query Scripts" section
+**For query tools:**
+**Read:** `specification/tools/README.md` → "Query Scripts" section
 
 ## ⚠️ Execute Commands, Don't Describe Them
 
 **See:** `.claude/skills/_SHARED.md` → "Execute Commands, Don't Describe Them"
 
-**Critical Rule:** When you see a command in this skill, EXECUTE it immediately using the Bash tool. Do NOT describe what you "should" or "will" do.
+**Critical Rule:** When you find commands in the documentation, EXECUTE them immediately using the Bash tool. Do NOT describe what you "should" or "will" do.
 
 ---
 
-**Remember:** Follow the 8-step sequence in `specification/11-llm-checklist-template.md` Phase 5. See `specification/tools/README.md` for complete tool reference.
+**Remember:** Skills are routers. Read `specification/llm-work-templates/validation-sequence.md` for the complete validation process with all commands.

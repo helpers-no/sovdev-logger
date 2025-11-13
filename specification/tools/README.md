@@ -14,15 +14,60 @@ These tools abstract away the complexity of:
 
 ---
 
+## Two-Level Validation Strategy
+
+When implementing sovdev-logger in any programming language, use this approach:
+
+### Level 1: System-Wide Health Check (TypeScript Baseline)
+
+**ALWAYS verify TypeScript works before starting new language implementation**
+
+TypeScript is the reference implementation that proves the observability stack is healthy.
+
+```bash
+# Verify observability stack health (Phase 0, Task 2)
+cd /workspace/typescript/test/e2e/company-lookup && ./run-test.sh
+cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-typescript
+cd /workspace/specification/tools && ./query-prometheus.sh sovdev-test-company-lookup-typescript
+cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-typescript
+```
+
+**Result interpretation**:
+- TypeScript fails → Infrastructure problem (fix Docker, Loki, Prometheus, Tempo)
+- TypeScript passes → Infrastructure is healthy (new language issues are code-specific)
+
+### Level 2: Continuous Language-Specific Validation
+
+Validate your implementation at these checkpoints:
+
+1. **File Format Validation** - After implementing file logging and running test
+   - Run test → Check log files created → Run `validate-log-format.sh`
+
+2. **OTLP Connectivity Test** - After implementing OTLP exporters
+   - Create simple test with SDK functions → Send test data → Verify in backends
+
+3. **Complete Backend Validation** - After E2E test runs successfully
+   - Run E2E test → Wait 10s → Run `run-full-validation.sh` → Check all backends
+
+4. **Grafana Visual Validation** - After automated validation passes
+   - Open Grafana → Verify ALL panels show data
+
+**Key Principle**: TypeScript validates the system. Your language validates its integration with the system.
+
+**Important**: Validation tools check the OUTPUT of your implementation. Build and run your code FIRST, then validate.
+
+**See complete workflow**: `specification/09-development-loop.md` → "Validation-First Development" section
+
+---
+
 ## Prerequisites
 
 Before using these tools, ensure:
 
-1. **DevContainer Toolbox is running:**
-   ```bash
-   docker ps | grep devcontainer-toolbox
-   # Should show: devcontainer-toolbox
-   ```
+1. **Running inside devcontainer:**
+   - These tools must be run from inside the devcontainer environment
+   - Devcontainer provides kubectl access and required tools (curl, jq, python3)
+   - Working directory should be `/workspace/specification/tools/`
 
 2. **Language implementation follows standard structure**:
    ```
@@ -39,13 +84,49 @@ Before using these tools, ensure:
 3. **Monitoring stack is running** (for Loki/Prometheus/Tempo queries):
    ```bash
    kubectl get pods -n monitoring
+   # Should show: loki, prometheus, tempo, grafana, otel-collector pods
    ```
 
 ---
 
 ## 🔢 Validation Sequence (Step-by-Step)
 
-**CRITICAL:** Always validate in this order. Do NOT skip steps or jump ahead to Grafana.
+**WHEN TO USE THIS:** After you have implemented all code and run your E2E test successfully.
+
+**Prerequisites before validation:**
+1. ✅ All code implemented (OTLP exporters, file logging, API functions)
+2. ✅ E2E test created and runs without errors
+3. ✅ E2E test has generated log files in `{language}/test/e2e/company-lookup/logs/`
+4. ✅ Wait 10 seconds for OTLP data to propagate to backends
+
+**CRITICAL:** These validation tools check the OUTPUT of your implementation. They won't work if you haven't implemented and run your code first.
+
+---
+
+### The 8-Step Validation Sequence
+
+**You MUST follow these 8 steps in order.** Do NOT skip steps.
+
+**Why order matters:**
+- If Step 1 fails (file logs incorrect), Steps 2-7 will also fail (they validate the same data exported to backends)
+- Each step validates a different layer of the same data pipeline
+- Skipping to later steps wastes time debugging symptoms instead of root causes
+
+**Rule:** If a step fails, stop and fix it before continuing.
+
+**Option 1: Automated (Recommended)**
+```bash
+# Run Steps 1-7 automatically
+cd /workspace/specification/tools && ./run-full-validation.sh {language}
+
+# If exit code is 0, proceed to Step 8 (Grafana visual)
+# If exit code is non-zero, fix the failing step and re-run
+```
+
+**Option 2: Manual (For troubleshooting)**
+Run each step individually (documented below) to identify which step is failing.
+
+---
 
 ### Step 1: Validate Log Files (INSTANT - 0 seconds) ⚡
 
@@ -55,7 +136,7 @@ Before using these tools, ensure:
 
 **Command:**
 ```bash
-./in-devcontainer.sh validate-log-format {language}/test/e2e/company-lookup/logs/dev.log
+cd /workspace/specification/tools && ./validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log
 ```
 
 **What it checks:**
@@ -79,20 +160,35 @@ Before using these tools, ensure:
 
 **Purpose:** Check that logs reached Loki backend
 
-**Command:**
+**Three Validation Modes (choose based on your needs):**
+
 ```bash
 sleep 10  # Wait for OTLP propagation
-./in-devcontainer.sh query-loki sovdev-test-company-lookup-{language} --json
+
+# Mode 1: Query only (basic check - data exists?)
+./query-loki.sh sovdev-test-company-lookup-{language}
+
+# Mode 2: Query + Schema validation (structure correct?)
+./query-loki.sh sovdev-test-company-lookup-{language} --validate
+
+# Mode 3: Query + Schema + Consistency (matches log file?)
+./query-loki.sh sovdev-test-company-lookup-{language} --validate \
+  --compare-with /workspace/{language}/test/e2e/company-lookup/logs/dev.log
 ```
 
-**What it checks:**
-- ✅ Logs exported via OTLP
-- ✅ Loki received the logs
-- ✅ Log count matches file logs
+**What each mode checks:**
+- **Mode 1**: Logs exported via OTLP, Loki received logs
+- **Mode 2**: Mode 1 + JSON structure, required fields, snake_case naming
+- **Mode 3**: Mode 2 + field-by-field comparison with log file
 
-**Expected result:** Returns log entries (should see 17 entries)
+**Expected result:**
+- Mode 1: Returns log entries (should see 17 entries)
+- Mode 2: Schema validation passes
+- Mode 3: Consistency validation passes (all 17 entries match)
 
-**If FAIL:** 
+**Recommendation:** Use Mode 3 for complete validation, Mode 1 for quick checks
+
+**If FAIL:**
 - OTLP export not configured correctly
 - Check `Host: otel.localhost` header
 - Check OTLP endpoint URL
@@ -107,27 +203,41 @@ sleep 10  # Wait for OTLP propagation
 
 **Purpose:** Check that metrics reached Prometheus backend
 
-**Command:**
+**Three Validation Modes (choose based on your needs):**
+
 ```bash
-./in-devcontainer.sh query-prometheus 'sovdev_operations_total{service_name=~".*{language}.*"}' --json
+# Mode 1: Query only (basic check - data exists?)
+./query-prometheus.sh sovdev-test-company-lookup-{language}
+
+# Mode 2: Query + Schema validation (structure correct?)
+./query-prometheus.sh sovdev-test-company-lookup-{language} --validate
+
+# Mode 3: Query + Schema + Consistency (matches log file?)
+./query-prometheus.sh sovdev-test-company-lookup-{language} --validate \
+  --compare-with /workspace/{language}/test/e2e/company-lookup/logs/dev.log
 ```
 
-**What it checks:**
-- ✅ Metrics exported via OTLP
-- ✅ Prometheus received the metrics
-- ✅ Metric labels are correct (CRITICAL)
+**What each mode checks:**
+- **Mode 1**: Metrics exported via OTLP, Prometheus received metrics
+- **Mode 2**: Mode 1 + JSON structure, required fields, snake_case labels
+- **Mode 3**: Mode 2 + metric counts match log file operation counts
 
-**Expected result:** Returns metrics with correct labels
+**Expected result:**
+- Mode 1: Returns metrics with correct labels
+- Mode 2: Schema validation passes
+- Mode 3: Consistency validation passes (counts match)
 
-**CRITICAL - Check labels:**
+**CRITICAL - Check labels (Mode 1+ required):**
 - ✅ `peer_service` (underscore, NOT peer.service)
 - ✅ `log_type` (underscore, NOT log.type)
 - ✅ `log_level` (underscore, NOT log.level)
 
+**Recommendation:** Use Mode 3 for complete validation, Mode 1 for quick checks
+
 **If FAIL:**
 - Metrics not exported
 - Check OTEL SDK metric configuration
-- See `specification/10-otel-sdk.md` for label issues
+- See `specification/llm-work-templates/research-otel-sdk-guide.md` for label issues
 
 **⛔ DO NOT PROCEED to Step 4 until metrics are in Prometheus with correct labels**
 
@@ -139,16 +249,31 @@ sleep 10  # Wait for OTLP propagation
 
 **Purpose:** Check that traces reached Tempo backend
 
-**Command:**
+**Three Validation Modes (choose based on your needs):**
+
 ```bash
-./in-devcontainer.sh query-tempo sovdev-test-company-lookup-{language} --json
+# Mode 1: Query only (basic check - data exists?)
+./query-tempo.sh sovdev-test-company-lookup-{language}
+
+# Mode 2: Query + Schema validation (structure correct?)
+./query-tempo.sh sovdev-test-company-lookup-{language} --validate
+
+# Mode 3: Query + Schema + Consistency (matches log file?)
+./query-tempo.sh sovdev-test-company-lookup-{language} --validate \
+  --compare-with /workspace/{language}/test/e2e/company-lookup/logs/dev.log
 ```
 
-**What it checks:**
-- ✅ Traces exported via OTLP
-- ✅ Tempo received the traces
+**What each mode checks:**
+- **Mode 1**: Traces exported via OTLP, Tempo received traces
+- **Mode 2**: Mode 1 + JSON structure, required fields, span details
+- **Mode 3**: Mode 2 + trace IDs match log file trace IDs
 
-**Expected result:** Returns trace data
+**Expected result:**
+- Mode 1: Returns trace data
+- Mode 2: Schema validation passes
+- Mode 3: Consistency validation passes (trace IDs match)
+
+**Recommendation:** Use Mode 3 for complete validation, Mode 1 for quick checks
 
 **If FAIL:**
 - Traces not exported
@@ -164,17 +289,31 @@ sleep 10  # Wait for OTLP propagation
 
 **Purpose:** Check that Grafana can query Loki (not just that Loki has data)
 
-**Command:**
+**Three Validation Modes (choose based on your needs):**
+
 ```bash
-./in-devcontainer.sh query-grafana-loki sovdev-test-company-lookup-{language} --json
+# Mode 1: Query only (basic check - Grafana can reach Loki?)
+./query-grafana-loki.sh sovdev-test-company-lookup-{language}
+
+# Mode 2: Query + Schema validation (Grafana returns correct structure?)
+./query-grafana-loki.sh sovdev-test-company-lookup-{language} --validate
+
+# Mode 3: Query + Schema + Consistency (Grafana data matches file?)
+./query-grafana-loki.sh sovdev-test-company-lookup-{language} --validate \
+  --compare-with /workspace/{language}/test/e2e/company-lookup/logs/dev.log
 ```
 
-**What it checks:**
-- ✅ Grafana datasource configured for Loki
-- ✅ Grafana can query Loki through proxy
-- ✅ Same data returned as Step 2
+**What each mode checks:**
+- **Mode 1**: Grafana datasource configured, can query Loki through proxy
+- **Mode 2**: Mode 1 + JSON structure, required fields, snake_case naming
+- **Mode 3**: Mode 2 + Grafana returns same data as direct Loki query
 
-**Expected result:** Returns log entries (same as Step 2, but through Grafana)
+**Expected result:**
+- Mode 1: Returns log entries (same as Step 2, but through Grafana)
+- Mode 2: Schema validation passes
+- Mode 3: Consistency validation passes (matches file)
+
+**Recommendation:** Use Mode 3 to verify Grafana integration is correct
 
 **If FAIL but Step 2 passed:**
 - Grafana datasource misconfigured
@@ -190,17 +329,31 @@ sleep 10  # Wait for OTLP propagation
 
 **Purpose:** Check that Grafana can query Prometheus (not just that Prometheus has data)
 
-**Command:**
+**Three Validation Modes (choose based on your needs):**
+
 ```bash
-./in-devcontainer.sh query-grafana-prometheus 'sovdev_operations_total{service_name=~".*{language}.*"}' --json
+# Mode 1: Query only (basic check - Grafana can reach Prometheus?)
+./query-grafana-prometheus.sh sovdev-test-company-lookup-{language}
+
+# Mode 2: Query + Schema validation (Grafana returns correct structure?)
+./query-grafana-prometheus.sh sovdev-test-company-lookup-{language} --validate
+
+# Mode 3: Query + Schema + Consistency (Grafana data matches file?)
+./query-grafana-prometheus.sh sovdev-test-company-lookup-{language} --validate \
+  --compare-with /workspace/{language}/test/e2e/company-lookup/logs/dev.log
 ```
 
-**What it checks:**
-- ✅ Grafana datasource configured for Prometheus
-- ✅ Grafana can query Prometheus through proxy
-- ✅ Same data returned as Step 3
+**What each mode checks:**
+- **Mode 1**: Grafana datasource configured, can query Prometheus through proxy
+- **Mode 2**: Mode 1 + JSON structure, required fields, snake_case labels
+- **Mode 3**: Mode 2 + Grafana returns same data as direct Prometheus query
 
-**Expected result:** Returns metrics (same as Step 3, but through Grafana)
+**Expected result:**
+- Mode 1: Returns metrics (same as Step 3, but through Grafana)
+- Mode 2: Schema validation passes
+- Mode 3: Consistency validation passes (counts match file)
+
+**Recommendation:** Use Mode 3 to verify Grafana integration is correct
 
 **If FAIL but Step 3 passed:**
 - Grafana datasource misconfigured
@@ -216,17 +369,31 @@ sleep 10  # Wait for OTLP propagation
 
 **Purpose:** Check that Grafana can query Tempo (not just that Tempo has data)
 
-**Command:**
+**Three Validation Modes (choose based on your needs):**
+
 ```bash
-./in-devcontainer.sh query-grafana-tempo sovdev-test-company-lookup-{language} --json
+# Mode 1: Query only (basic check - Grafana can reach Tempo?)
+./query-grafana-tempo.sh sovdev-test-company-lookup-{language}
+
+# Mode 2: Query + Schema validation (Grafana returns correct structure?)
+./query-grafana-tempo.sh sovdev-test-company-lookup-{language} --validate
+
+# Mode 3: Query + Schema + Consistency (Grafana data matches file?)
+./query-grafana-tempo.sh sovdev-test-company-lookup-{language} --validate \
+  --compare-with /workspace/{language}/test/e2e/company-lookup/logs/dev.log
 ```
 
-**What it checks:**
-- ✅ Grafana datasource configured for Tempo
-- ✅ Grafana can query Tempo through proxy
-- ✅ Same data returned as Step 4
+**What each mode checks:**
+- **Mode 1**: Grafana datasource configured, can query Tempo through proxy
+- **Mode 2**: Mode 1 + JSON structure, required fields, span details
+- **Mode 3**: Mode 2 + Grafana returns same data as direct Tempo query
 
-**Expected result:** Returns traces (same as Step 4, but through Grafana)
+**Expected result:**
+- Mode 1: Returns traces (same as Step 4, but through Grafana)
+- Mode 2: Schema validation passes
+- Mode 3: Consistency validation passes (trace IDs match file)
+
+**Recommendation:** Use Mode 3 to verify Grafana integration is correct
 
 **If FAIL but Step 4 passed:**
 - Grafana datasource misconfigured
@@ -240,113 +407,61 @@ sleep 10  # Wait for OTLP propagation
 
 **Tool:** Manual browser check
 
-**Purpose:** Verify dashboard actually displays data correctly
+**Prerequisites:**
+- ✅ Your E2E test ran successfully
+- ✅ Steps 1-7 all passed (either via `run-full-validation.sh` or manually)
+- ✅ No errors in any of the previous steps
+
+**Purpose:** Verify dashboard actually displays data correctly in the UI
 
 **Steps:**
 1. Open http://grafana.localhost
 2. Navigate to: Structured Logging Testing Dashboard
-3. Verify ALL 3 panels show data
+3. Verify ALL 3 panels show data:
+   - Panel 1: Total Operations
+   - Panel 2: Error Rate
+   - Panel 3: Average Operation Duration
 
-**What to check:**
-- [ ] **Panel 1: Total Operations**
-  - TypeScript shows "Last" and "Max" values
-  - {language} shows "Last" and "Max" values
-  
-- [ ] **Panel 2: Error Rate**
-  - TypeScript shows "Last %" and "Max %" values
-  - {language} shows "Last %" and "Max %" values
-  
-- [ ] **Panel 3: Average Operation Duration**
-  - TypeScript shows entries for all peer services
-  - {language} shows entries for all peer services
-  - Values in milliseconds (e.g., 0.538 ms, NOT 0.000538)
+**Expected result:** All 3 panels show data for {language} (similar to TypeScript reference)
 
 **If ANY panel is empty:**
-- Something from Steps 1-7 failed
-- Go back and check each step
+- Steps 1-7 didn't actually pass (even if script said they did)
+- Go back and run `run-full-validation.sh {language}` again
 - DO NOT claim "implementation complete"
 
-**✅ VALIDATION COMPLETE when ALL 8 steps pass**
+**✅ VALIDATION COMPLETE when:**
+- All Steps 1-7 passed
+- ALL 3 Grafana panels show data for {language}
+
+**Remember:** This is the FINAL step in the 8-step sequence. You cannot skip Steps 1-7 and jump here.
 
 ---
 
-## ⚡ Quick Validation (Automated)
-
-**Don't want to run all 8 steps manually?**
-
-Use `run-full-validation.sh` - it runs Steps 1-7 automatically:
-
-```bash
-sleep 10  # Wait for OTLP propagation
-./in-devcontainer.sh run-full-validation {language}
-```
-
-**What it does:**
-- ✅ Step 1: Validates file logs
-- ✅ Step 2: Queries Loki (validates schema + consistency)
-- ✅ Step 3: Queries Prometheus (validates schema + consistency)
-- ✅ Step 4: Queries Tempo (validates schema + consistency)
-- ✅ Step 5: Queries Grafana-Loki proxy
-- ✅ Step 6: Queries Grafana-Prometheus proxy
-- ✅ Step 7: Queries Grafana-Tempo proxy
-
-**You still MUST do Step 8 manually:**
-- Open Grafana dashboard
-- Verify ALL 3 panels show data
-- Check metric labels in Prometheus query
-
-**This is the recommended approach for complete validation.**
+**Summary of 8-Step Validation Sequence:**
+- Steps 1-7: Automated via `run-full-validation.sh` (or run manually for troubleshooting)
+- Step 8: Manual visual check in Grafana (MUST do this even if Steps 1-7 pass)
 
 ---
 
 ## Quick Reference
 
-**Core Principle:** All scripts run INSIDE the devcontainer (which has kubectl, language runtimes, and all tools).
+All scripts run inside the DevContainer at `/workspace/specification/tools/`.
 
-Complete table of all verification tools:
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| [**run-full-validation.sh**](run-full-validation.sh) | **RECOMMENDED** - Complete E2E validation | `./run-full-validation.sh python` |
+| [**run-company-lookup.sh**](run-company-lookup.sh) | Quick smoke test | `./run-company-lookup.sh python` |
+| [**validate-log-format.sh**](validate-log-format.sh) | Validate log file format | `./validate-log-format.sh python/test/logs/dev.log` |
+| [**query-loki.sh**](query-loki.sh) | Query Loki for logs | `./query-loki.sh sovdev-test-company-lookup-python` |
+| [**query-prometheus.sh**](query-prometheus.sh) | Query Prometheus for metrics | `./query-prometheus.sh sovdev-test-company-lookup-python` |
+| [**query-tempo.sh**](query-tempo.sh) | Query Tempo for traces | `./query-tempo.sh sovdev-test-company-lookup-python` |
+| [**validate-grafana-datasources.sh**](validate-grafana-datasources.sh) | Validate Grafana datasource config | `./validate-grafana-datasources.sh` |
+| [**query-grafana-loki.sh**](query-grafana-loki.sh) | Query Loki via Grafana | `./query-grafana-loki.sh sovdev-test-company-lookup-python` |
+| [**query-grafana-prometheus.sh**](query-grafana-prometheus.sh) | Query Prometheus via Grafana | `./query-grafana-prometheus.sh sovdev-test-company-lookup-python` |
+| [**query-grafana-tempo.sh**](query-grafana-tempo.sh) | Query Tempo via Grafana | `./query-grafana-tempo.sh sovdev-test-company-lookup-python` |
+| [**run-grafana-validation.sh**](run-grafana-validation.sh) | Validate Grafana queries only | `./run-grafana-validation.sh <service> <logfile>` |
 
-| Script | Purpose | Inside Container | From Host | Where It Runs |
-|--------|---------|------------------|-----------|---------------|
-| [**run-company-lookup.sh**](run-company-lookup.sh) | Quick smoke test - run app and send to OTLP | `./run-company-lookup.sh python` | `./in-devcontainer.sh run-company-lookup python` | Devcontainer |
-| [**run-full-validation.sh**](run-full-validation.sh) | **RECOMMENDED** - Complete E2E validation | `./run-full-validation.sh python` | `./in-devcontainer.sh run-full-validation python` | Devcontainer |
-| [**run-grafana-validation.sh**](run-grafana-validation.sh) | Validate Grafana datasource queries only | `./run-grafana-validation.sh <service> <logfile>` | `./in-devcontainer.sh run-grafana-validation <service> <logfile>` | Devcontainer |
-| [**query-loki.sh**](query-loki.sh) | Query Loki directly for service logs | `./query-loki.sh sovdev-test-company-lookup-python` | `./in-devcontainer.sh query-loki sovdev-test-company-lookup-python` | Devcontainer |
-| [**query-prometheus.sh**](query-prometheus.sh) | Query Prometheus directly for service metrics | `./query-prometheus.sh sovdev-test-company-lookup-python` | `./in-devcontainer.sh query-prometheus sovdev-test-company-lookup-python` | Devcontainer |
-| [**query-tempo.sh**](query-tempo.sh) | Query Tempo directly for service traces | `./query-tempo.sh sovdev-test-company-lookup-python` | `./in-devcontainer.sh query-tempo sovdev-test-company-lookup-python` | Devcontainer |
-| [**query-grafana.sh**](query-grafana.sh) | Check Grafana datasource configuration | `./query-grafana.sh` | `./in-devcontainer.sh query-grafana` | Devcontainer |
-| [**query-grafana-loki.sh**](query-grafana-loki.sh) | Query Loki THROUGH Grafana proxy | `./query-grafana-loki.sh sovdev-test-company-lookup-python` | `./in-devcontainer.sh query-grafana-loki sovdev-test-company-lookup-python` | Devcontainer |
-| [**query-grafana-prometheus.sh**](query-grafana-prometheus.sh) | Query Prometheus THROUGH Grafana proxy | `./query-grafana-prometheus.sh sovdev-test-company-lookup-python` | `./in-devcontainer.sh query-grafana-prometheus sovdev-test-company-lookup-python` | Devcontainer |
-| [**query-grafana-tempo.sh**](query-grafana-tempo.sh) | Query Tempo THROUGH Grafana proxy | `./query-grafana-tempo.sh sovdev-test-company-lookup-python` | `./in-devcontainer.sh query-grafana-tempo sovdev-test-company-lookup-python` | Devcontainer |
-| [**validate-log-format.sh**](validate-log-format.sh) | Validate log file format against schema | `./validate-log-format.sh python/test/logs/dev.log` | `./in-devcontainer.sh validate-log-format python/test/logs/dev.log` | Devcontainer |
-| [**in-devcontainer.sh**](in-devcontainer.sh) | Universal wrapper to run scripts from host | N/A | `./in-devcontainer.sh <script> [args]` | Host → Devcontainer |
-
-**Aliases (shortcuts with in-devcontainer.sh):**
-- `loki` → `query-loki.sh`
-- `prometheus` / `prom` → `query-prometheus.sh`
-- `tempo` → `query-tempo.sh`
-- `grafana` → `query-grafana.sh`
-- `validate` → `run-full-validation.sh`
-- `validate-logs` → `validate-log-format.sh`
-- `company-lookup` → `run-company-lookup.sh`
-
-**Usage Examples:**
-
-```bash
-# From host machine (most common)
-./in-devcontainer.sh validate python                         # Complete verification (alias)
-./in-devcontainer.sh run-full-validation python              # Complete verification
-./in-devcontainer.sh loki sovdev-test-company-lookup-python  # Query Loki (using alias)
-./in-devcontainer.sh validate-logs python/test/logs/dev.log  # Validate logs (using alias)
-
-# Inside devcontainer (if you're already in there)
-./run-full-validation.sh python
-./query-loki.sh sovdev-test-company-lookup-python
-./validate-log-format.sh python/test/logs/dev.log
-
-# Common workflow from host
-./in-devcontainer.sh run-company-lookup python && \
-./in-devcontainer.sh loki sovdev-test-company-lookup-python --json
-```
+All commands should be run from inside the DevContainer at `/workspace/`.
 
 ---
 
@@ -359,47 +474,69 @@ Complete table of all verification tools:
 | Script | Runs App | File Log Validation | Loki Schema validation | Loki compared to log file validation | Prometheus Schema validation | Prometheus compared to log file validation | Tempo Schema validation | Tempo compared to log file validation | Grafana Proxy | Use Case |
 |--------|----------|---------------------|------------------------|--------------------------------------|------------------------------|--------------------------------------------| ------------------------|---------------------------------------|---------------|----------|
 | **run-company-lookup.sh** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Quick smoke test - file logs only |
-| **run-full-validation.sh** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | **RECOMMENDED** - Complete E2E validation |
-| **run-grafana-validation.sh** | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Grafana proxy validation only (logs must exist) |
+| **run-full-validation.sh** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | **RECOMMENDED** - Complete E2E validation (6 queries via combined flags) |
+| **run-grafana-validation.sh** | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Grafana proxy validation only (3 queries via combined flags) |
 
 **Validation Script Purposes:**
 - **run-company-lookup.sh**: Quick smoke test - runs app, validates file logs only (no backend queries)
 - **run-full-validation.sh**: Complete validation - file logs + all backends (direct + Grafana proxy)
+  - Uses combined validation flags (--validate --compare-with) for efficiency
+  - **6 total queries** (3 direct + 3 via Grafana) instead of 12 separate queries
 - **run-grafana-validation.sh**: Grafana-only validation - assumes logs exist, only tests Grafana datasource queries
+  - Uses combined validation flags (--validate --compare-with) for efficiency
+  - **3 total queries** (one per backend) instead of 6 separate queries
 
-### Query Scripts (Direct Backend Access)
+### Query Scripts (Direct Backend & Grafana Proxy)
 
-| Script | Queries Loki | Queries Prometheus | Queries Tempo | Queries Grafana | Validates Schema | Compares to Log File | Output Format | Use Case |
-|--------|--------------|-------------------|---------------|-----------------|------------------|----------------------|---------------|----------|
-| **query-loki.sh** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | JSON/Text | Query Loki directly - returns raw response |
-| **query-prometheus.sh** | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | JSON/Text | Query Prometheus directly - returns raw response |
-| **query-tempo.sh** | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | JSON/Text | Query Tempo directly - returns raw response |
-| **query-grafana.sh** | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | JSON/Text | Check Grafana datasource config |
-| **query-grafana-loki.sh** | ✅ via Grafana | ❌ | ❌ | ✅ | ❌ | ❌ | JSON/Text | Query Loki through Grafana - returns raw response |
-| **query-grafana-prometheus.sh** | ❌ | ✅ via Grafana | ❌ | ✅ | ❌ | ❌ | JSON/Text | Query Prometheus through Grafana - returns raw response |
-| **query-grafana-tempo.sh** | ❌ | ❌ | ✅ via Grafana | ✅ | ❌ | ❌ | JSON/Text | Query Tempo through Grafana - returns raw response |
+All query scripts support **three validation modes** via optional flags:
 
-**Query Script Purposes:**
-- **Query scripts DO NOT validate** - they only query backends and return raw responses
-- **To validate responses**: Pipe query output to Python validators in `specification/tests/`
-- **Direct query scripts** (query-loki.sh, query-prometheus.sh, query-tempo.sh): Query backends directly using kubectl port-forward
-- **Grafana proxy scripts** (query-grafana-*.sh): Query backends through Grafana datasource proxy (tests Grafana integration)
-- **query-grafana.sh**: Checks Grafana datasource configuration without querying data
-- **Use `--json` flag** for JSON output (pipeable to validators or jq)
+| Script | Queries Backend | Via Grafana | Validates Schema (--validate) | Compares to Log File (--compare-with) | Output Format |
+|--------|----------------|-------------|-------------------------------|---------------------------------------|---------------|
+| **query-loki.sh** | Loki | ❌ | ✅ Optional | ✅ Optional | JSON/Text |
+| **query-prometheus.sh** | Prometheus | ❌ | ✅ Optional | ✅ Optional | JSON/Text |
+| **query-tempo.sh** | Tempo | ❌ | ✅ Optional | ✅ Optional | JSON/Text |
+| **query-grafana-loki.sh** | Loki | ✅ | ✅ Optional | ✅ Optional | JSON/Text |
+| **query-grafana-prometheus.sh** | Prometheus | ✅ | ✅ Optional | ✅ Optional | JSON/Text |
+| **query-grafana-tempo.sh** | Tempo | ✅ | ✅ Optional | ✅ Optional | JSON/Text |
+| **validate-grafana-datasources.sh** | Grafana Config | ✅ | N/A | N/A | JSON/Text |
 
-**Example - Manual Validation:**
+**Three Validation Modes:**
+
+All query scripts follow the same pattern with three progressively deeper validation levels:
+
+**Mode 1: Query Only (No Flags)**
 ```bash
-# 1. Query Loki (returns raw response)
-./query-loki.sh sovdev-test-company-lookup-python --json > /tmp/loki.json
-
-# 2. Validate schema (manually pipe to validator)
-python3 ../tests/validate-loki-response.py /tmp/loki.json
-
-# 3. Compare to log file (manually pipe to validator)
-python3 ../tests/validate-log-consistency.py logs/dev.log /tmp/loki.json
+# Returns raw data, no validation
+./query-loki.sh sovdev-test-company-lookup-python
+./query-grafana-loki.sh sovdev-test-company-lookup-python
 ```
+- Returns: Human-readable summary or JSON (with --json flag)
+- Validates: Only that query succeeded and returned data
 
-**Validation scripts DO this automatically** - `run-full-validation.sh` calls query scripts AND validators together
+**Mode 2: Query + Schema Validation (--validate)**
+```bash
+# Validates response structure and field types
+./query-loki.sh sovdev-test-company-lookup-python --validate
+./query-grafana-loki.sh sovdev-test-company-lookup-python --validate
+```
+- Returns: Validation results (schema compliance)
+- Validates: JSON structure, required fields, field naming (snake_case)
+
+**Mode 3: Query + Schema + Consistency Validation (--validate --compare-with)**
+```bash
+# Validates data matches log file content
+./query-loki.sh sovdev-test-company-lookup-python --validate --compare-with logs/dev.log
+./query-grafana-loki.sh sovdev-test-company-lookup-python --validate --compare-with logs/dev.log
+```
+- Returns: Validation results (schema + consistency)
+- Validates: Schema + field-by-field comparison with log file
+
+**Key Points:**
+- **Direct query scripts** (query-loki.sh, query-prometheus.sh, query-tempo.sh): Query backends directly via kubectl
+- **Grafana proxy scripts** (query-grafana-*.sh): Query backends through Grafana datasource proxy
+- **validate-grafana-datasources.sh**: Validates Grafana datasource configuration only (no data query)
+- **All 6 query scripts** support the same validation flags and patterns
+- **Validation is optional**: Use flags only when you need validation, otherwise get raw data
 
 **Legend:**
 - **Runs App**: Installs/builds library, runs company-lookup app to generate log files
@@ -415,81 +552,95 @@ python3 ../tests/validate-log-consistency.py logs/dev.log /tmp/loki.json
 
 **Recommendations:**
 
-**For Development (Most Common - Use This!):**
+**For Development (Most Common):**
 ```bash
-# Use run-full-validation.sh or the "validate" alias
-./in-devcontainer.sh validate typescript
-# or
-./in-devcontainer.sh run-full-validation typescript
+cd /workspace/specification/tools && ./run-full-validation.sh typescript
 ```
-- ✅ Validates file logs + all backends (Loki, Prometheus, Tempo)
-- ✅ Schema + consistency validation (compares backend with log files)
-- ✅ Validates Grafana datasource configuration
-- ✅ Catches all implementation issues
-- **This is what you want for complete validation**
+Complete validation: file logs + all backends + Grafana datasources.
 
 **For Quick Smoke Test:**
 ```bash
-# Use run-company-lookup.sh - just run the app
-./in-devcontainer.sh run-company-lookup typescript
+cd /workspace/specification/tools && ./run-company-lookup.sh typescript
 ```
-- No backend queries
-- Just validates file log format
-- Use when testing code changes locally (fast feedback)
+Fast feedback: validates file log format only, no backend queries.
 
 **For Grafana-Only Testing:**
 ```bash
-# Use run-grafana-validation.sh - validates Grafana queries only
-./in-devcontainer.sh run-grafana-validation sovdev-test-company-lookup-typescript logs/dev.log
+cd /workspace/specification/tools && ./run-grafana-validation.sh sovdev-test-company-lookup-typescript logs/dev.log
 ```
-- Assumes app already ran and logs exist
-- Only validates Grafana datasource queries
-- Use when testing Grafana dashboard changes
+Validates Grafana datasource queries only (assumes logs exist).
 
 ---
 
 ## Composable Workflows
 
-These tools can be combined for powerful verification workflows:
+These tools can be combined for powerful verification workflows.
 
-### Example 1: Quick end-to-end verification
+**Note on Validation Approaches:**
+- **Orchestration scripts** (run-full-validation.sh, run-grafana-validation.sh) use **combined flags** for efficiency
+- **Manual workflows** can use either approach depending on needs:
+  - **Combined approach**: `--validate --compare-with` (faster, one query per backend)
+  - **Three-step approach**: Query → Schema → Consistency (better for debugging, isolates each validation layer)
+
+### Example 1: Three-Step Validation (Manual Debugging Pattern)
 ```bash
-# Run test, then verify all backends
-./run-company-lookup.sh python && \
-  ./query-loki.sh sovdev-test-company-lookup-python && \
-  ./query-prometheus.sh sovdev-test-company-lookup-python && \
-  ./query-tempo.sh sovdev-test-company-lookup-python
+# Step 1: Query only (check if data exists)
+./query-loki.sh sovdev-test-company-lookup-python
+
+# Step 2: Query + schema validation
+./query-loki.sh sovdev-test-company-lookup-python --validate
+
+# Step 3: Query + schema + consistency validation
+./query-loki.sh sovdev-test-company-lookup-python --validate \
+  --compare-with /workspace/python/test/e2e/company-lookup/logs/dev.log
 ```
 
-### Example 2: Collect evidence for verification report
+### Example 2: Full Backend Validation - Combined Approach (Used by run-full-validation.sh)
 ```bash
-# Run test and save all output
+# Validate all backends with combined flags (efficient - one query per backend)
+LOG_FILE="/workspace/python/test/e2e/company-lookup/logs/dev.log"
+
+./query-loki.sh sovdev-test-company-lookup-python --validate --compare-with "$LOG_FILE"
+./query-prometheus.sh sovdev-test-company-lookup-python --validate --compare-with "$LOG_FILE"
+./query-tempo.sh sovdev-test-company-lookup-python --validate --compare-with "$LOG_FILE"
+
+# This is exactly what run-full-validation.sh does internally (direct backends)
+# It also validates Grafana proxy queries the same way (see Example 3)
+```
+
+### Example 3: Grafana Proxy Validation - Combined Approach (Used by run-grafana-validation.sh)
+```bash
+# Validate Grafana can query all backends correctly (combined flags)
+LOG_FILE="/workspace/typescript/test/e2e/company-lookup/logs/dev.log"
+
+./query-grafana-loki.sh sovdev-test-company-lookup-typescript --validate --compare-with "$LOG_FILE"
+./query-grafana-prometheus.sh sovdev-test-company-lookup-typescript --validate --compare-with "$LOG_FILE"
+./query-grafana-tempo.sh sovdev-test-company-lookup-typescript --validate --compare-with "$LOG_FILE"
+
+# This is exactly what run-grafana-validation.sh does internally
+# Combined with Example 2, this is the complete run-full-validation.sh workflow
+```
+
+### Example 4: Collect Evidence for Verification Report
+```bash
+# Run test and save all validation results
 ./run-company-lookup.sh python
 
-# Collect evidence from all backends
+# Collect evidence from all backends (with validation)
 mkdir -p evidence
-./query-loki.sh sovdev-test-company-lookup-python --json > evidence/loki.json
-./query-prometheus.sh sovdev-test-company-lookup-python --json > evidence/prometheus.json
-./query-tempo.sh sovdev-test-company-lookup-python --json > evidence/tempo.json
+./query-loki.sh sovdev-test-company-lookup-python --validate --json > evidence/loki-validated.json
+./query-prometheus.sh sovdev-test-company-lookup-python --validate --json > evidence/prometheus-validated.json
+./query-tempo.sh sovdev-test-company-lookup-python --validate --json > evidence/tempo-validated.json
 ```
 
-### Example 3: Field verification
+### Example 5: Field Verification (Manual Extraction)
 ```bash
 # Extract specific fields for compliance checking
 ./query-loki.sh sovdev-test-company-lookup-python --json | \
   jq '.data.result[0].stream | {timestamp, severity_text, service_name, session_id}'
 ```
 
-### Example 4: Complete validation workflow
-```bash
-# Run test, validate log files, query backends
-./run-company-lookup.sh python && \
-  ./validate-log-format.sh python/test/e2e/company-lookup/logs/dev.log && \
-  ./validate-log-format.sh python/test/e2e/company-lookup/logs/error.log --error-log && \
-  ./query-loki.sh sovdev-test-company-lookup-python
-```
-
-### Example 5: Cross-language consistency check
+### Example 6: Cross-Language Consistency Check
 ```bash
 # Validate TypeScript and Python produce same format
 mkdir -p validation-results
@@ -504,47 +655,70 @@ diff validation-results/typescript.json validation-results/python.json
 
 ## Integration with Validators
 
-These tools orchestrate the complete validation pipeline by calling validators and querying backends:
+Query scripts have **built-in validation** via `--validate` and `--compare-with` flags. They automatically call Python validators when these flags are used:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │         Shell Script Tools (This Directory)                      │
-│  run-full-validation.sh │ query-loki.sh │ ...                   │
+│  query-loki.sh --validate --compare-with logs/dev.log           │
 └─────────────┬───────────────────────────────────────────────────┘
               │
-              ↓ (calls validators)
+              ↓ (automatically calls validators)
 ┌─────────────────────────────────────────────────────────────────┐
 │              Python Validators (specification/tests/)            │
-│  validate-log-format.py │ validate-loki-response.py │ ...       │
+│  validate-loki-response.py │ validate-loki-consistency.py       │
 └─────────────┬───────────────────────────────────────────────────┘
               │
               ↓ (loads schemas)
 ┌─────────────────────────────────────────────────────────────────┐
 │              JSON Schemas (specification/schemas/)               │
-│  log-entry-schema.json │ loki-response-schema.json │ ...        │
+│  loki-response-schema.json │ log-entry-schema.json │ ...        │
 └─────────────────────────────────────────────────────────────────┘
+```
+
+**Two Validation Approaches:**
+
+**Approach 1: Built-in Validation (Recommended)**
+```bash
+# Query scripts handle everything automatically
+./query-loki.sh sovdev-test-company-lookup-python --validate --compare-with logs/dev.log
+
+# Internally this:
+# 1. Queries Loki backend
+# 2. Calls validate-loki-response.py (schema validation)
+# 3. Calls validate-loki-consistency.py (consistency validation)
+# 4. Reports results
+```
+
+**Approach 2: Manual Validation (Advanced)**
+```bash
+# Manual control over each step (for debugging or custom workflows)
+./query-loki.sh sovdev-test-company-lookup-python --json > /tmp/loki-response.json
+python3 ../tests/validate-loki-response.py /tmp/loki-response.json
+python3 ../tests/validate-loki-consistency.py logs/dev.log /tmp/loki-response.json
 ```
 
 **Validation workflow:**
 
-1. **Tools query backends**: `query-loki.sh`, `query-prometheus.sh`, `query-tempo.sh` fetch data from observability stack
-2. **Tools call validators**: Response data piped to Python validators in `specification/tests/`
-3. **Validators load schemas**: JSON schemas from `specification/schemas/` define validation rules
+1. **Tools query backends**: Fetch data from observability stack
+2. **Tools call validators** (if --validate or --compare-with used): Pipe data to Python validators
+3. **Validators load schemas**: JSON schemas define validation rules
 4. **Results reported**: Validators output pass/fail with detailed error messages
 
-**Example: Full validation pipeline**
+**Complete pipeline example:**
 ```bash
-# 1. Tool runs test
-./run-company-lookup.sh python
+# Automated: run-full-validation.sh calls query scripts with combined validation flags
+./run-full-validation.sh python  # Runs ALL validation steps automatically
 
-# 2. Tool queries Loki backend
-./query-loki.sh sovdev-test-company-lookup-python --json > /tmp/loki-response.json
-
-# 3. Tool calls validator (which loads schema)
-python3 ../tests/validate-loki-response.py /tmp/loki-response.json
-
-# All orchestrated by run-full-validation.sh
-./run-full-validation.sh python  # Runs all steps automatically
+# Internally, this now uses combined flags for efficiency:
+# - ./query-loki.sh SERVICE --validate --compare-with LOG_FILE
+# - ./query-prometheus.sh SERVICE --validate --compare-with LOG_FILE
+# - ./query-tempo.sh SERVICE --validate --compare-with LOG_FILE
+# - ./query-grafana-loki.sh SERVICE --validate --compare-with LOG_FILE
+# - ./query-grafana-prometheus.sh SERVICE --validate --compare-with LOG_FILE
+# - ./query-grafana-tempo.sh SERVICE --validate --compare-with LOG_FILE
+#
+# This reduces total queries from 12 to 6 (50% reduction in query overhead)
 ```
 
 **Related Documentation:**
@@ -554,9 +728,4 @@ python3 ../tests/validate-loki-response.py /tmp/loki-response.json
 ---
 
 
-**Last Updated:** 2025-10-24
-**Maintainer:** Claude Code / Terje Christensen
-
-**Version History:**
-- v2.0.0 (2025-10-24): Added numbered validation sequence (Steps 1-8) with blocking points to enforce stepwise validation
-- v1.0.0 (2025-10-16): Initial version with tool reference tables
+**Last Updated:** 2025-10-31

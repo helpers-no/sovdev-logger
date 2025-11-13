@@ -16,19 +16,29 @@
 set -e
 
 # Script metadata
-SCRIPT_VERSION="3.0.0"
+SCRIPT_VERSION="3.3.0"
 SCRIPT_NAME="DevContainer Setup"
 DEVCONTAINER_DIR=".devcontainer"
 ADDITIONS_DIR="$DEVCONTAINER_DIR/additions"
-TEMPLATES_DIR="$DEVCONTAINER_DIR/templates"
+DEV_TEMPLATE_SCRIPT="$DEVCONTAINER_DIR/dev/dev-template.sh"
 
-# Global arrays
+# Category definitions
+declare -A CATEGORIES
+CATEGORIES["AI_TOOLS"]="AI & Coding Assistants"
+CATEGORIES["LANGUAGE_DEV"]="Language Development"
+CATEGORIES["INFRA_CONFIG"]="Infrastructure & Configuration"
+CATEGORIES["DATA_ANALYTICS"]="Data & Analytics"
+CATEGORIES["UNCATEGORIZED"]="Other Tools"
+
+# Global arrays for tools
 declare -a AVAILABLE_TOOLS=()
 declare -a TOOL_SCRIPTS=()
 declare -a TOOL_DESCRIPTIONS=()
-declare -a AVAILABLE_TEMPLATES=()
-declare -a TEMPLATE_SCRIPTS=()
-declare -a TEMPLATE_DESCRIPTIONS=()
+declare -a TOOL_CATEGORIES=()
+
+# Category organization
+declare -A TOOLS_BY_CATEGORY  # Maps category to comma-separated tool indices
+declare -A CATEGORY_COUNTS     # Maps category to tool count
 
 # Whiptail dimensions
 DIALOG_HEIGHT=20
@@ -91,6 +101,11 @@ scan_available_tools() {
     AVAILABLE_TOOLS=()
     TOOL_SCRIPTS=()
     TOOL_DESCRIPTIONS=()
+    TOOL_CATEGORIES=()
+    
+    # Reset category organization
+    TOOLS_BY_CATEGORY=()
+    CATEGORY_COUNTS=()
     
     if [[ ! -d "$ADDITIONS_DIR" ]]; then
         dialog --title "Error" --msgbox "Tools directory not found: $ADDITIONS_DIR" $DIALOG_HEIGHT $DIALOG_WIDTH
@@ -100,31 +115,68 @@ scan_available_tools() {
     
     local found=0
     
-    # Scan for install scripts
+    # Scan for install scripts (excluding templates and subdirectories)
     for script in "$ADDITIONS_DIR"/install-*.sh; do
-        if [[ -f "$script" && ! "$script" =~ _template ]]; then
-            local script_name=""
-            local script_description=""
+        # Skip if it's a directory or doesn't exist
+        [[ ! -f "$script" ]] && continue
+        
+        # Skip template files
+        [[ "$script" =~ _template ]] && continue
+        
+        local script_name=""
+        local script_description=""
+        local script_category=""
+        
+        # Extract metadata from the file
+        script_name=$(grep -m 1 '^SCRIPT_NAME=' "$script" 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
+        script_description=$(grep -m 1 '^SCRIPT_DESCRIPTION=' "$script" 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
+        script_category=$(grep -m 1 '^SCRIPT_CATEGORY=' "$script" 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
+        
+        # Default category if not specified
+        if [[ -z "$script_category" ]]; then
+            script_category="UNCATEGORIZED"
+        fi
+        
+        if [[ -n "$script_name" ]]; then
+            AVAILABLE_TOOLS+=("$script_name")
+            TOOL_SCRIPTS+=("$(basename "$script")")
+            TOOL_DESCRIPTIONS+=("${script_description:-No description available}")
+            TOOL_CATEGORIES+=("$script_category")
             
-            # Extract SCRIPT_NAME and SCRIPT_DESCRIPTION from the file
-            script_name=$(grep -m 1 '^SCRIPT_NAME=' "$script" 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
-            script_description=$(grep -m 1 '^SCRIPT_DESCRIPTION=' "$script" 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
-            
-            if [[ -n "$script_name" ]]; then
-                AVAILABLE_TOOLS+=("$script_name")
-                TOOL_SCRIPTS+=("$(basename "$script")")
-                TOOL_DESCRIPTIONS+=("${script_description:-No description available}")
-                ((found++))
+            # Track tool index by category
+            local tool_index=$found
+            if [[ -n "${TOOLS_BY_CATEGORY[$script_category]}" ]]; then
+                TOOLS_BY_CATEGORY[$script_category]="${TOOLS_BY_CATEGORY[$script_category]},$tool_index"
             else
-                # Fallback to filename if no SCRIPT_NAME found
-                local fallback_name=$(basename "$script" .sh)
-                fallback_name=${fallback_name#install-}
-                fallback_name=$(echo "$fallback_name" | sed 's/-/ /g' | sed 's/\b\w/\u&/g')
-                AVAILABLE_TOOLS+=("$fallback_name")
-                TOOL_SCRIPTS+=("$(basename "$script")")
-                TOOL_DESCRIPTIONS+=("Generated from filename")
-                ((found++))
+                TOOLS_BY_CATEGORY[$script_category]="$tool_index"
             fi
+            
+            # Increment category count
+            CATEGORY_COUNTS[$script_category]=$((${CATEGORY_COUNTS[$script_category]:-0} + 1))
+            
+            ((found++))
+        else
+            # Fallback to filename if no SCRIPT_NAME found
+            local fallback_name=$(basename "$script" .sh)
+            fallback_name=${fallback_name#install-}
+            fallback_name=$(echo "$fallback_name" | sed 's/-/ /g' | sed 's/\b\w/\u&/g')
+            
+            AVAILABLE_TOOLS+=("$fallback_name")
+            TOOL_SCRIPTS+=("$(basename "$script")")
+            TOOL_DESCRIPTIONS+=("Generated from filename")
+            TOOL_CATEGORIES+=("UNCATEGORIZED")
+            
+            # Track in UNCATEGORIZED
+            local tool_index=$found
+            if [[ -n "${TOOLS_BY_CATEGORY[UNCATEGORIZED]}" ]]; then
+                TOOLS_BY_CATEGORY[UNCATEGORIZED]="${TOOLS_BY_CATEGORY[UNCATEGORIZED]},$tool_index"
+            else
+                TOOLS_BY_CATEGORY[UNCATEGORIZED]="$tool_index"
+            fi
+            
+            CATEGORY_COUNTS[UNCATEGORIZED]=$((${CATEGORY_COUNTS[UNCATEGORIZED]:-0} + 1))
+            
+            ((found++))
         fi
     done
     
@@ -137,54 +189,124 @@ scan_available_tools() {
     return 0
 }
 
-scan_available_templates() {
-    AVAILABLE_TEMPLATES=()
-    TEMPLATE_SCRIPTS=()
-    TEMPLATE_DESCRIPTIONS=()
+#------------------------------------------------------------------------------
+# Category menu
+#------------------------------------------------------------------------------
+
+show_category_menu() {
+    local menu_options=()
+    local option_num=1
     
-    if [[ ! -d "$TEMPLATES_DIR" ]]; then
-        dialog --title "Templates" --msgbox "Templates directory not found: $TEMPLATES_DIR\n\nTemplates functionality is not available." $DIALOG_HEIGHT $DIALOG_WIDTH
-        clear
-        return 1
-    fi
-    
-    local found=0
-    
-    # Scan for template scripts
-    for script in "$TEMPLATES_DIR"/create-*.sh; do
-        if [[ -f "$script" ]]; then
-            local script_name=""
-            local script_description=""
-            
-            # Extract SCRIPT_NAME and SCRIPT_DESCRIPTION from the file
-            script_name=$(grep -m 1 '^SCRIPT_NAME=' "$script" 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
-            script_description=$(grep -m 1 '^SCRIPT_DESCRIPTION=' "$script" 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
-            
-            if [[ -n "$script_name" ]]; then
-                AVAILABLE_TEMPLATES+=("$script_name")
-                TEMPLATE_SCRIPTS+=("$(basename "$script")")
-                TEMPLATE_DESCRIPTIONS+=("${script_description:-No description available}")
-                ((found++))
-            else
-                # Fallback to filename if no SCRIPT_NAME found
-                local fallback_name=$(basename "$script" .sh)
-                fallback_name=${fallback_name#create-}
-                fallback_name=$(echo "$fallback_name" | sed 's/-/ /g' | sed 's/\b\w/\u&/g')
-                AVAILABLE_TEMPLATES+=("$fallback_name")
-                TEMPLATE_SCRIPTS+=("$(basename "$script")")
-                TEMPLATE_DESCRIPTIONS+=("Generated from filename")
-                ((found++))
-            fi
+    # Build menu with categories that have tools, in order
+    for category_key in "AI_TOOLS" "LANGUAGE_DEV" "INFRA_CONFIG" "DATA_ANALYTICS" "UNCATEGORIZED"; do
+        local count=${CATEGORY_COUNTS[$category_key]:-0}
+        
+        # Skip empty categories (except UNCATEGORIZED if it has tools)
+        if [[ $count -eq 0 ]]; then
+            continue
         fi
+        
+        local category_name="${CATEGORIES[$category_key]}"
+        local help_text="$count tool(s) available in this category"
+        
+        menu_options+=("$option_num" "$category_name" "$help_text")
+        ((option_num++))
     done
     
-    if [[ $found -eq 0 ]]; then
-        dialog --title "No Templates Found" --msgbox "No project templates found in $TEMPLATES_DIR" $DIALOG_HEIGHT $DIALOG_WIDTH
+    # If no tools found in any category
+    if [[ ${#menu_options[@]} -eq 0 ]]; then
+        dialog --title "No Tools" --msgbox "No development tools found in any category." $DIALOG_HEIGHT $DIALOG_WIDTH
         clear
         return 1
     fi
     
-    return 0
+    # Show category selection menu with dynamic help
+    local choice
+    choice=$(dialog --clear \
+        --item-help \
+        --title "Development Tools - Select Category" \
+        --menu "Choose a category (ESC to return to main menu):" \
+        $DIALOG_HEIGHT $DIALOG_WIDTH $MENU_HEIGHT \
+        "${menu_options[@]}" \
+        2>&1 >/dev/tty)
+    
+    # Check if user cancelled (ESC)
+    if [[ $? -ne 0 ]]; then
+        return 1
+    fi
+    
+    # Map choice back to category key
+    local selected_index=1
+    for category_key in "AI_TOOLS" "LANGUAGE_DEV" "INFRA_CONFIG" "DATA_ANALYTICS" "UNCATEGORIZED"; do
+        local count=${CATEGORY_COUNTS[$category_key]:-0}
+        if [[ $count -eq 0 ]]; then
+            continue
+        fi
+        
+        if [[ $selected_index -eq $choice ]]; then
+            echo "$category_key"
+            return 0
+        fi
+        ((selected_index++))
+    done
+    
+    return 1
+}
+
+#------------------------------------------------------------------------------
+# Tools in category menu
+#------------------------------------------------------------------------------
+
+show_tools_in_category() {
+    local category_key=$1
+    local category_name="${CATEGORIES[$category_key]}"
+    
+    # Get tool indices for this category
+    local tool_indices="${TOOLS_BY_CATEGORY[$category_key]}"
+    
+    if [[ -z "$tool_indices" ]]; then
+        dialog --title "No Tools" --msgbox "No tools found in category: $category_name" $DIALOG_HEIGHT $DIALOG_WIDTH
+        clear
+        return 1
+    fi
+    
+    while true; do
+        # Build menu with tools in this category
+        local menu_options=()
+        local option_num=1
+        
+        # Convert comma-separated indices to array
+        IFS=',' read -ra INDICES <<< "$tool_indices"
+        
+        for tool_index in "${INDICES[@]}"; do
+            local tool_name="${AVAILABLE_TOOLS[$tool_index]}"
+            local tool_description="${TOOL_DESCRIPTIONS[$tool_index]}"
+            
+            menu_options+=("$option_num" "$tool_name" "$tool_description")
+            ((option_num++))
+        done
+        
+        # Show tool selection menu with dynamic help
+        local choice
+        choice=$(dialog --clear \
+            --item-help \
+            --title "Development Tools - $category_name" \
+            --menu "Choose a tool to install (ESC to go back):" \
+            $DIALOG_HEIGHT $DIALOG_WIDTH $MENU_HEIGHT \
+            "${menu_options[@]}" \
+            2>&1 >/dev/tty)
+        
+        # Check if user cancelled (ESC - go back to category menu)
+        if [[ $? -ne 0 ]]; then
+            return 0
+        fi
+        
+        # Map choice to actual tool index
+        local selected_tool_index=${INDICES[$((choice - 1))]}
+        
+        # Show tool details and confirm installation
+        show_tool_details_and_confirm "$selected_tool_index"
+    done
 }
 
 #------------------------------------------------------------------------------
@@ -197,38 +319,21 @@ install_tools() {
     fi
     
     while true; do
-        # Build simple menu with just tool names
-        local menu_options=()
-        for i in "${!AVAILABLE_TOOLS[@]}"; do
-            menu_options+=("$((i+1))" "${AVAILABLE_TOOLS[$i]}")
-        done
+        # Step 1: Show category menu
+        local selected_category
+        selected_category=$(show_category_menu)
         
-        # Show clean tool selection menu
-        local choice
-        choice=$(dialog --clear \
-            --title "Development Tools" \
-            --menu "Choose a development tool:" \
-            $DIALOG_HEIGHT $DIALOG_WIDTH $MENU_HEIGHT \
-            "${menu_options[@]}" \
-            2>&1 >/dev/tty)
-        
-        # Check if user cancelled
-        if [[ $? -ne 0 ]]; then
-            clear
-            break
+        # If user cancelled or error, exit
+        if [[ $? -ne 0 || -z "$selected_category" ]]; then
+            return 0
         fi
         
-        # Convert choice to array index
-        local tool_index=$((choice - 1))
-        
-        if [[ $tool_index -ge 0 && $tool_index -lt ${#AVAILABLE_TOOLS[@]} ]]; then
-            # Show description and ask for confirmation
-            show_tool_details_and_confirm "$tool_index"
-        fi
+        # Step 2: Show tools in selected category
+        show_tools_in_category "$selected_category"
     done
 }
 
-# New function to show tool details and get user decision
+# Show tool details and get user decision
 show_tool_details_and_confirm() {
     local tool_index=$1
     local tool_name="${AVAILABLE_TOOLS[$tool_index]}"
@@ -250,7 +355,6 @@ show_tool_details_and_confirm() {
             ;;
         2|"")
             # Go back to tool list (do nothing, loop will continue)
-            clear
             ;;
     esac
 }
@@ -298,164 +402,127 @@ execute_tool_installation() {
 }
 
 #------------------------------------------------------------------------------
-# Template installation
+# Template management
 #------------------------------------------------------------------------------
 
-install_templates() {
-    if ! scan_available_templates; then
+# Create project from template - calls dev-template.sh
+create_project_from_template() {
+    clear
+    
+    if [[ ! -f "$DEV_TEMPLATE_SCRIPT" ]]; then
+        echo "❌ Error: dev-template.sh not found at $DEV_TEMPLATE_SCRIPT"
+        echo ""
+        read -p "Press Enter to return to menu..." -r
         return 1
     fi
     
-    while true; do
-        # Build simple menu with just template names
-        local menu_options=()
-        for i in "${!AVAILABLE_TEMPLATES[@]}"; do
-            menu_options+=("$((i+1))" "${AVAILABLE_TEMPLATES[$i]}")
-        done
-        
-        # Show clean template selection menu
-        local choice
-        choice=$(dialog --clear \
-            --title "Project Templates" \
-            --menu "Choose a project template:" \
-            $DIALOG_HEIGHT $DIALOG_WIDTH $MENU_HEIGHT \
-            "${menu_options[@]}" \
-            2>&1 >/dev/tty)
-        
-        # Check if user cancelled
-        if [[ $? -ne 0 ]]; then
-            clear
-            break
-        fi
-        
-        # Convert choice to array index
-        local template_index=$((choice - 1))
-        
-        if [[ $template_index -ge 0 && $template_index -lt ${#AVAILABLE_TEMPLATES[@]} ]]; then
-            # Show description and ask for confirmation
-            show_template_details_and_confirm "$template_index"
-        fi
-    done
-}
-
-# New function to show template details and get user decision
-show_template_details_and_confirm() {
-    local template_index=$1
-    local template_name="${AVAILABLE_TEMPLATES[$template_index]}"
-    local template_description="${TEMPLATE_DESCRIPTIONS[$template_index]}"
+    # Make script executable
+    chmod +x "$DEV_TEMPLATE_SCRIPT"
     
-    # Show template details with Create/Back options
-    local user_choice
-    user_choice=$(dialog --clear \
-        --title "Template Details: $template_name" \
-        --menu "$template_description\n\nWhat would you like to do?" \
-        $DIALOG_HEIGHT $DIALOG_WIDTH 4 \
-        "1" "Create this template" \
-        "2" "Back to template list" \
-        2>&1 >/dev/tty)
+    # Run dev-template.sh which handles everything:
+    # - Clones templates from GitHub
+    # - Shows categorized menu
+    # - Processes selected template
+    bash "$DEV_TEMPLATE_SCRIPT" --skip-update
     
-    case $user_choice in
-        1)
-            execute_template_creation "$template_index"
-            ;;
-        2|"")
-            # Go back to template list (do nothing, loop will continue)
-            clear
-            ;;
-    esac
-}
-
-execute_template_creation() {
-    local template_index=$1
-    local template_name="${AVAILABLE_TEMPLATES[$template_index]}"
-    local script_name="${TEMPLATE_SCRIPTS[$template_index]}"
-    local script_path="$TEMPLATES_DIR/$script_name"
-    
-    if [[ ! -f "$script_path" ]]; then
-        dialog --title "Error" --msgbox "Template script not found: $script_path" $DIALOG_HEIGHT $DIALOG_WIDTH
-        clear
-        return 1
-    fi
-    
-    # Show creation progress
-    {
-        echo "10"
-        echo "# Preparing template creation..."
-        sleep 1
-        
-        echo "30"
-        echo "# Making script executable..."
-        chmod +x "$script_path"
-        sleep 1
-        
-        echo "50"
-        echo "# Running template creation script..."
-        sleep 1
-        
-        # Execute the template creation script and capture output
-        if bash "$script_path" > /tmp/template_output.log 2>&1; then
-            echo "100"
-            echo "# Template created successfully!"
-            sleep 1
-            creation_success=true
-        else
-            echo "100"
-            echo "# Template creation failed!"
-            sleep 1
-            creation_success=false
-        fi
-    } | dialog --title "Creating: $template_name" --gauge "Initializing..." 8 $DIALOG_WIDTH 0
-    
-    clear
-    
-    # Show results
-    if [[ "$creation_success" == "true" ]]; then
-        dialog --title "Success" \
-            --msgbox "✅ Successfully created: $template_name\n\nYour project template has been set up." \
-            $DIALOG_HEIGHT $DIALOG_WIDTH
-    else
-        local error_msg="❌ Failed to create: $template_name\n\n"
-        if [[ -f /tmp/template_output.log ]]; then
-            error_msg+="Error details:\n$(tail -10 /tmp/template_output.log)"
-        fi
-        dialog --title "Creation Failed" --msgbox "$error_msg" $DIALOG_HEIGHT $DIALOG_WIDTH
-    fi
-    
-    clear
-    
-    # Clean up
-    rm -f /tmp/template_output.log
+    echo ""
+    read -p "Press Enter to continue..." -r
 }
 
 #------------------------------------------------------------------------------
 # Environment information
 #------------------------------------------------------------------------------
 
+# Function to check if a tool is installed by reading CHECK_INSTALLED_COMMAND from the script
+check_tool_installed() {
+    local script_name="$1"
+    local script_path="$ADDITIONS_DIR/$script_name"
+    
+    # Check if script exists
+    if [[ ! -f "$script_path" ]]; then
+        return 1
+    fi
+    
+    # Extract CHECK_INSTALLED_COMMAND from the script
+    local check_command=$(grep -m 1 '^CHECK_INSTALLED_COMMAND=' "$script_path" 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
+    
+    # If no CHECK_INSTALLED_COMMAND found, return false (not installed)
+    if [[ -z "$check_command" ]]; then
+        return 1
+    fi
+    
+    # Execute the check command
+    eval "$check_command" 2>/dev/null
+    return $?
+}
+
 show_environment_info() {
-    local info_text=""
+    clear
+    echo ""
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo "                    ENVIRONMENT INFORMATION"
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo ""
     
     # System info
-    info_text+="System Information:\n"
-    info_text+="• Container: $(whoami)@$(hostname)\n"
+    echo "System Information:"
+    echo "  • Container: $(whoami)@$(hostname)"
     if [[ -f /etc/os-release ]]; then
-        info_text+="• OS: $(grep PRETTY_NAME /etc/os-release | cut -d'"' -f2)\n"
+        echo "  • OS: $(grep PRETTY_NAME /etc/os-release | cut -d'"' -f2)"
     fi
-    info_text+="\n"
+    echo ""
     
-    # Core tools
-    info_text+="Installed Core Tools:\n"
-    command -v python3 >/dev/null && info_text+="• Python: $(python3 --version | cut -d' ' -f2)\n"
-    command -v node >/dev/null && info_text+="• Node.js: $(node --version | sed 's/v//')\n"
-    command -v npm >/dev/null && info_text+="• npm: $(npm --version)\n"
-    command -v az >/dev/null && info_text+="• Azure CLI: $(az --version | head -n1 | cut -d' ' -f2)\n"
-    command -v pwsh >/dev/null && info_text+="• PowerShell: $(pwsh --version | cut -d' ' -f2)\n"
-    info_text+="\n"
+    # Core tools - always installed
+    echo "Core Tools:"
+    command -v python3 >/dev/null && echo "  ✅ Python: $(python3 --version | cut -d' ' -f2)" || echo "  ❌ Python: not installed"
+    command -v node >/dev/null && echo "  ✅ Node.js: $(node --version | sed 's/v//')" || echo "  ❌ Node.js: not installed"
+    command -v npm >/dev/null && echo "  ✅ npm: $(npm --version)" || echo "  ❌ npm: not installed"
+    command -v az >/dev/null && echo "  ✅ Azure CLI: $(az version 2>/dev/null | grep -o '\"azure-cli\": \"[^\"]*\"' | cut -d'"' -f4)" || echo "  ❌ Azure CLI: not installed"
+    command -v pwsh >/dev/null && echo "  ✅ PowerShell: $(pwsh --version 2>/dev/null | cut -d' ' -f2)" || echo "  ❌ PowerShell: not installed"
+    echo ""
     
-    # Available tools and templates count
-    scan_available_tools >/dev/null 2>&1 && info_text+="Available Tools: ${#AVAILABLE_TOOLS[@]}\n"
-    scan_available_templates >/dev/null 2>&1 && info_text+="Available Templates: ${#AVAILABLE_TEMPLATES[@]}\n"
+    # Available development tools (both installed and not installed)
+    if scan_available_tools >/dev/null 2>&1; then
+        echo "Available Development Tools:"
+        
+        local installed_tools=()
+        local not_installed_tools=()
+        
+        # Categorize tools
+        for i in "${!AVAILABLE_TOOLS[@]}"; do
+            local tool_name="${AVAILABLE_TOOLS[$i]}"
+            local script_name="${TOOL_SCRIPTS[$i]}"
+            
+            if check_tool_installed "$script_name"; then
+                installed_tools+=("  ✅ $tool_name")
+            else
+                not_installed_tools+=("  ❌ $tool_name")
+            fi
+        done
+        
+        # Display installed tools
+        if [ ${#installed_tools[@]} -gt 0 ]; then
+            echo ""
+            echo "Installed (${#installed_tools[@]}):"
+            for tool in "${installed_tools[@]}"; do
+                echo "$tool"
+            done
+        fi
+        
+        # Display not installed tools
+        if [ ${#not_installed_tools[@]} -gt 0 ]; then
+            echo ""
+            echo "Not Installed (${#not_installed_tools[@]}):"
+            for tool in "${not_installed_tools[@]}"; do
+                echo "$tool"
+            done
+        fi
+    fi
     
-    dialog --title "Environment Information" --msgbox "$info_text" $DIALOG_HEIGHT $DIALOG_WIDTH
+    echo ""
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo ""
+    read -p "Press Enter to return to menu..." -r
     clear
 }
 
@@ -464,6 +531,9 @@ show_environment_info() {
 #------------------------------------------------------------------------------
 
 show_main_menu() {
+    # Disable exit-on-error for interactive menus
+    set +e
+    
     while true; do
         local choice
         choice=$(dialog --clear \
@@ -471,7 +541,7 @@ show_main_menu() {
             --menu "Choose an option:" \
             $DIALOG_HEIGHT $DIALOG_WIDTH $MENU_HEIGHT \
             "1" "Install Development Tools" \
-            "2" "Create Project Template" \
+            "2" "Create project from template" \
             "3" "Show Environment Info" \
             "4" "Exit" \
             2>&1 >/dev/tty)
@@ -487,12 +557,13 @@ show_main_menu() {
             continue
         fi
         
+        # Handle menu choice
         case $choice in
             1)
                 install_tools
                 ;;
             2)
-                install_templates
+                create_project_from_template
                 ;;
             3)
                 show_environment_info

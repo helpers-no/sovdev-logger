@@ -632,15 +632,22 @@ sovdev_log(SOVDEV_LOGLEVELS.INFO, 'lookupCompany', 'Success!',
 
 Every language implementation MUST follow the standardized directory structure documented in `specification/06-test-scenarios.md`.
 
+**⚠️ CRITICAL FILES REQUIRED:**
+- `run-test.sh` - Entry point script (MUST exist)
+- `.env` - OTLP configuration (MUST exist)
+
+These files are NOT optional. Without them, validation tools will fail.
+
 **Quick reference**:
 ```
 {language}/
+├── Makefile                              # Consistent interface (optional but recommended)
 ├── test/
 │   └── e2e/
 │       └── company-lookup/               # ⚠️ REQUIRED - Standardized path
-│           ├── run-test.sh               # Entry point (REQUIRED)
+│           ├── run-test.sh               # Entry point (MUST exist)
 │           ├── company-lookup.*          # Test implementation (.ts, .py, .go, etc.)
-│           ├── .env                      # OTLP configuration
+│           ├── .env                      # OTLP configuration (MUST exist)
 │           └── logs/                     # Output directory
 │               ├── dev.log               # All logs
 │               └── error.log             # Errors only
@@ -660,7 +667,8 @@ Every language implementation MUST follow the standardized directory structure d
 - **Quick start guide**: [`06-test-scenarios.md`](./06-test-scenarios.md) - "Quick Start: Testing Your Implementation"
 
 **👨‍💻 For LLM implementers**:
-- **Systematic checklist**: [`11-llm-checklist-template.md`](./11-llm-checklist-template.md) - Phase 4 (E2E Test Implementation) & Phase 5 (Validation)
+- **Systematic workflow**: [`llm-work-templates/ROADMAP-template.md`](./llm-work-templates/ROADMAP-template.md) - Task 9 (E2E Test Implementation)
+- **Validation guide**: [`llm-work-templates/validation-sequence.md`](./llm-work-templates/validation-sequence.md) - 8-step validation sequence
 
 **Quick validation workflow for company-lookup**:
 
@@ -692,8 +700,8 @@ Use this checklist when implementing company-lookup in a new language:
 
 ### Project Structure
 - [ ] Created `{language}/test/e2e/company-lookup/` directory
-- [ ] Created `run-test.sh` entry point script
-- [ ] Created `.env` configuration file
+- [ ] Created `run-test.sh` entry point script (**REQUIRED - MUST exist**)
+- [ ] Created `.env` configuration file (**REQUIRED - MUST exist**)
 - [ ] Created `logs/` output directory
 
 ### Test Data

@@ -19,6 +19,9 @@ main() {
     }
 
 
+    # Create dev-setup symlink for easy access
+    setup_dev_setup_command
+
     # Mark the git folder as safe
     mark_git_folder_as_safe
     
@@ -171,6 +174,24 @@ configure_git_identity() {
     echo "   git config --global user.email \"your.email@example.com\""
 }
 
+
+# Create symlink for dev-setup command (without .sh extension)
+setup_dev_setup_command() {
+    echo "🔗 Setting up dev-setup command..."
+    
+    if [ -f "/workspace/.devcontainer/dev-setup.sh" ]; then
+        # Create symlink without .sh extension
+        ln -sf /workspace/.devcontainer/dev-setup.sh /workspace/.devcontainer/dev-setup
+        
+        if [ -L "/workspace/.devcontainer/dev-setup" ]; then
+            echo "✅ dev-setup command is now available (type: dev-setup)"
+        else
+            echo "⚠️  Failed to create dev-setup symlink"
+        fi
+    else
+        echo "⚠️  dev-setup.sh not found, skipping symlink creation"
+    fi
+}
 
 mark_git_folder_as_safe() {
     echo "🔒 Setting up Git repository safety..."

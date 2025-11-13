@@ -621,33 +621,6 @@ See `specification/00-design-principles.md` section 10 for complete implementati
 
 These pitfalls occur during the implementation process, not in the code itself. Discovered during Python implementation.
 
-### ❌ DON'T: Run Commands Directly on Host Machine
-
-**Problem:** Commands run directly on the host machine fail because they don't have access to the DevContainer environment, network, or KUBECONFIG.
-
-**Bad Example:**
-```bash
-# ❌ WRONG - Runs on host, will fail
-./specification/tools/query-loki.sh python
-python test/e2e/company-lookup/main.py
-```
-
-**Correct Example:**
-```bash
-# ✅ CORRECT - Runs inside DevContainer
-./specification/tools/in-devcontainer.sh -e "/workspace/specification/tools/query-loki.sh python"
-./specification/tools/in-devcontainer.sh -e "cd /workspace/python/test/e2e/company-lookup && ./run-test.sh"
-```
-
-**Why This Matters:**
-- Host machine doesn't have access to container network (`host.docker.internal`)
-- Host machine doesn't have KUBECONFIG set for kubectl
-- Host machine may not have required language toolchains installed
-
-**Impact:** Human intervention required to explain container environment.
-
----
-
 ### ❌ DON'T: Use Dots in Metric Names
 
 **Problem:** Prometheus requires underscores in metric names. Using dots causes metrics to not appear in Prometheus or Grafana.
@@ -741,9 +714,9 @@ log_record = {
 
 ---
 
-### ❌ DON'T: Waste Time Trying to Fix kubectl Access
+### ❌ DON'T: Rely on kubectl - Use Grafana Instead
 
-**Problem:** When kubectl commands fail with "cannot connect to cluster", developers waste time trying to fix kubectl instead of using Grafana.
+**Problem:** kubectl is optional. If kubectl commands fail, use Grafana-based queries instead of trying to fix kubectl access.
 
 **Symptom:**
 ```
@@ -752,26 +725,32 @@ log_record = {
 
 **Wrong Response:**
 ```bash
-# ❌ WRONG - Trying to fix kubectl
+# ❌ WRONG - Spending time debugging kubectl
 export KUBECONFIG=/some/path
 kubectl get nodes
-# ... 20 minutes of debugging kubectl ...
+# ... wasting time troubleshooting kubectl configuration ...
 ```
 
 **Correct Response:**
 ```bash
-# ✅ CORRECT - Use Grafana instead (it's authoritative)
-# Open http://grafana.localhost
-# Use query-grafana-*.sh scripts for programmatic queries
-./specification/tools/in-devcontainer.sh -e "/workspace/specification/tools/query-grafana-loki.sh python"
+# ✅ CORRECT - Use Grafana-based queries (always work)
+cd /workspace/specification/tools && ./query-grafana-loki.sh python
+cd /workspace/specification/tools && ./query-grafana-prometheus.sh python
+cd /workspace/specification/tools && ./query-grafana-tempo.sh python
 ```
 
 **Why This Matters:**
-- kubectl is **OPTIONAL** - Grafana is the authoritative validation source
-- In some environments, kubectl isn't configured (and doesn't need to be)
-- `in-devcontainer.sh` now passes KUBECONFIG automatically, but if it still fails, use Grafana
+- **Grafana is the authoritative validation source** - Not kubectl
+- kubectl access is optional (some environments don't configure it)
+- Grafana-based query scripts (`query-grafana-*.sh`) work via Grafana API and are always available
+- Time spent debugging kubectl is wasted - Grafana queries provide the same information
 
-**Impact:** Human intervention to explain Grafana is primary validation method.
+**Available Tools:**
+- `query-loki.sh` - Direct kubectl access (optional, faster if kubectl works)
+- `query-grafana-loki.sh` - Grafana API access (always works, use this if kubectl fails)
+- Same pattern for Prometheus and Tempo
+
+**Impact:** Wasted time debugging optional tool instead of using authoritative validation method.
 
 ---
 
@@ -793,11 +772,10 @@ kubectl get nodes
 
 ### Implementation Process Pitfalls (Avoid During Implementation)
 
-1. **Always use `in-devcontainer.sh` wrapper** - Never run commands directly on host
-2. **Always use underscores in metric names** - Never dots (Prometheus requirement)
-3. **Always use `.value` for enum conversion** - Never `str(enum)` or `.toString()`
-4. **Always include Grafana-required fields** - timestamp, severity_text, severity_number
-5. **Always use Grafana when kubectl fails** - Never waste time debugging kubectl
+1. **Always use underscores in metric names** - Never dots (Prometheus requirement)
+2. **Always use `.value` for enum conversion** - Never `str(enum)` or `.toString()`
+3. **Always include Grafana-required fields** - timestamp, severity_text, severity_number
+4. **Always use Grafana for validation** - kubectl is optional, Grafana is authoritative
 
 Following these patterns ensures consistent, secure, and maintainable logging across all language implementations.
 

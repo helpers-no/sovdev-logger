@@ -15,6 +15,8 @@
 # Script metadata - must be at the very top of the configuration section
 SCRIPT_NAME="TypeScript Development Tools"
 SCRIPT_DESCRIPTION="Installs Node.js LTS, npm, TypeScript, and essential development tools"
+SCRIPT_CATEGORY="LANGUAGE_DEV"
+CHECK_INSTALLED_COMMAND="command -v tsc >/dev/null 2>&1 || (test -f ~/.npm-global/bin/tsc || npm list -g --depth=0 2>/dev/null | grep -q typescript)"
 
 # Before running installation, we need to add any required repositories or setup
 pre_installation_setup() {

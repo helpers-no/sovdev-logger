@@ -15,6 +15,8 @@
 # Script metadata - must be at the very top of the configuration section
 SCRIPT_NAME="OpenCode AI Assistant"
 SCRIPT_DESCRIPTION="Installs OpenCode, a powerful terminal-based AI coding assistant with LSP integration and multi-provider support"
+SCRIPT_CATEGORY="AI_TOOLS"
+CHECK_INSTALLED_COMMAND="command -v opencode >/dev/null 2>&1"
 
 # Before running installation, we need to add any required repositories or setup
 pre_installation_setup() {
