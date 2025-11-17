@@ -135,7 +135,7 @@ EXTENSIONS["ms-azuretools.vscode-docker"]="Docker|Docker support for Go applicat
 VERIFY_COMMANDS=(
     "command -v go >/dev/null && go version || echo '❌ Go not found'"
     "go env || echo '❌ Failed to get Go environment'"
-    "go list -m all || echo '❌ Failed to list Go modules'"
+    "[ -f go.mod ] && (go list -m all || echo '❌ Failed to list Go modules') || echo 'ℹ️  No go.mod found - skipping module list'"
 )
 
 # --- Post-installation/Uninstallation Messages ---
