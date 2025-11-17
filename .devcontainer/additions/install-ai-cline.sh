@@ -18,6 +18,15 @@ SCRIPT_DESCRIPTION="Installs Cline (previously Claude Dev) extension for AI assi
 SCRIPT_CATEGORY="AI_TOOLS"
 CHECK_INSTALLED_COMMAND="code --list-extensions 2>/dev/null | grep -q 'saoudrizwan.claude-dev'"
 
+#------------------------------------------------------------------------------
+
+# Source auto-enable library
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
+
+#------------------------------------------------------------------------------
+
 # Before running installation, we need to add any required repositories
 pre_installation_setup() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
@@ -192,4 +201,7 @@ else
         done
     fi
     post_installation_message
+
+    # Auto-enable for container rebuild
+    auto_enable_tool "cline-ai-assistant" "Cline AI Assistant"
 fi

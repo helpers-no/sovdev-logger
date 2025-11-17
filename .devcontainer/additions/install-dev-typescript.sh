@@ -18,6 +18,15 @@ SCRIPT_DESCRIPTION="Installs Node.js LTS, npm, TypeScript, and essential develop
 SCRIPT_CATEGORY="LANGUAGE_DEV"
 CHECK_INSTALLED_COMMAND="command -v tsc >/dev/null 2>&1 || (test -f ~/.npm-global/bin/tsc || npm list -g --depth=0 2>/dev/null | grep -q typescript)"
 
+#------------------------------------------------------------------------------
+
+# Source auto-enable library
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
+
+#------------------------------------------------------------------------------
+
 # Before running installation, we need to add any required repositories or setup
 pre_installation_setup() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
@@ -445,4 +454,7 @@ else
         done
     fi
     post_installation_message
+
+    # Auto-enable for container rebuild
+    auto_enable_tool "typescript-development-tools" "TypeScript Development Tools"
 fi

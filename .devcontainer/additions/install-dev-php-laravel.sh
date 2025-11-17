@@ -16,7 +16,16 @@
 SCRIPT_NAME="PHP Laravel Development Tools"
 SCRIPT_DESCRIPTION="Installs PHP 8.4, Composer, Laravel installer, and sets up Laravel development environment"
 SCRIPT_CATEGORY="LANGUAGE_DEV"
-CHECK_INSTALLED_COMMAND="command -v php >/dev/null 2>&1 && command -v composer >/dev/null 2>&1 && command -v laravel >/dev/null 2>&1"
+CHECK_INSTALLED_COMMAND="([ -f /usr/bin/php ] || command -v php >/dev/null 2>&1) && ([ -f /usr/local/bin/composer ] || command -v composer >/dev/null 2>&1) && ([ -f $HOME/.composer/vendor/bin/laravel ] || command -v laravel >/dev/null 2>&1)"
+
+#------------------------------------------------------------------------------
+
+# Source auto-enable library
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
+
+#------------------------------------------------------------------------------
 
 # Before running installation, we need to add any required repositories or setup
 pre_installation_setup() {
@@ -545,4 +554,7 @@ else
         echo "✅ All extensions installed - restart VS Code to activate"
     fi
     post_installation_message
+
+    # Auto-enable for container rebuild
+    auto_enable_tool "php-laravel-development-tools" "PHP Laravel Development Tools"
 fi

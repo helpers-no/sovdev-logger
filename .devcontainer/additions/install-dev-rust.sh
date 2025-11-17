@@ -16,7 +16,16 @@
 SCRIPT_NAME="Rust Development Tools"
 SCRIPT_DESCRIPTION="Installs Rust (latest stable via rustup), cargo, and sets up Rust development environment"
 SCRIPT_CATEGORY="LANGUAGE_DEV"
-CHECK_INSTALLED_COMMAND="command -v rustc >/dev/null 2>&1"
+CHECK_INSTALLED_COMMAND="[ -f $HOME/.cargo/bin/rustc ] || command -v rustc >/dev/null 2>&1"
+
+#------------------------------------------------------------------------------
+
+# Source auto-enable library
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
+
+#------------------------------------------------------------------------------
 
 # Before running installation, we need to add any required repositories or setup
 pre_installation_setup() {
@@ -324,4 +333,7 @@ else
         done
     fi
     post_installation_message
+
+    # Auto-enable for container rebuild
+    auto_enable_tool "rust-development-tools" "Rust Development Tools"
 fi

@@ -13,33 +13,131 @@
 #------------------------------------------------------------------------------
 
 # Script metadata - must be at the very top of the configuration section
-SCRIPT_NAME="PowerShell Development Tools"
-SCRIPT_DESCRIPTION="Installs PowerShell modules and extensions for Azure and Microsoft Graph development"
+SCRIPT_NAME="PowerShell"
+SCRIPT_DESCRIPTION="Installs PowerShell runtime and modules for Azure and Microsoft Graph development"
 SCRIPT_CATEGORY="INFRA_CONFIG"
-CHECK_INSTALLED_COMMAND="command -v pwsh >/dev/null 2>&1 && pwsh -NoProfile -NonInteractive -Command 'Get-Module -ListAvailable Az | Select-Object -First 1' >/dev/null 2>&1"
+CHECK_INSTALLED_COMMAND="[ -f /usr/bin/pwsh ] || [ -f /opt/microsoft/powershell/7/pwsh ] || command -v pwsh >/dev/null 2>&1"
 
-# Before running installation, we need to add any required repositories
+#------------------------------------------------------------------------------
+
+# Source auto-enable library
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
+
+#------------------------------------------------------------------------------
+
+# PowerShell version to install
+POWERSHELL_VERSION="7.5.2"
+
+# Before running installation, we need to install PowerShell itself
 pre_installation_setup() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        echo "🔧 Preparing for uninstallation..."
+        echo "🔧 Preparing for PowerShell uninstallation..."
+
+        # Remove PowerShell installation
+        if command -v pwsh >/dev/null 2>&1; then
+            echo "🗑️  Removing PowerShell..."
+
+            # Remove symbolic links
+            sudo rm -f /usr/local/bin/pwsh
+            sudo rm -f /usr/bin/pwsh
+
+            # Remove PowerShell directory
+            if [ -d "/opt/microsoft/powershell/7" ]; then
+                sudo rm -rf /opt/microsoft/powershell/7
+                echo "✅ PowerShell removed from /opt/microsoft/powershell/7"
+            fi
+
+            # Remove parent directory if empty
+            if [ -d "/opt/microsoft/powershell" ] && [ -z "$(ls -A /opt/microsoft/powershell)" ]; then
+                sudo rm -rf /opt/microsoft/powershell
+            fi
+
+            echo "✅ PowerShell uninstalled successfully"
+        else
+            echo "ℹ️  PowerShell is not installed"
+        fi
     else
-        echo "🔧 Performing pre-installation setup..."
-        
-        # Verify PowerShell is installed (should be from Dockerfile)
-        if ! command -v pwsh >/dev/null 2>&1; then
-            echo "⚠️  Warning: PowerShell not found. It should have been installed in the Dockerfile."
-            echo "Please verify the container was built correctly."
+        echo "🔧 Installing PowerShell $POWERSHELL_VERSION..."
+
+        # Check if PowerShell is already installed
+        if command -v pwsh >/dev/null 2>&1; then
+            local current_version=$(pwsh -Version 2>/dev/null | grep -oP '\d+\.\d+\.\d+' | head -1)
+            echo "✅ PowerShell $current_version is already installed"
+            echo "ℹ️  Proceeding to module installation..."
+            return 0
+        fi
+
+        # Install PowerShell using direct download method (cross-platform)
+        cd /tmp || exit 1
+
+        # Get target platform information
+        TARGETPLATFORM=$(uname -m)
+        echo "🖥️  Detected platform: $TARGETPLATFORM"
+
+        # Determine architecture-specific download URL
+        case "$TARGETPLATFORM" in
+            "x86_64"|"amd64")
+                PS_ARCH="x64"
+                PS_PACKAGE_URL="https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/powershell-${POWERSHELL_VERSION}-linux-x64.tar.gz" ;;
+            "aarch64"|"arm64")
+                PS_ARCH="arm64"
+                PS_PACKAGE_URL="https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/powershell-${POWERSHELL_VERSION}-linux-arm64.tar.gz" ;;
+            "armv7l"|"arm")
+                PS_ARCH="arm32"
+                PS_PACKAGE_URL="https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/powershell-${POWERSHELL_VERSION}-linux-arm32.tar.gz" ;;
+            *)
+                echo "❌ Unsupported architecture: $TARGETPLATFORM"
+                exit 1 ;;
+        esac
+
+        echo "📦 Downloading PowerShell $POWERSHELL_VERSION for $PS_ARCH..."
+        echo "   URL: $PS_PACKAGE_URL"
+
+        # Download PowerShell tarball
+        if ! curl -L -o powershell.tar.gz "$PS_PACKAGE_URL"; then
+            echo "❌ Failed to download PowerShell"
             exit 1
         fi
-        
-        # Check PowerShell version and configuration
-        echo "PowerShell configuration:"
-        pwsh -Version
-        
-        # Ensure PSGallery is available
-        if ! pwsh -NoProfile -NonInteractive -Command "Get-PSRepository -Name PSGallery" >/dev/null 2>&1; then
-            echo "⚠️  Warning: PSGallery not accessible. Checking network connectivity..."
+
+        # Create PowerShell installation directory
+        sudo mkdir -p /opt/microsoft/powershell/7
+
+        # Extract PowerShell to installation directory
+        echo "📦 Extracting PowerShell..."
+        if ! sudo tar zxf powershell.tar.gz -C /opt/microsoft/powershell/7; then
+            echo "❌ Failed to extract PowerShell"
+            rm -f powershell.tar.gz
             exit 1
+        fi
+
+        # Set executable permissions
+        sudo chmod +x /opt/microsoft/powershell/7/pwsh
+
+        # Create symbolic links for maximum compatibility
+        sudo ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh
+        sudo ln -sf /opt/microsoft/powershell/7/pwsh /usr/bin/pwsh
+
+        # Clean up downloaded files
+        rm -f powershell.tar.gz
+        cd - > /dev/null || exit 1
+
+        # Verify installation
+        if command -v pwsh >/dev/null 2>&1; then
+            echo "✅ PowerShell installation completed!"
+            pwsh -Version
+        else
+            echo "❌ PowerShell installation failed - pwsh command not found"
+            exit 1
+        fi
+
+        # Ensure PSGallery is available
+        echo "🔧 Verifying PSGallery access..."
+        if ! pwsh -NoProfile -NonInteractive -Command "Get-PSRepository -Name PSGallery" >/dev/null 2>&1; then
+            echo "⚠️  Warning: PSGallery not accessible. Module installation may fail."
+        else
+            echo "✅ PSGallery is accessible"
         fi
     fi
 }
@@ -252,4 +350,7 @@ else
         done
     fi
     post_installation_message
+
+    # Auto-enable for container rebuild
+    auto_enable_tool "powershell" "PowerShell"
 fi
