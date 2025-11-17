@@ -1,7 +1,7 @@
 #!/bin/bash
-# File: .devcontainer/additions/tailscale-start.sh
+# File: .devcontainer/additions/start-tailscale.sh
 #
-# Usage: sudo .devcontainer/additions/tailscale-start.sh
+# Usage: sudo .devcontainer/additions/start-tailscale.sh
 # Purpose:
 #   Starts and configures Tailscale in a devcontainer environment with proper
 #   sequencing, status tracking, and comprehensive network verification.
@@ -9,6 +9,23 @@
 # Author: Terje Christensen
 # Created: November 2024
 #
+
+#------------------------------------------------------------------------------
+# SERVICE METADATA - For supervisord auto-start
+#------------------------------------------------------------------------------
+
+SERVICE_NAME="Tailscale"
+SERVICE_DESCRIPTION="Network connectivity to remote services (CRITICAL)"
+SERVICE_CATEGORY="INFRA_CONFIG"
+CHECK_RUNNING_COMMAND="pgrep -x tailscaled >/dev/null 2>&1 && tailscale status --json 2>/dev/null | grep -q '\"Online\":true'"
+
+# Supervisord metadata
+SERVICE_COMMAND="sudo /workspace/.devcontainer/additions/start-tailscale.sh"
+SERVICE_PRIORITY="10"
+SERVICE_DEPENDS=""
+SERVICE_AUTO_RESTART="true"
+
+#------------------------------------------------------------------------------
 
 set -euo pipefail
 
@@ -37,6 +54,10 @@ for lib in "${REQUIRED_LIBS[@]}"; do
     # shellcheck source=/dev/null
     source "$lib_file"
 done
+
+# Source auto-enable library
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/service-auto-enable.sh"
 
 
 # Initialize Tailscale service
@@ -158,6 +179,9 @@ main() {
 
 # Run main if script is executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    main
+    if main; then
+        # Auto-enable service for future container starts
+        auto_enable_service "tailscale" "Tailscale"
+    fi
 fi
 

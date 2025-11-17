@@ -39,6 +39,9 @@ yarn-error.log*
 .env.local
 .env.*.local
 
+# Devcontainer private config (contains contractor identity)
+.devcontainer.extend/private/
+
 # Testing
 coverage/
 .nyc_output/

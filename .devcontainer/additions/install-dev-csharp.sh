@@ -16,7 +16,16 @@
 SCRIPT_NAME="C# Development Tools"
 SCRIPT_DESCRIPTION="Complete .NET 8.0 development environment with Azure Functions, Bicep IaC, storage emulation, and VS Code extensions"
 SCRIPT_CATEGORY="LANGUAGE_DEV"
-CHECK_INSTALLED_COMMAND="command -v dotnet >/dev/null 2>&1"
+CHECK_INSTALLED_COMMAND="[ -f $HOME/.dotnet/dotnet ] || [ -f /usr/bin/dotnet ] || command -v dotnet >/dev/null 2>&1"
+
+#------------------------------------------------------------------------------
+
+# Source auto-enable library
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
+
+#------------------------------------------------------------------------------
 
 # Before running installation, we need to add any required repositories
 pre_installation_setup() {
@@ -451,4 +460,7 @@ else
     verify_installations
     # Extension state check removed - extensions are properly handled by process_extensions
     post_installation_message
+
+    # Auto-enable for container rebuild
+    auto_enable_tool "c#-development-tools" "C# Development Tools"
 fi

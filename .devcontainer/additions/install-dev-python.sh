@@ -16,7 +16,16 @@
 SCRIPT_NAME="Python Development Tools"
 SCRIPT_DESCRIPTION="Installs Python 3.11+, pip, venv, and essential development tools"
 SCRIPT_CATEGORY="LANGUAGE_DEV"
-CHECK_INSTALLED_COMMAND="command -v python3 >/dev/null 2>&1"
+CHECK_INSTALLED_COMMAND="[ -f /usr/local/bin/python3 ] || [ -f /usr/bin/python3 ] || command -v python3 >/dev/null 2>&1"
+
+#------------------------------------------------------------------------------
+
+# Source auto-enable library
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
+
+#------------------------------------------------------------------------------
 
 # Before running installation, we need to add any required repositories or setup
 pre_installation_setup() {
@@ -382,4 +391,7 @@ else
         done
     fi
     post_installation_message
+
+    # Auto-enable for container rebuild
+    auto_enable_tool "python-development-tools" "Python Development Tools"
 fi

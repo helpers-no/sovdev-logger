@@ -18,7 +18,16 @@
 SCRIPT_NAME="Kubernetes kubectl CLI"
 SCRIPT_DESCRIPTION="Installs kubectl and sets up topsecret folder for credentials"
 SCRIPT_CATEGORY="INFRA_CONFIG"
-CHECK_INSTALLED_COMMAND="command -v kubectl >/dev/null 2>&1"
+CHECK_INSTALLED_COMMAND="[ -f /usr/local/bin/kubectl ] || [ -f /usr/bin/kubectl ] || command -v kubectl >/dev/null 2>&1"
+
+#------------------------------------------------------------------------------
+
+# Source auto-enable library
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
+
+#------------------------------------------------------------------------------
 
 # Custom function BEFORE standard package installation
 pre_installation_setup() {
@@ -589,4 +598,7 @@ else
 
     # Final message with kubeconfig guidance
     post_installation_message
+
+    # Auto-enable for container rebuild
+    auto_enable_tool "kubernetes-kubectl-cli" "Kubernetes kubectl CLI"
 fi

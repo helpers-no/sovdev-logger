@@ -23,7 +23,16 @@
 SCRIPT_NAME="Java Runtime & Development Tools"
 SCRIPT_DESCRIPTION="Installs Java JDK, Maven, Gradle, and VS Code extensions for Java development."
 SCRIPT_CATEGORY="LANGUAGE_DEV"
-CHECK_INSTALLED_COMMAND="command -v java >/dev/null 2>&1"
+CHECK_INSTALLED_COMMAND="[ -f /usr/bin/java ] || [ -f /usr/lib/jvm/*/bin/java ] || command -v java >/dev/null 2>&1"
+
+#------------------------------------------------------------------------------
+
+# Source auto-enable library
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
+
+#------------------------------------------------------------------------------
 
 # --- Default Configuration ---
 DEFAULT_JAVA_VERSION="17" # Specify the default Java version to install
@@ -222,10 +231,171 @@ post_uninstallation_message() {
     fi
 }
 
-# --- Main Script Logic ---
-# (Include the common script logic from the PHP script here)
-# This includes argument parsing, installation/uninstallation functions,
-# and the main execution flow.
+#------------------------------------------------------------------------------
+# ARGUMENT PARSING
+#------------------------------------------------------------------------------
 
-# Note: The actual implementation of the common script logic would be shared
-# across all installation scripts. For brevity, it's not repeated here. 
+# Initialize mode flags
+DEBUG_MODE=0
+UNINSTALL_MODE=0
+FORCE_MODE=0
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --debug)
+            DEBUG_MODE=1
+            shift
+            ;;
+        --uninstall)
+            UNINSTALL_MODE=1
+            shift
+            ;;
+        --force)
+            FORCE_MODE=1
+            shift
+            ;;
+        --version)
+            if [[ -n "$2" && "$2" != --* ]]; then
+                TARGET_JAVA_VERSION="$2"
+                shift 2
+            else
+                echo "Error: --version requires a value (e.g., 17, 21)" >&2
+                exit 1
+            fi
+            ;;
+        *)
+            echo "Error: Unknown argument: $1" >&2
+            echo "Usage: $0 [--debug] [--uninstall] [--force] [--version X]"
+            exit 1
+            ;;
+    esac
+done
+
+# Export mode flags
+export DEBUG_MODE
+export UNINSTALL_MODE
+export FORCE_MODE
+
+#------------------------------------------------------------------------------
+# SOURCE CORE SCRIPTS
+#------------------------------------------------------------------------------
+
+# Source core installation scripts
+CORE_SCRIPT_DIR="$(dirname "$0")"
+source "${CORE_SCRIPT_DIR}/core-install-apt.sh"
+source "${CORE_SCRIPT_DIR}/core-install-extensions.sh"
+
+#------------------------------------------------------------------------------
+# HELPER FUNCTIONS
+#------------------------------------------------------------------------------
+
+# Function to process APT installations
+process_apt_installations() {
+    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
+        if [ ${#JAVA_APT_PACKAGES[@]} -gt 0 ]; then
+            echo "🗑️ Uninstalling Java packages..."
+            for package in "${JAVA_APT_PACKAGES[@]}"; do
+                if dpkg -l "$package" 2>/dev/null | grep -q "^ii"; then
+                    echo "  Removing $package..."
+                    sudo apt-get remove -y "$package" > /dev/null 2>&1 || true
+                fi
+            done
+
+            # Clean up
+            sudo apt-get autoremove -y > /dev/null 2>&1 || true
+            echo "✅ Java packages removed"
+        fi
+    else
+        if [ ${#JAVA_APT_PACKAGES[@]} -gt 0 ]; then
+            echo "📦 Installing Java packages..."
+            for package in "${JAVA_APT_PACKAGES[@]}"; do
+                echo "  Installing $package..."
+                if sudo apt-get install -y "$package" > /dev/null 2>&1; then
+                    echo "  ✅ Installed $package"
+                else
+                    echo "  ⚠️  Failed to install $package"
+                fi
+            done
+        fi
+    fi
+}
+
+# Function to setup JAVA_HOME
+setup_java_environment() {
+    local java_home=""
+
+    # Find JAVA_HOME
+    if command -v java >/dev/null 2>&1; then
+        java_home=$(dirname $(dirname $(readlink -f $(which java))))
+    fi
+
+    if [ -n "$java_home" ]; then
+        # Add JAVA_HOME to .bashrc if not already present
+        if ! grep -q "JAVA_HOME" ~/.bashrc; then
+            echo "" >> ~/.bashrc
+            echo "# Java environment" >> ~/.bashrc
+            echo "export JAVA_HOME=\"$java_home\"" >> ~/.bashrc
+            echo "export PATH=\"\$JAVA_HOME/bin:\$PATH\"" >> ~/.bashrc
+            echo "✅ Added JAVA_HOME to ~/.bashrc"
+        else
+            echo "ℹ️ JAVA_HOME already configured in ~/.bashrc"
+        fi
+
+        # Export for current session
+        export JAVA_HOME="$java_home"
+        export PATH="$JAVA_HOME/bin:$PATH"
+    fi
+}
+
+# Function to process installations
+process_installations() {
+    # Process APT packages
+    process_apt_installations
+
+    # Setup environment if installing
+    if [ "${UNINSTALL_MODE}" -eq 0 ]; then
+        setup_java_environment
+    fi
+
+    # Process VS Code extensions
+    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
+        process_extensions "EXTENSIONS"
+    fi
+}
+
+# Function to verify installations
+verify_installations() {
+    if [ ${#VERIFY_COMMANDS[@]} -gt 0 ]; then
+        echo ""
+        echo "🔍 Verifying installations..."
+        for cmd in "${VERIFY_COMMANDS[@]}"; do
+            eval "$cmd" || true
+        done
+    fi
+}
+
+#------------------------------------------------------------------------------
+# MAIN EXECUTION
+#------------------------------------------------------------------------------
+
+if [ "${UNINSTALL_MODE}" -eq 1 ]; then
+    echo "🔄 Starting uninstallation process for: $SCRIPT_NAME"
+    echo "Purpose: $SCRIPT_DESCRIPTION"
+    pre_installation_setup
+    process_installations
+    post_uninstallation_message
+else
+    echo "🔄 Starting installation process for: $SCRIPT_NAME"
+    echo "Purpose: $SCRIPT_DESCRIPTION"
+    pre_installation_setup
+    process_installations
+    verify_installations
+    post_installation_message
+
+    # Auto-enable for container rebuild
+    auto_enable_tool "java-runtime-&-development-tools" "Java Runtime & Development Tools"
+fi
+
+echo "✅ Script execution finished."
+exit 0 

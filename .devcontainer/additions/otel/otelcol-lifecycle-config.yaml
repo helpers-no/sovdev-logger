@@ -1,0 +1,116 @@
+# OpenTelemetry Collector Configuration for Devcontainer Monitoring
+# Purpose: Tracks developer activity, sends logs and system metrics to k8s observability stack
+#
+# Required environment variables:
+#   DEVELOPER_ID       - Unique developer identifier
+#   DEVELOPER_EMAIL    - Developer email address
+#   PROJECT_NAME       - Project identifier
+#   TS_HOSTNAME        - Tailscale hostname
+
+receivers:
+  # OTLP receiver - receives telemetry from applications
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Batch processor - batches telemetry for efficient transmission
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+
+  # Resource processor - adds developer/project identity to ALL telemetry
+  resource:
+    attributes:
+      # Developer identity (using underscores to match Loki ingestion format)
+      - key: developer_id
+        value: ${DEVELOPER_ID}
+        action: upsert
+      - key: developer_email
+        value: ${DEVELOPER_EMAIL}
+        action: upsert
+
+      # Project identity
+      - key: project_name
+        value: ${PROJECT_NAME}
+        action: upsert
+
+      # Service identification (using service.name per OpenTelemetry spec)
+      - key: service.name
+        value: devcontainer-monitor
+        action: upsert
+      - key: service_namespace
+        value: devcontainer
+        action: upsert
+
+      # Environment
+      - key: deployment_environment
+        value: development
+        action: upsert
+
+      # Host identification
+      - key: host_name
+        value: ${TS_HOSTNAME}
+        action: upsert
+
+  # Memory limiter - prevents OOM by limiting memory usage
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+exporters:
+  # OTLP HTTP exporter - sends telemetry to k8s cluster
+  otlphttp:
+    endpoint: http://host.docker.internal
+    headers:
+      Host: otel.localhost
+    # Note: host.docker.internal resolves to Mac host where K3s/Rancher Desktop runs
+    # Traefik in K3s routes based on Host header to reach k8s OTel Collector
+    compression: gzip
+    timeout: 10s
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+
+# Telemetry configuration for the collector itself
+service:
+  # Internal telemetry for the collector
+  telemetry:
+    logs:
+      level: info
+      # Output collector's own logs to file
+      output_paths:
+        - /var/log/otelcol.log
+      error_output_paths:
+        - /var/log/otelcol.log
+
+    metrics:
+      # Disable collector's internal metrics
+      level: none
+
+  # Telemetry pipelines
+  pipelines:
+    # Logs pipeline - receives logs and forwards to k8s
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlphttp]
+
+    # Traces pipeline - receives traces and forwards to k8s
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlphttp]
+
+    # Metrics pipeline - receives application metrics and forwards to k8s
+    # Note: System metrics (CPU, RAM, disk) handled by separate metrics collector
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlphttp]

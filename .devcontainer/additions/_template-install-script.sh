@@ -6,19 +6,73 @@
 # Example: install-dev-python.sh
 #
 # Usage: ./install-[name].sh [options]
-# 
+#
 # Options:
 #   --debug     : Enable debug output for troubleshooting
 #   --uninstall : Remove installed components instead of installing them
 #   --force     : Force installation/uninstallation even if there are dependencies
 #
 #------------------------------------------------------------------------------
+# METADATA PATTERN - Required for automatic script discovery
+#------------------------------------------------------------------------------
+#
+# The dev-setup.sh menu system uses the component-scanner library to automatically
+# discover and display all install scripts. To make your script visible in the menu,
+# you must define these four metadata fields in the CONFIGURATION section below:
+#
+# SCRIPT_NAME - Human-readable name displayed in the menu (2-4 words)
+#   Example: "Python Development Tools"
+#
+# SCRIPT_DESCRIPTION - Brief description of what the script installs (one sentence)
+#   Example: "Install Python 3.11, pip, and essential Python development packages"
+#
+# SCRIPT_CATEGORY - Category for menu organization
+#   Common options: DEV_TOOLS, INFRA_CONFIG, AI_TOOLS, MONITORING, DATABASE, CLOUD
+#   Example: "DEV_TOOLS"
+#
+# CHECK_INSTALLED_COMMAND - Shell command to check if already installed
+#   - Must return exit code 0 if installed, 1 if not installed
+#   - Should suppress all output (use >/dev/null 2>&1)
+#   - Should be fast (run in < 1 second)
+#   - Should be idempotent (safe to run repeatedly)
+#   - BEST PRACTICE: Check installation location OR PATH for better UX
+#     This ensures the tool shows as installed immediately after installation,
+#     even if the current shell's PATH hasn't been updated yet.
+#   Examples:
+#     "[ -f $HOME/.cargo/bin/rustc ] || command -v rustc >/dev/null 2>&1"
+#     "[ -f /usr/local/bin/tool ] || command -v tool >/dev/null 2>&1"
+#     "dpkg -l python3 2>/dev/null | grep -q '^ii'"
+#     "[ -d /opt/tool ]"
+#
+# AUTO-ENABLE PATTERN - Tools automatically add themselves to enabled-tools.conf
+#   When a tool is successfully installed, it automatically adds itself to
+#   .devcontainer.extend/enabled-tools.conf. This ensures the tool will be
+#   reinstalled on container rebuild. This template includes the auto-enable
+#   code - no changes needed unless you want custom behavior.
+#
+# For more details, see: .devcontainer/additions/README-additions.md
+#
+#------------------------------------------------------------------------------
 # CONFIGURATION - Modify this section for each new script
 #------------------------------------------------------------------------------
 
-# Script metadata - must be at the very top of the configuration section
+# Script metadata - Required for dev-setup.sh menu discovery
+# These fields must be defined at the top of the configuration section
 SCRIPT_NAME="[Name]"
 SCRIPT_DESCRIPTION="[Brief description of what this script installs and its purpose]"
+SCRIPT_CATEGORY="DEV_TOOLS"  # Options: DEV_TOOLS, INFRA_CONFIG, AI_TOOLS, MONITORING, DATABASE, CLOUD
+CHECK_INSTALLED_COMMAND="command -v [tool-name] >/dev/null 2>&1"  # Command to check if already installed
+
+#------------------------------------------------------------------------------
+
+# Source auto-enable library for automatic addition to enabled-tools.conf
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
+
+#------------------------------------------------------------------------------
+# INSTALLATION FUNCTIONS
+#------------------------------------------------------------------------------
 
 # Before running installation, we need to add any required repositories or setup
 pre_installation_setup() {
@@ -212,4 +266,10 @@ else
         done
     fi
     post_installation_message
+
+    # Auto-enable this tool for container rebuild
+    # Convert SCRIPT_NAME to identifier (lowercase-with-dashes)
+    # Example: "Python Development Tools" -> "python-development-tools"
+    TOOL_ID=$(echo "$SCRIPT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+    auto_enable_tool "$TOOL_ID" "$SCRIPT_NAME"
 fi
