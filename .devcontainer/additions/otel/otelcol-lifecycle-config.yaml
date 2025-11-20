@@ -1,3 +1,4 @@
+# File: .devcontainer/additions/otel/otelcol-lifecycle-config.yaml
 # OpenTelemetry Collector Configuration for Devcontainer Monitoring
 # Purpose: Tracks developer activity, sends logs and system metrics to k8s observability stack
 #
@@ -83,12 +84,16 @@ service:
   # Internal telemetry for the collector
   telemetry:
     logs:
-      level: info
-      # Output collector's own logs to file
+      level: debug
+      # Output collector's own logs to stdout/stderr instead of directly to /var/log/
+      # Why: Collector runs as non-root vscode user and cannot write to /var/log/otelcol.log
+      # Solution: stdout/stderr are captured by nohup in start-otel-monitoring.sh and redirected
+      # to /var/log/otelcol-lifecycle.log (which has proper permissions set by the start script)
+      # This avoids "permission denied" errors while still logging to /var/log/
       output_paths:
-        - /var/log/otelcol.log
+        - stdout
       error_output_paths:
-        - /var/log/otelcol.log
+        - stderr
 
     metrics:
       # Disable collector's internal metrics

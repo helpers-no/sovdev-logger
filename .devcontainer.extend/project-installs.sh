@@ -67,6 +67,52 @@ install_custom_project_tools() {
 
 
 
+# Restore all configurations from topsecret folder
+restore_all_configurations() {
+    local SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+    local ADDITIONS_DIR="$SCRIPT_DIR/../.devcontainer/additions"
+
+    # Source component scanner library
+    # shellcheck source=/dev/null
+    source "$ADDITIONS_DIR/lib/component-scanner.sh"
+
+    echo ""
+    echo "📋 Scanning for configuration scripts..."
+
+    local restored_count=0
+    local scanned_count=0
+
+    # Discover all config scripts
+    while IFS=$'\t' read -r script_basename config_name config_desc config_cat check_cmd; do
+        ((scanned_count++))
+
+        local config_path="$ADDITIONS_DIR/$script_basename"
+
+        # Check if script supports --verify flag (non-interactive restore)
+        if grep -q '= "--verify"' "$config_path" 2>/dev/null; then
+            # Run with --verify flag (non-interactive, just restore from topsecret)
+            # Silent if not found - user might not need this config
+            if bash "$config_path" --verify 2>/dev/null; then
+                echo "   ✅ $config_name restored"
+                ((restored_count++))
+            fi
+            # Else: Silent - don't warn about missing configs
+            # Tool installation will warn if a REQUIRED config is missing
+        fi
+    done < <(scan_config_scripts "$ADDITIONS_DIR")
+
+    echo ""
+    if [ $scanned_count -eq 0 ]; then
+        echo "ℹ️  No configuration scripts found"
+    elif [ $restored_count -eq 0 ]; then
+        echo "ℹ️  No configurations found in topsecret (this is normal for new users)"
+    else
+        echo "📊 Configuration Restoration Summary:"
+        echo "   ✅ Restored: $restored_count"
+    fi
+    echo ""
+}
+
 # Main execution flow
 main() {
     echo "🚀 Starting project-installs setup..."
@@ -79,6 +125,10 @@ main() {
 
     # Configure Git user identity
     configure_git_identity
+
+    # Restore all configurations from topsecret (non-interactive)
+    echo "🔐 Restoring configurations from topsecret..."
+    restore_all_configurations
 
     # Version checks
     echo "🔍 Verifying installed versions..."
@@ -289,10 +339,15 @@ install_project_tools() {
     # shellcheck source=/dev/null
     source "$ADDITIONS_DIR/lib/component-scanner.sh"
 
+    # Source prerequisite check library
+    # shellcheck source=/dev/null
+    source "$ADDITIONS_DIR/lib/prerequisite-check.sh"
+
     # Arrays for discovered tools
     local -a TOOL_NAMES=()
     local -a TOOL_SCRIPTS=()
     local -a TOOL_CHECK_COMMANDS=()
+    local -a TOOL_PREREQUISITES=()
 
     # Load enabled tools list
     local -a ENABLED_TOOLS=()
@@ -315,7 +370,7 @@ install_project_tools() {
     echo ""
     echo "🔍 Discovering available tools..."
 
-    while IFS=$'\t' read -r script_basename script_name script_desc script_cat check_cmd; do
+    while IFS=$'\t' read -r script_basename script_name script_desc script_cat check_cmd prereq_configs; do
         # Convert to identifier (lowercase, no spaces)
         local tool_id=$(echo "$script_name" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
 
@@ -332,6 +387,7 @@ install_project_tools() {
             TOOL_NAMES+=("$script_name")
             TOOL_SCRIPTS+=("$script_basename")
             TOOL_CHECK_COMMANDS+=("$check_cmd")
+            TOOL_PREREQUISITES+=("$prereq_configs")
             echo "   ✅ $script_name - ENABLED"
         else
             echo "   ⏸️  $script_name - disabled"
@@ -352,26 +408,57 @@ install_project_tools() {
     local installed_count=0
     local skipped_count=0
 
+    # Disable set -e for the entire loop to prevent early exit
+    set +e
+
     for i in "${!TOOL_NAMES[@]}"; do
         local tool_name="${TOOL_NAMES[$i]}"
         local script_name="${TOOL_SCRIPTS[$i]}"
         local check_command="${TOOL_CHECK_COMMANDS[$i]}"
+        local prerequisite_configs="${TOOL_PREREQUISITES[$i]}"
 
         # Check if already installed
         if [[ -n "$check_command" ]] && eval "$check_command" 2>/dev/null; then
             echo "✅ $tool_name - already installed (skipping)"
             ((skipped_count++))
         else
-            echo "📦 Installing $tool_name..."
-            if bash "$ADDITIONS_DIR/$script_name"; then
-                echo "✅ $tool_name - installed successfully"
-                ((installed_count++))
-            else
-                echo "❌ $tool_name - installation failed"
+            # Check prerequisites before installing
+            local prerequisites_met=true
+            if [[ -n "$prerequisite_configs" ]]; then
+                if ! check_prerequisite_configs "$prerequisite_configs" "$ADDITIONS_DIR"; then
+                    echo "⚠️  $tool_name - missing prerequisites"
+                    show_missing_prerequisites "$prerequisite_configs" "$ADDITIONS_DIR"
+                    echo ""
+                    echo "  💡 To fix:"
+                    echo "     1. Run: check-configs (configures all missing items)"
+                    echo "     2. Or run each config script listed above"
+                    echo "     3. Then re-run: bash /workspace/.devcontainer.extend/project-installs.sh"
+                    echo ""
+                    echo "❌ $tool_name - installation skipped (prerequisites not met)"
+                    echo ""
+                    prerequisites_met=false
+                fi
             fi
-            echo ""
+
+            # Only install if prerequisites are met
+            if [[ "$prerequisites_met" == true ]]; then
+                echo "📦 Installing $tool_name..."
+                bash "$ADDITIONS_DIR/$script_name"
+                local exit_code=$?
+
+                if [ $exit_code -eq 0 ]; then
+                    echo "✅ $tool_name - installed successfully"
+                    ((installed_count++))
+                else
+                    echo "❌ $tool_name - installation failed (exit code: $exit_code)"
+                fi
+                echo ""
+            fi
         fi
     done
+
+    # Re-enable set -e after the loop
+    set -e
 
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "📊 Installation Summary:"
@@ -384,10 +471,54 @@ install_project_tools() {
     # Generate supervisor configs from enabled services
     if command -v supervisord >/dev/null 2>&1; then
         echo "🔧 Generating supervisor configuration..."
+        set +e
         bash "$SCRIPT_DIR/../.devcontainer/additions/config-supervisor.sh"
+        local supervisor_exit_code=$?
+        set -e
+        if [ $supervisor_exit_code -ne 0 ]; then
+            echo "⚠️  Supervisor configuration failed (exit code: $supervisor_exit_code)"
+        fi
+        echo ""
+
+        # Start supervisor if configs exist and it's not running
+        if [ -d /etc/supervisor/conf.d ] && [ "$(ls -A /etc/supervisor/conf.d/*.conf 2>/dev/null)" ]; then
+            if ! pgrep supervisord > /dev/null 2>&1; then
+                echo "🚀 Starting supervisord..."
+                sudo supervisord -c /etc/supervisor/supervisord.conf
+                sleep 2
+                if pgrep supervisord > /dev/null 2>&1; then
+                    echo "✅ Supervisord started successfully"
+                    # Count running services
+                    local running_count=$(sudo supervisorctl status 2>/dev/null | grep -c "RUNNING" || echo "0")
+                    echo "   Running services: $running_count"
+                else
+                    echo "⚠️  Failed to start supervisord - services will start on next shell"
+                fi
+            else
+                echo "✅ Supervisord already running"
+                # Reload to pick up any new configs
+                sudo supervisorctl reread > /dev/null 2>&1
+                sudo supervisorctl update > /dev/null 2>&1
+            fi
+        fi
         echo ""
     fi
 }
 
 
+# Execute main with error handling to prevent container creation failure
+set +e
 main
+exit_code=$?
+set -e
+
+if [ $exit_code -ne 0 ]; then
+    echo ""
+    echo "⚠️  Setup completed with warnings/errors (exit code: $exit_code)"
+    echo "🔍 Check the logs above for details"
+    echo "🚀 Container creation will continue despite errors"
+    echo ""
+fi
+
+# Always exit successfully to allow container creation to complete
+exit 0

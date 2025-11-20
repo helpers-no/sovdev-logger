@@ -19,7 +19,8 @@
 SCRIPT_NAME="OTel Collector"
 SCRIPT_DESCRIPTION="Install OpenTelemetry Collector for devcontainer monitoring when connected to our network"
 SCRIPT_CATEGORY="INFRA_CONFIG"
-CHECK_INSTALLED_COMMAND="([ -f /usr/bin/otelcol-contrib ] || command -v otelcol-contrib >/dev/null 2>&1) && ([ -f /usr/local/bin/script_exporter ] || command -v script_exporter >/dev/null 2>&1)"
+CHECK_INSTALLED_COMMAND="([ -f /usr/bin/otelcol-contrib ] || command -v otelcol-contrib >/dev/null 2>&1) && ([ -f /usr/local/bin/script_exporter ] || command -v script_exporter >/dev/null 2>&1) && [ -f /etc/supervisor/conf.d/otel-script-exporter.conf ] && [ -f /etc/supervisor/conf.d/otel-lifecycle.conf ] && [ -f /etc/supervisor/conf.d/otel-metrics.conf ]"
+PREREQUISITE_CONFIGS="config-devcontainer-identity.sh"
 
 #------------------------------------------------------------------------------
 
@@ -27,6 +28,10 @@ CHECK_INSTALLED_COMMAND="([ -f /usr/bin/otelcol-contrib ] || command -v otelcol-
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
+
+# Source logging library
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/logging.sh"
 
 #------------------------------------------------------------------------------
 # INSTALLATION CONFIGURATION
@@ -253,13 +258,56 @@ install_script_exporter() {
     fi
 }
 
+# Remove supervisord configuration for OTel services
+remove_supervisor_configs() {
+    echo ""
+    echo "🗑️  Removing supervisord configuration for OTel services..."
+    echo ""
+
+    # Stop services if supervisord is running
+    if pgrep supervisord > /dev/null 2>&1; then
+        echo "   Stopping OTel services..."
+        sudo supervisorctl stop otel-script-exporter otel-lifecycle otel-metrics 2>/dev/null || true
+        sleep 2
+    fi
+
+    # Remove supervisor config files
+    local configs=("otel-script-exporter.conf" "otel-lifecycle.conf" "otel-metrics.conf")
+    for config in "${configs[@]}"; do
+        local config_path="/etc/supervisor/conf.d/${config}"
+        if [ -f "$config_path" ]; then
+            echo "   Removing: $config"
+            sudo rm -f "$config_path"
+        fi
+    done
+
+    # Remove from enabled services
+    local enabled_services_conf="/workspace/.devcontainer.extend/enabled-services.conf"
+    if [ -f "$enabled_services_conf" ]; then
+        echo "   Removing from enabled services..."
+        for service in "otel-script-exporter" "otel-lifecycle" "otel-metrics"; do
+            sed -i "/^${service}$/d" "$enabled_services_conf" 2>/dev/null || true
+        done
+    fi
+
+    # Reload supervisor if running
+    if pgrep supervisord > /dev/null 2>&1; then
+        echo "   Reloading supervisor configuration..."
+        sudo supervisorctl reread 2>/dev/null || true
+        sudo supervisorctl update 2>/dev/null || true
+    fi
+
+    echo "✅ Supervisord configuration removed"
+    echo ""
+}
+
 # Uninstall script_exporter
 uninstall_script_exporter() {
     echo ""
     echo "🗑️  Uninstalling script_exporter..."
     echo ""
 
-    # Stop running script_exporter
+    # Stop running script_exporter (in case it's running manually, not via supervisor)
     if pgrep -f "script_exporter.*--config" >/dev/null 2>&1; then
         echo "⚠️  Stopping running script_exporter..."
         sudo pkill -f "script_exporter.*--config" || true
@@ -339,6 +387,228 @@ uninstall_otel_collector() {
     echo ""
 }
 
+#------------------------------------------------------------------------------
+# PREREQUISITE CHECK
+#------------------------------------------------------------------------------
+
+check_identity() {
+    local identity_met=true
+
+    # Check 1: Identity file exists
+    if [ ! -f "$HOME/.devcontainer-identity" ]; then
+        echo ""
+        log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        log_error "❌ Required Configuration Missing: DevContainer Identity"
+        log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "This tool requires identity configuration before it can be installed."
+        echo ""
+        echo "OTel Collector uses your identity to label metrics in Grafana, enabling"
+        echo "you to filter and identify your specific devcontainer's telemetry data."
+        echo ""
+        echo "📋 To fix this, follow these steps:"
+        echo ""
+        echo "STEP 1: Configure your identity"
+        echo "  Run: bash /workspace/.devcontainer/additions/config-devcontainer-identity.sh"
+        echo ""
+        echo "  Or use the configuration checker to configure ALL missing items:"
+        echo "  Run: check-configs"
+        echo ""
+        echo "STEP 2: Resume installation"
+        echo "  Run: bash /workspace/.devcontainer.extend/project-installs.sh"
+        echo ""
+        echo "  This will:"
+        echo "  - Re-run installation for all enabled tools"
+        echo "  - Skip tools that are already installed"
+        echo "  - Install tools that previously failed due to missing config"
+        echo ""
+        echo "  💡 Tip: Keep running project-installs.sh until all tools are installed"
+        echo "      If another config is missing, repeat the process"
+        echo ""
+        log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        identity_met=false
+    fi
+
+    # Check 2: Identity has required values
+    if [ "$identity_met" = true ]; then
+        # shellcheck source=/dev/null
+        source "$HOME/.devcontainer-identity"
+
+        local missing_vars=()
+        [ -z "${DEVELOPER_ID:-}" ] && missing_vars+=("DEVELOPER_ID")
+        [ -z "${DEVELOPER_EMAIL:-}" ] && missing_vars+=("DEVELOPER_EMAIL")
+        [ -z "${PROJECT_NAME:-}" ] && missing_vars+=("PROJECT_NAME")
+
+        if [ ${#missing_vars[@]} -gt 0 ]; then
+            echo ""
+            log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            log_error "❌ Identity Configuration Incomplete"
+            log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "Identity file exists but missing required variables:"
+            for var in "${missing_vars[@]}"; do
+                echo "  ❌ $var"
+            done
+            echo ""
+            echo "📋 To fix this:"
+            echo ""
+            echo "STEP 1: Reconfigure identity"
+            echo "  Run: bash /workspace/.devcontainer/additions/config-devcontainer-identity.sh"
+            echo ""
+            echo "STEP 2: Resume installation"
+            echo "  Run: bash /workspace/.devcontainer.extend/project-installs.sh"
+            echo ""
+            log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            identity_met=false
+        fi
+    fi
+
+    if [ "$identity_met" = false ]; then
+        log_error "Installation aborted - identity configuration required"
+        return 1
+    fi
+
+    log_success "Prerequisites verified: DevContainer identity configured"
+    return 0
+}
+
+#------------------------------------------------------------------------------
+# SUPERVISOR CONFIGURATION
+#------------------------------------------------------------------------------
+
+# Generate supervisord configuration for OTel services
+generate_supervisor_configs() {
+    echo ""
+    echo "📝 Generating supervisord configuration for OTel services..."
+    echo ""
+
+    # Load identity file to get environment variables
+    # Note: check_identity() already validated this exists and has correct values
+    IDENTITY_FILE="$HOME/.devcontainer-identity"
+    # shellcheck source=/dev/null
+    source "$IDENTITY_FILE"
+
+    # Set default for TS_HOSTNAME if not present (optional variable)
+    TS_HOSTNAME="${TS_HOSTNAME:-unknown}"
+
+    # Config paths
+    local supervisor_conf_dir="/etc/supervisor/conf.d"
+    local script_exporter_conf="${supervisor_conf_dir}/otel-script-exporter.conf"
+    local lifecycle_conf="${supervisor_conf_dir}/otel-lifecycle.conf"
+    local metrics_conf="${supervisor_conf_dir}/otel-metrics.conf"
+
+    # 1. Generate script-exporter config (base service, no dependencies)
+    echo "   Creating: otel-script-exporter.conf"
+    sudo tee "$script_exporter_conf" > /dev/null << EOF
+# OpenTelemetry script_exporter Service
+# Auto-generated by install-otel-monitoring.sh
+# Exposes custom devcontainer metrics via Prometheus format
+
+[program:otel-script-exporter]
+command=/usr/local/bin/script_exporter --config.files=/workspace/.devcontainer/additions/otel/script-exporter-config.yaml
+autostart=true
+autorestart=true
+priority=30
+user=vscode
+stdout_logfile=/var/log/supervisor/otel-script-exporter.log
+stderr_logfile=/var/log/supervisor/otel-script-exporter-error.log
+stdout_logfile_maxbytes=10MB
+stderr_logfile_maxbytes=10MB
+startsecs=5
+stopwaitsecs=10
+EOF
+
+    # 2. Generate otel-lifecycle config (depends on script-exporter)
+    echo "   Creating: otel-lifecycle.conf"
+    sudo tee "$lifecycle_conf" > /dev/null << EOF
+# OpenTelemetry Lifecycle Collector Service
+# Auto-generated by install-otel-monitoring.sh
+# Collects logs, events, and lifecycle telemetry
+
+[program:otel-lifecycle]
+command=/usr/bin/otelcol-contrib --config=/workspace/.devcontainer/additions/otel/otelcol-lifecycle-config.yaml
+autostart=true
+autorestart=true
+priority=31
+user=vscode
+environment=DEVELOPER_ID="${DEVELOPER_ID:-}",DEVELOPER_EMAIL="${DEVELOPER_EMAIL:-}",PROJECT_NAME="${PROJECT_NAME:-}",TS_HOSTNAME="${TS_HOSTNAME}"
+stdout_logfile=/var/log/supervisor/otel-lifecycle.log
+stderr_logfile=/var/log/supervisor/otel-lifecycle-error.log
+stdout_logfile_maxbytes=10MB
+stderr_logfile_maxbytes=10MB
+startsecs=5
+stopwaitsecs=10
+depends_on=otel-script-exporter
+EOF
+
+    # 3. Generate otel-metrics config (depends on script-exporter)
+    echo "   Creating: otel-metrics.conf"
+    sudo tee "$metrics_conf" > /dev/null << EOF
+# OpenTelemetry Metrics Collector Service
+# Auto-generated by install-otel-monitoring.sh
+# Collects system metrics (CPU, memory, disk, network)
+
+[program:otel-metrics]
+command=/usr/bin/otelcol-contrib --config=/workspace/.devcontainer/additions/otel/otelcol-metrics-config.yaml
+autostart=true
+autorestart=true
+priority=32
+user=vscode
+environment=DEVELOPER_ID="${DEVELOPER_ID:-}",DEVELOPER_EMAIL="${DEVELOPER_EMAIL:-}",PROJECT_NAME="${PROJECT_NAME:-}",TS_HOSTNAME="${TS_HOSTNAME}"
+stdout_logfile=/var/log/supervisor/otel-metrics.log
+stderr_logfile=/var/log/supervisor/otel-metrics-error.log
+stdout_logfile_maxbytes=10MB
+stderr_logfile_maxbytes=10MB
+startsecs=5
+stopwaitsecs=10
+depends_on=otel-script-exporter
+EOF
+
+    echo ""
+    echo "✅ Supervisord configuration generated successfully"
+    echo ""
+    echo "   Services configured:"
+    echo "   • otel-script-exporter (priority 30) - Custom metrics exporter"
+    echo "   • otel-lifecycle (priority 31) - Lifecycle & logs collector"
+    echo "   • otel-metrics (priority 32) - System metrics collector"
+    echo ""
+
+    # Add to enabled services
+    local enabled_services_conf="/workspace/.devcontainer.extend/enabled-services.conf"
+
+    # Create config file if it doesn't exist
+    if [ ! -f "$enabled_services_conf" ]; then
+        mkdir -p "$(dirname "$enabled_services_conf")"
+        cat > "$enabled_services_conf" << 'EOFCONF'
+# Enabled Services for Auto-Start
+# Services listed here will automatically start when the container starts
+# Format: One service identifier per line (matches program name in supervisor config)
+#
+# Management:
+#   dev-services enable <service>   - Enable a service
+#   dev-services disable <service>  - Disable a service
+#   dev-services list-enabled       - Show enabled services
+
+EOFCONF
+    fi
+
+    # Add OTel services if not already present
+    for service in "otel-script-exporter" "otel-lifecycle" "otel-metrics"; do
+        if ! grep -q "^${service}$" "$enabled_services_conf" 2>/dev/null; then
+            echo "$service" >> "$enabled_services_conf"
+            echo "   ✅ Auto-enabled: $service"
+        fi
+    done
+
+    echo ""
+    echo "📋 Management commands:"
+    echo "   dev-services status                  # Show service status"
+    echo "   dev-services start                   # Start all services"
+    echo "   dev-services restart otel-lifecycle  # Restart specific service"
+    echo "   dev-services logs otel-metrics       # View service logs"
+    echo ""
+}
+
 # Define verification commands to run after installation
 VERIFY_COMMANDS=(
     "command -v otelcol-contrib >/dev/null && echo '✅ otelcol-contrib binary found in PATH' || echo '❌ otelcol-contrib not found'"
@@ -359,16 +629,23 @@ post_installation_message() {
     echo "📋 Next Steps:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo
-    echo "1. Configure your identity (required before starting service):"
+    echo "1. Configure your identity (required for proper telemetry labeling):"
     echo "   bash .devcontainer/additions/config-devcontainer-identity.sh"
     echo
     echo "   This will prompt you for an identity string from your administrator"
     echo "   and configure: ~/.devcontainer-identity"
     echo
-    echo "2. Start the monitoring service:"
-    echo "   bash .devcontainer/additions/start-otel-monitoring.sh"
+    echo "2. Start the monitoring services:"
+    echo "   dev-services start"
     echo
-    echo "3. View dashboards in Grafana:"
+    echo "   The services will auto-start on your next shell session."
+    echo
+    echo "3. Manage services:"
+    echo "   dev-services status                  # Show service status"
+    echo "   dev-services restart otel-lifecycle  # Restart specific service"
+    echo "   dev-services logs otel-metrics       # View service logs"
+    echo
+    echo "4. View dashboards in Grafana:"
     echo "   http://grafana.localhost"
     echo "   Navigate to: Dashboards → Devcontainer folder"
     echo
@@ -379,6 +656,14 @@ post_installation_message() {
     echo "• Main documentation: $OTEL_CONFIG_DIR/README-otel.md"
     echo "• Grafana dashboards: $OTEL_CONFIG_DIR/grafana/"
     echo "• Configuration files: $OTEL_CONFIG_DIR/"
+    echo "• Supervisor configs: /etc/supervisor/conf.d/otel-*.conf"
+    echo
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "ℹ️  Note:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo
+    echo "Services are now managed by supervisord and will auto-start"
+    echo "on container startup. Use 'dev-services' for all management."
     echo
 }
 
@@ -452,6 +737,7 @@ if [ "${UNINSTALL_MODE}" -eq 1 ]; then
     echo "🔄 Starting uninstallation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
+    remove_supervisor_configs
     uninstall_script_exporter
     uninstall_otel_collector
     post_uninstallation_message
@@ -462,6 +748,13 @@ else
     install_otel_collector || exit 1
     install_script_exporter || exit 1
     verify_installations
+
+    # Check prerequisites before generating configs
+    check_identity || exit 1
+
+    # Generate supervisord configuration for the services
+    generate_supervisor_configs
+
     post_installation_message
 
     # Auto-enable for container rebuild

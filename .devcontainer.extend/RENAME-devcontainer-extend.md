@@ -170,10 +170,13 @@ All install scripts in `.devcontainer/additions/` follow a standard pattern:
 .devcontainer/
 ├── dev-setup.sh                    # Interactive menu + auto-install on rebuild
 ├── additions/
+│   ├── addition-templates/         # Templates for creating new scripts
+│   │   ├── README-additions-template.md
+│   │   ├── _template-install-script.sh
+│   │   └── _template-config-script.sh
 │   ├── lib/
 │   │   └── tool-auto-enable.sh     # Auto-enable library
-│   ├── install-*.sh                # 17 install scripts with auto-enable
-│   └── _template-install-script.sh # Template for new scripts
+│   └── install-*.sh                # 17 install scripts with auto-enable
 │
 └── .devcontainer.extend/
     └── enabled-tools.conf          # Lists enabled tools
@@ -285,21 +288,28 @@ echo "✅ Project setup complete"
 
 ## Additional Documentation
 
-- **Install Scripts**: See `.devcontainer/additions/README-additions.md` for detailed guide
+- **Install Scripts**: See `.devcontainer/additions/README-additions.md` for how to use existing scripts
+- **Creating New Scripts**: See `.devcontainer/additions/addition-templates/README-additions-template.md` for comprehensive guide
 - **Supervisor Setup**: See `.devcontainer.extend/README-supervisor.md` for process manager configuration
 - **OTel Monitoring**: See `.devcontainer/additions/otel/README-otel.md` for monitoring setup
-- **Template Script**: See `.devcontainer/additions/_template-install-script.sh` for creating new install scripts
+- **Templates**: See `.devcontainer/additions/addition-templates/` for script templates
 
 ## Contributing
 
 When creating new install scripts:
 
-1. Copy `.devcontainer/additions/_template-install-script.sh`
-2. Update metadata (SCRIPT_NAME, SCRIPT_DESCRIPTION, CHECK_INSTALLED_COMMAND)
-3. Implement installation logic
-4. Test with `--debug`, `--uninstall`, and normal installation
-5. Verify auto-enable functionality works
-6. Document in README-additions.md
+1. Read the comprehensive guide: `.devcontainer/additions/addition-templates/README-additions-template.md`
+2. Copy the appropriate template:
+   ```bash
+   cp .devcontainer/additions/addition-templates/_template-install-script.sh \
+      .devcontainer/additions/install-my-tool.sh
+   ```
+3. Update metadata (SCRIPT_NAME, SCRIPT_DESCRIPTION, CHECK_INSTALLED_COMMAND)
+4. Add PREREQUISITE_CONFIGS if your tool requires configurations
+5. Implement installation logic
+6. Test with `--debug`, `--uninstall`, and normal installation
+7. Verify auto-enable functionality works
+8. Tool will automatically appear in dev-setup menu
 
 ## Summary
 

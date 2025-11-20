@@ -1,7 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(command -v:*)",
+      "Bash(bash:*)",
+      "Bash(echo:*)",
+      "Bash(/dev/null)",
+      "Bash(cat:*)",
+      "Bash(git commit:*)",
+      "Bash(test:*)",
+      "Bash(readlink:*)",
+      "Bash(supervisorctl tail:*)",
+      "Bash(sudo tail:*)",
+      "Bash(sudo grep:*)",
+      "Bash(chmod:*)",
+      "Bash(/tmp/run-unit-tests-debug.sh:*)"
     ],
     "deny": [],
     "ask": []

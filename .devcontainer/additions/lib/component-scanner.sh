@@ -124,13 +124,13 @@ check_component_installed() {
 #   additions_dir - Directory containing install-*.sh scripts
 #
 # Output format (tab-separated, one line per component):
-#   script_basename<TAB>SCRIPT_NAME<TAB>SCRIPT_DESCRIPTION<TAB>SCRIPT_CATEGORY<TAB>CHECK_INSTALLED_COMMAND
+#   script_basename<TAB>SCRIPT_NAME<TAB>SCRIPT_DESCRIPTION<TAB>SCRIPT_CATEGORY<TAB>CHECK_INSTALLED_COMMAND<TAB>PREREQUISITE_CONFIGS
 #
 # Exit code: 0 on success, 1 if directory not found
 #
 # Example:
-#   while IFS=$'\t' read -r basename name desc cat check; do
-#       echo "Component: $name (category: $cat)"
+#   while IFS=$'\t' read -r basename name desc cat check prereqs; do
+#       echo "Component: $name (category: $cat, prerequisites: $prereqs)"
 #   done < <(scan_install_scripts "/workspace/.devcontainer/additions")
 #
 scan_install_scripts() {
@@ -162,6 +162,7 @@ scan_install_scripts() {
         local script_description=$(extract_script_metadata "$script" "SCRIPT_DESCRIPTION")
         local script_category=$(extract_script_metadata "$script" "SCRIPT_CATEGORY")
         local check_command=$(extract_script_metadata "$script" "CHECK_INSTALLED_COMMAND")
+        local prerequisite_configs=$(extract_script_metadata "$script" "PREREQUISITE_CONFIGS")
 
         # Skip if no SCRIPT_NAME found (invalid component)
         if [[ -z "$script_name" ]]; then
@@ -178,13 +179,14 @@ scan_install_scripts() {
             script_description="No description available"
         fi
 
-        # Output tab-separated values
-        printf "%s\t%s\t%s\t%s\t%s\n" \
+        # Output tab-separated values (prerequisite_configs may be empty)
+        printf "%s\t%s\t%s\t%s\t%s\t%s\n" \
             "$script_basename" \
             "$script_name" \
             "$script_description" \
             "$script_category" \
-            "$check_command"
+            "$check_command" \
+            "$prerequisite_configs"
     done
 
     return 0

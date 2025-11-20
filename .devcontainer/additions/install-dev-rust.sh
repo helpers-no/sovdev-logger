@@ -25,6 +25,10 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
 
+# Source logging library
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/logging.sh"
+
 #------------------------------------------------------------------------------
 
 # Before running installation, we need to add any required repositories or setup
@@ -140,9 +144,6 @@ install_rust() {
 
 # Define package arrays (remove any empty arrays that aren't needed)
 SYSTEM_PACKAGES=(
-    "curl"
-    "wget"
-    "git"
     "build-essential"
     "pkg-config"
     "libssl-dev"

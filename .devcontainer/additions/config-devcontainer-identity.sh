@@ -4,7 +4,9 @@
 # DESCRIPTION: Developer onboarding script - sets up identity for devcontainer monitoring
 # PURPOSE: Decodes admin-provided identity string and configures environment
 #
-# Usage: ./config-devcontainer-identity.sh
+# Usage:
+#   bash config-devcontainer-identity.sh        # Run normally (need to source afterward)
+#   source config-devcontainer-identity.sh      # Run and load vars in current shell
 #
 # Interactive script - will prompt for identity string from admin
 #
@@ -21,6 +23,11 @@ CHECK_CONFIGURED_COMMAND="[ -f ~/.devcontainer-identity ] && grep -q '^export DE
 
 set -euo pipefail
 
+# Source logging library
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/logging.sh"
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -31,6 +38,10 @@ NC='\033[0m'
 # Files
 IDENTITY_FILE="$HOME/.devcontainer-identity"
 BASHRC_FILE="$HOME/.bashrc"
+
+# Persistent storage paths
+PERSISTENT_DIR="/workspace/topsecret/env-vars"
+PERSISTENT_FILE="$PERSISTENT_DIR/.devcontainer-identity"
 
 #------------------------------------------------------------------------------
 # FUNCTIONS
@@ -191,91 +202,6 @@ load_identity_now() {
     log_success "Identity loaded"
 }
 
-check_otel_installed() {
-    if command -v otelcol-contrib >/dev/null 2>&1; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-install_otel_collector() {
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "📦 Install Monitoring Service?"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "The OpenTelemetry Collector is not installed yet."
-    echo "It's required for devcontainer monitoring."
-    echo ""
-    read -p "Install it now? (Y/n): " -n 1 -r
-    echo
-
-    if [[ $REPLY =~ ^[Nn]$ ]]; then
-        echo ""
-        log_info "Skipping installation"
-        echo ""
-        echo "To install later, run:"
-        echo "   bash .devcontainer/additions/install-otel-monitoring.sh"
-        return 1
-    fi
-
-    echo ""
-    # Run the install script
-    if bash /workspace/.devcontainer/additions/install-otel-monitoring.sh; then
-        log_success "OTel Collector installed"
-        return 0
-    else
-        log_error "Installation failed"
-        echo ""
-        echo "Please contact your administrator or check the logs."
-        return 1
-    fi
-}
-
-start_monitoring() {
-    echo ""
-
-    # Check if OTel Collector is installed
-    if ! check_otel_installed; then
-        # Offer to install it
-        if ! install_otel_collector; then
-            # User declined or installation failed
-            return 0
-        fi
-    fi
-
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "🚀 Start Monitoring Service?"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "Monitoring services when connected to our network."
-    echo ""
-    read -p "Start monitoring now? (Y/n): " -n 1 -r
-    echo
-
-    if [[ $REPLY =~ ^[Nn]$ ]]; then
-        echo ""
-        log_info "Skipping monitoring start"
-        echo ""
-        echo "To start monitoring later, run:"
-        echo "   bash .devcontainer/additions/start-otel-monitoring.sh"
-        return 0
-    fi
-
-    echo ""
-    # Start the OTel monitoring services (it will inherit env vars from this process)
-    if bash /workspace/.devcontainer/additions/start-otel-monitoring.sh; then
-        log_success "Monitoring services started"
-    else
-        log_error "Failed to start monitoring services"
-        echo ""
-        echo "You can try starting it manually:"
-        echo "   bash .devcontainer/additions/start-otel-monitoring.sh"
-    fi
-}
-
 show_completion() {
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -297,22 +223,106 @@ show_completion() {
     echo "📋 Additional Info:"
     echo ""
     echo "• Your identity is stored in: ~/.devcontainer-identity"
-    echo "  (This file is private to you, not committed to git)"
+    echo "  (Symlink to: /workspace/topsecret/env-vars/.devcontainer-identity)"
+    echo "  Persists across container rebuilds"
     echo ""
     echo "• To verify your identity anytime:"
     echo "  echo \$DEVELOPER_ID"
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    log_success "You can now start working!"
+
+    if [ "$SOURCED" = true ]; then
+        # Script was sourced - load identity in current shell
+        source "$IDENTITY_FILE"
+        log_success "Identity loaded in current terminal!"
+        echo ""
+        echo "Test it now:"
+        echo "  echo \$DEVELOPER_ID"
+    else
+        # Script was executed - need manual sourcing
+        log_success "You can now start working!"
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "⚡ To load identity in THIS terminal, run:"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "source ~/.devcontainer-identity && echo \"DEVELOPER_ID: \$DEVELOPER_ID\""
+    fi
     echo ""
+}
+
+#------------------------------------------------------------------------------
+# PERSISTENT STORAGE SETUP - Use topsecret folder for persistence across rebuilds
+#------------------------------------------------------------------------------
+
+setup_persistent_storage() {
+    # Ensure persistent directory exists
+    mkdir -p "$PERSISTENT_DIR"
+
+    # Create symlink (force overwrite if exists)
+    ln -sf "$PERSISTENT_FILE" "$IDENTITY_FILE"
+}
+
+#------------------------------------------------------------------------------
+# VERIFY MODE - Non-interactive validation for container rebuild
+#------------------------------------------------------------------------------
+
+verify_identity() {
+    # Silent mode - no prompts, just validate
+
+    # Always set up symlink first (in case container was rebuilt)
+    setup_persistent_storage
+
+    # Check if identity file exists
+    if [ ! -f "$IDENTITY_FILE" ]; then
+        # File doesn't exist - this is expected on first container creation
+        # Exit silently without error
+        return 0
+    fi
+
+    # File exists - validate it has required variables
+    # shellcheck source=/dev/null
+    source "$IDENTITY_FILE" 2>/dev/null || return 1
+
+    local missing_vars=()
+    [ -z "${DEVELOPER_ID:-}" ] && missing_vars+=("DEVELOPER_ID")
+    [ -z "${DEVELOPER_EMAIL:-}" ] && missing_vars+=("DEVELOPER_EMAIL")
+    [ -z "${PROJECT_NAME:-}" ] && missing_vars+=("PROJECT_NAME")
+    [ -z "${TS_HOSTNAME:-}" ] && missing_vars+=("TS_HOSTNAME")
+
+    if [ ${#missing_vars[@]} -gt 0 ]; then
+        echo "⚠️  Identity file exists but is incomplete. Missing: ${missing_vars[*]}"
+        echo "   Run: bash .devcontainer/additions/config-devcontainer-identity.sh"
+        return 1
+    fi
+
+    # Identity is valid
+    echo "✅ Developer identity verified: ${DEVELOPER_ID}"
+    return 0
 }
 
 #------------------------------------------------------------------------------
 # MAIN
 #------------------------------------------------------------------------------
 
+# Detect if script is being sourced or executed
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    SOURCED=true
+else
+    SOURCED=false
+fi
+
 main() {
+    # Handle --verify flag for non-interactive validation
+    if [ "${1:-}" = "--verify" ]; then
+        verify_identity
+        exit $?
+    fi
+
+    # Setup persistent storage (symlink)
+    setup_persistent_storage
+
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "🔐 Developer Identity Setup"
@@ -338,9 +348,6 @@ main() {
 
     # Load in current session
     load_identity_now
-
-    # Optionally start monitoring
-    start_monitoring
 
     # Show completion
     show_completion

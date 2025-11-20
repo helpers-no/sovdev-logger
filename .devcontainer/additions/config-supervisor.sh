@@ -16,6 +16,11 @@ CHECK_CONFIG_COMMAND="test -f /etc/supervisor/supervisord.conf"
 
 set -e
 
+# Source logging library
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/logging.sh"
+
 # Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -204,12 +209,12 @@ reload_supervisor() {
         log_success "Supervisor reloaded"
     else
         log_info "Supervisor not running - starting it now..."
-        sudo /etc/init.d/supervisord start
+        sudo supervisord -c /etc/supervisor/supervisord.conf
         sleep 2
         if pgrep supervisord > /dev/null; then
             log_success "Supervisor started and services are now running"
         else
-            log_warn "Failed to start supervisor - will auto-start on next shell or container restart"
+            log_warn "Failed to start supervisor - check supervisord.conf"
         fi
     fi
 }

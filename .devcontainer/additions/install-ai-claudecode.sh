@@ -25,6 +25,10 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
 
+# Source logging library
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/logging.sh"
+
 #------------------------------------------------------------------------------
 
 # Before running installation, we need to add any required repositories or setup
@@ -45,17 +49,28 @@ pre_installation_setup() {
         
         # Create credentials directory in gitignored topsecret folder
         mkdir -p /workspace/topsecret/.claude-credentials
-        
-        # Create symlink from home to persistent location
-        if [ ! -L "/home/vscode/.claude" ] && [ ! -d "/home/vscode/.claude" ]; then
-            ln -sf /workspace/topsecret/.claude-credentials /home/vscode/.claude
-            echo "✅ Claude credentials will persist in topsecret/ folder (gitignored)"
-        elif [ -L "/home/vscode/.claude" ]; then
-            echo "✅ Symlink already exists for Claude credentials"
+
+        # Use the credential sync helper to ensure symlink is properly set up
+        source "${SCRIPT_DIR}/lib/claude-credential-sync.sh"
+        if ensure_claude_credentials; then
+            echo "✅ Claude credentials symlink verified and working"
         else
-            echo "⚠️  /home/vscode/.claude already exists as directory (not symlink)"
+            echo "❌ Failed to set up credentials symlink"
+            return 1
         fi
-        
+
+        # Diagnostic: Check if credentials exist from previous session
+        if [ -f /workspace/topsecret/.claude-credentials/.credentials.json ]; then
+            echo "🔍 Found existing credentials from previous session"
+            echo "   File: /workspace/topsecret/.claude-credentials/.credentials.json"
+            echo "   Size: $(stat -c%s /workspace/topsecret/.claude-credentials/.credentials.json 2>/dev/null || echo 'unknown') bytes"
+            echo "   Modified: $(stat -c%y /workspace/topsecret/.claude-credentials/.credentials.json 2>/dev/null | cut -d'.' -f1 || echo 'unknown')"
+            echo "   Owner: $(stat -c%U:%G /workspace/topsecret/.claude-credentials/.credentials.json 2>/dev/null || echo 'unknown')"
+            echo "   Permissions: $(stat -c%a /workspace/topsecret/.claude-credentials/.credentials.json 2>/dev/null || echo 'unknown')"
+        else
+            echo "ℹ️  No existing credentials found (first time setup)"
+        fi
+
         echo "✅ Pre-installation setup complete"
     fi
 }
@@ -132,7 +147,23 @@ setup_claude_code_config() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         return
     fi
-    
+
+    # Add shell initialization to ensure symlink on every terminal start
+    local bashrc="/home/vscode/.bashrc"
+    local init_marker="# Claude Code credential sync"
+
+    if [ -f "$bashrc" ] && ! grep -q "$init_marker" "$bashrc" 2>/dev/null; then
+        cat >> "$bashrc" << 'EOFBASH'
+
+# Claude Code credential sync - ensures credentials persist across rebuilds
+if [ -f "/workspace/.devcontainer/additions/lib/claude-credential-sync.sh" ]; then
+    source "/workspace/.devcontainer/additions/lib/claude-credential-sync.sh"
+    ensure_claude_credentials > /dev/null 2>&1
+fi
+EOFBASH
+        echo "✅ Added credential sync to shell initialization"
+    fi
+
     # Create workspace .claude directory for project-specific settings and skills
     mkdir -p /workspace/.claude/skills
     
@@ -194,13 +225,14 @@ EOF
 }
 
 # Define package arrays
+# Note: curl and git are already in the base Docker image, no need to reinstall
 SYSTEM_PACKAGES=(
-    "curl"
-    "git"
+    # No additional system packages needed - curl and git are in base image
 )
 
 NODE_PACKAGES=(
-    "@anthropic-ai/claude-code"
+    # Claude Code is installed via custom function, not through standard npm process
+    # This avoids double-installation
 )
 
 PYTHON_PACKAGES=(
@@ -219,7 +251,9 @@ declare -A EXTENSIONS
 VERIFY_COMMANDS=(
     "command -v claude >/dev/null && echo '✅ Claude Code binary is available' || echo '❌ Claude Code binary not found'"
     "test -L /home/vscode/.claude && echo '✅ Claude credentials symlink exists' || echo '⚠️  Credentials symlink not found'"
+    "[ -L /home/vscode/.claude ] && [ \"\$(readlink -f /home/vscode/.claude)\" = '/workspace/topsecret/.claude-credentials' ] && echo '✅ Symlink points to correct location' || echo '⚠️  Symlink target incorrect'"
     "test -d /workspace/topsecret/.claude-credentials && echo '✅ Credentials directory exists in topsecret/' || echo '❌ Credentials directory not found'"
+    "test -w /workspace/topsecret/.claude-credentials && echo '✅ Credentials directory is writable' || echo '❌ Credentials directory not writable'"
     "test -d /workspace/.claude/skills && echo '✅ Skills directory exists' || echo '⚠️  Skills directory not found'"
     "grep -q 'topsecret/' /workspace/.gitignore && echo '✅ topsecret/ is gitignored' || echo '❌ topsecret/ NOT gitignored (SECURITY RISK!)'"
     "claude --version >/dev/null 2>&1 && echo '✅ Claude Code is functional' || echo '⚠️  Claude Code may need authentication setup'"
@@ -259,6 +293,13 @@ post_installation_message() {
     echo "- Your API key will be stored in: /workspace/topsecret/.claude-credentials/"
     echo "- This location is gitignored and will persist across container rebuilds"
     echo "- Project skills in /workspace/.claude/skills/ are shared with your team"
+    echo
+    echo "⚠️  Known Issue - Re-authentication After Rebuild:"
+    echo "- You may need to re-authenticate after container rebuilds"
+    echo "- This happens when OAuth tokens expire and cannot be auto-refreshed"
+    echo "- Your credentials ARE persisted, but Claude Code may not refresh them properly"
+    echo "- Workaround: Use 'claude setup-token' with an API key instead of OAuth"
+    echo "- API keys don't expire and will work across all rebuilds"
     echo
     echo "📚 Key Features:"
     echo "- ✅ Terminal-native AI assistant with agentic capabilities"
