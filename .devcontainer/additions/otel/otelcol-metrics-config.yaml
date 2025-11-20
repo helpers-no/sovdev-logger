@@ -36,7 +36,9 @@
 #          otelcol-contrib --config=/workspace/.devcontainer/additions/otel/otelcol-metrics-config.yaml
 #   Or use: /workspace/.devcontainer/additions/start-otel-monitoring.sh
 #
-# Logs: /var/log/otelcol-metrics.log
+# Logs: Collector's internal logs go to stdout/stderr (captured by start script)
+#       Final destination: /var/log/otelcol-metrics.log
+#       Metrics debug output also included in the same log file
 #
 # Environment Variables Required:
 #   - DEVELOPER_ID: Developer identifier (from ~/.devcontainer-identity)
@@ -145,6 +147,23 @@ exporters:
 
 # SERVICE: Define the metrics pipeline
 service:
+  # Internal telemetry for the collector
+  telemetry:
+    logs:
+      level: debug
+      # Output collector's own logs to stdout/stderr instead of directly to /var/log/
+      # Why: Collector runs as non-root vscode user and cannot write to /var/log/otelcol.log
+      # Solution: stdout/stderr are captured by nohup in start-otel-monitoring.sh and redirected
+      # to /var/log/otelcol-metrics.log (which has proper permissions set by the start script)
+      # This avoids "permission denied" errors while still logging to /var/log/
+      output_paths:
+        - stdout
+      error_output_paths:
+        - stderr
+    metrics:
+      # Disable collector's internal metrics
+      level: none
+
   pipelines:
     # Metrics pipeline: hostmetrics + cgroup + devcontainer_info → resource → batch → export
     metrics:

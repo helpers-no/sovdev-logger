@@ -21,6 +21,10 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
 
+# Source logging library
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/logging.sh"
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'

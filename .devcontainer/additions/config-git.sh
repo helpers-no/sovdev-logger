@@ -16,6 +16,11 @@ CHECK_CONFIG_COMMAND="git config --global user.name >/dev/null 2>&1 && git confi
 
 set -e
 
+# Source logging library
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/logging.sh"
+
 # Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'

@@ -1,4 +1,5 @@
 #!/bin/bash
+# File: .devcontainer/additions/otel/scripts/devcontainer-info.sh
 # Script to collect devcontainer information about installed components
 # Outputs Prometheus metrics format
 

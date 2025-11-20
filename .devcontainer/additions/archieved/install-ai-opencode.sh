@@ -215,9 +215,6 @@ EOF
 
 # Define package arrays (remove any empty arrays that aren't needed)
 SYSTEM_PACKAGES=(
-    "curl"
-    "wget"
-    "git"
 )
 
 NODE_PACKAGES=(

@@ -145,6 +145,117 @@ SERVICE_CATEGORY="INFRA_CONFIG"
 
 ---
 
+## Automatic Logging
+
+All install and config scripts automatically log their output to timestamped files in `/tmp/devcontainer-install/`. This provides a complete audit trail of what was installed, when, and any errors that occurred.
+
+### Log File Location
+
+```
+/tmp/devcontainer-install/
+  install-dev-golang-20251118-124020.log
+  install-dev-java-20251118-124145.log
+  install-dev-rust-20251118-124302.log
+  config-git-user-20251118-124430.log
+  ...
+```
+
+### Log File Naming
+
+Log files follow this pattern:
+```
+<script-name>-<YYYYMMDD>-<HHMMSS>.log
+```
+
+**Examples:**
+- `install-dev-golang-20251118-124020.log` - Go installation run at 12:40:20
+- `install-dev-python-20251118-131545.log` - Python installation run at 13:15:45
+- `config-git-user-20251118-094520.log` - Git config run at 09:45:20
+
+### Logging Behavior
+
+**Automatic Logging:**
+- All scripts that source the logging library automatically log their output
+- Output appears on terminal in real-time (no change in behavior)
+- Output is simultaneously written to log file using `tee`
+- Log location is displayed at script startup
+
+**What Gets Logged:**
+- All terminal output (stdout and stderr)
+- Installation progress and status messages
+- Error messages and warnings
+- Command output and results
+- Emojis and formatting (preserved exactly as shown on terminal)
+
+### Using the Logging Library
+
+The logging library is automatically included in all scripts created from templates. For existing scripts:
+
+```bash
+# Source logging library (add after other library sources)
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"  
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/logging.sh"
+```
+
+Once sourced, all script output is automatically logged. No code changes needed.
+
+### Viewing Logs
+
+```bash
+# List all log files
+ls -lht /tmp/devcontainer-install/
+
+# View a specific log
+cat /tmp/devcontainer-install/install-dev-golang-20251118-124020.log
+
+# View the most recent log for a script
+ls -t /tmp/devcontainer-install/install-dev-golang-*.log | head -1 | xargs cat
+
+# Search logs for errors
+grep -i error /tmp/devcontainer-install/*.log
+
+# View logs from today
+find /tmp/devcontainer-install -name "*.log" -mtime 0
+```
+
+### Log Cleanup
+
+Logs are stored in `/tmp/` which means:
+- They persist during the container session
+- They are cleared when the container is stopped/rebuilt
+- They don't accumulate in the git repository
+- They don't consume disk space long-term
+
+To manually clean up old logs:
+```bash
+# Remove logs older than 7 days
+find /tmp/devcontainer-install -name "*.log" -mtime +7 -delete
+
+# Remove all logs
+rm -rf /tmp/devcontainer-install/*.log
+```
+
+### Benefits
+
+**For Development:**
+- Complete audit trail of what was installed
+- Easy troubleshooting when installations fail
+- Can review logs after container rebuild completes
+- Compare logs across multiple installation runs
+
+**For Support:**
+- Team members can share log files when asking for help
+- Clear record of exactly what happened during installation
+- Timestamps help correlate issues with system events
+
+**For Automation:**
+- Log files can be parsed for CI/CD reporting
+- Installation duration can be tracked
+- Failure patterns can be identified
+
+---
+
 ## Using the Menu System
 
 The menu system (`dev-setup.sh`) provides an interactive interface for managing all additions.
@@ -280,152 +391,67 @@ CHECK_INSTALLED_COMMAND="apt-cache policy python3 | grep Installed"  # TOO SLOW
 
 ## Creating New Scripts
 
-### Using Templates
+**For detailed instructions on creating new scripts, see:**
 
-Templates are provided for each script type:
+📖 **[Addition Script Templates Guide](./addition-templates/README-additions-template.md)**
 
-- `_template-install-script.sh` - Template for install scripts
-- `_template-config-script.sh` - Template for config scripts
+This comprehensive guide includes:
+- Complete templates for install and config scripts
+- Step-by-step creation instructions
+- Metadata fields reference
+- Two-layer system explanation (silent restoration, loud prerequisites)
+- Prerequisites pattern (PREREQUISITE_CONFIGS)
+- Best practices and testing guidelines
+- Working examples and common patterns
+- Troubleshooting guide
 
-**Steps to Create a New Script**:
+### Quick Start
 
-1. **Copy the appropriate template**:
-   ```bash
-   cp .devcontainer/additions/_template-install-script.sh \
-      .devcontainer/additions/install-my-tool.sh
-   ```
-
-2. **Update the metadata section**:
-   - Change `SCRIPT_NAME` to your component name
-   - Update `SCRIPT_DESCRIPTION` with a brief description
-   - Set appropriate `SCRIPT_CATEGORY`
-   - Define `CHECK_INSTALLED_COMMAND` to detect installation
-
-3. **Implement the installation logic**:
-   - Add your installation commands
-   - Ensure idempotency (safe to run multiple times)
-   - Add error handling
-   - Provide user feedback
-
-4. **Test the script**:
-   ```bash
-   # Test installation
-   bash .devcontainer/additions/install-my-tool.sh
-
-   # Verify it appears in menu with correct status
-   bash /workspace/.devcontainer/dev-setup.sh
-
-   # Test idempotency (run again)
-   bash .devcontainer/additions/install-my-tool.sh
-   ```
-
-### Example: Simple Install Script
-
+**1. Read the comprehensive guide:**
 ```bash
-#!/bin/bash
-# file: .devcontainer/additions/install-dev-nodejs.sh
-#
-# DESCRIPTION: Install Node.js development environment
-# PURPOSE: Install Node.js, npm, and common global packages
-#
-# Usage: bash .devcontainer/additions/install-dev-nodejs.sh
-#
-#------------------------------------------------------------------------------
-# SCRIPT METADATA - For dev-setup.sh menu discovery
-#------------------------------------------------------------------------------
-
-SCRIPT_NAME="Node.js Development"
-SCRIPT_DESCRIPTION="Install Node.js runtime, npm, and essential tools"
-SCRIPT_CATEGORY="DEV_TOOLS"
-CHECK_INSTALLED_COMMAND="command -v node >/dev/null 2>&1"
-
-#------------------------------------------------------------------------------
-
-set -euo pipefail
-
-main() {
-    echo "Installing Node.js..."
-
-    # Check if already installed
-    if eval "$CHECK_INSTALLED_COMMAND"; then
-        echo "✓ Node.js already installed"
-        node --version
-        return 0
-    fi
-
-    # Install Node.js
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    sudo apt-get install -y nodejs
-
-    # Install global packages
-    npm install -g typescript eslint prettier
-
-    echo "✓ Node.js installation complete"
-    node --version
-    npm --version
-}
-
-main "$@"
+cat /workspace/.devcontainer/additions/addition-templates/README-additions-template.md
 ```
 
-### Example: Configuration Script
+**2. Copy the appropriate template:**
+```bash
+# For install scripts
+cp /workspace/.devcontainer/additions/addition-templates/_template-install-script.sh \
+   /workspace/.devcontainer/additions/install-my-tool.sh
+
+# For config scripts
+cp /workspace/.devcontainer/additions/addition-templates/_template-config-script.sh \
+   /workspace/.devcontainer/additions/config-my-tool.sh
+```
+
+**3. Follow the inline documentation in the template**
+
+**4. Test and enable your script**
+
+### Template Location
+
+All templates and creation documentation are located in:
+```
+/workspace/.devcontainer/additions/addition-templates/
+├── README-additions-template.md     # Complete developer guide
+├── _template-install-script.sh      # Template for install scripts
+├── _template-config-script.sh       # Template for config scripts
+└── tests/                           # Automated test suite
+    ├── README-tests.md              # Test documentation
+    ├── run-unit-tests.sh            # Automated unit test runner
+    └── test-plan.md                 # Complete test plan
+```
+
+**Note:** Detailed examples, patterns, and complete implementation guides are in the template documentation. This keeps the main README focused on using the system, while the template guide focuses on creating new scripts.
+
+### Verify System Health
+
+Before creating new scripts, verify the core systems work correctly:
 
 ```bash
-#!/bin/bash
-# file: .devcontainer/additions/config-git-user.sh
-#
-# DESCRIPTION: Configure Git user identity
-# PURPOSE: Set up Git username and email for commits
-#
-# Usage: bash .devcontainer/additions/config-git-user.sh
-#
-#------------------------------------------------------------------------------
-# CONFIG METADATA - For dev-setup.sh menu discovery
-#------------------------------------------------------------------------------
-
-CONFIG_NAME="Git User Identity"
-CONFIG_DESCRIPTION="Configure your Git username and email"
-CONFIG_CATEGORY="USER_CONFIG"
-CHECK_CONFIGURED_COMMAND="git config --global user.name >/dev/null 2>&1 && git config --global user.email >/dev/null 2>&1"
-
-#------------------------------------------------------------------------------
-
-set -euo pipefail
-
-main() {
-    echo "Git User Configuration"
-    echo "====================="
-    echo ""
-
-    # Check if already configured
-    if eval "$CHECK_CONFIGURED_COMMAND"; then
-        echo "Current Git configuration:"
-        echo "  Name:  $(git config --global user.name)"
-        echo "  Email: $(git config --global user.email)"
-        echo ""
-        read -p "Reconfigure? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            exit 0
-        fi
-    fi
-
-    # Prompt for user information
-    read -p "Enter your name: " name
-    read -p "Enter your email: " email
-
-    # Configure Git
-    git config --global user.name "$name"
-    git config --global user.email "$email"
-
-    echo ""
-    echo "✓ Git user identity configured"
-    echo "  Name:  $(git config --global user.name)"
-    echo "  Email: $(git config --global user.email)"
-}
-
-main "$@"
+bash /workspace/.devcontainer/additions/addition-templates/tests/run-unit-tests.sh
 ```
+
+See [tests/README-tests.md](./addition-templates/tests/README-tests.md) for details.
 
 ---
 
@@ -476,13 +502,18 @@ echo "✓ Project dependencies installed"
 ```
 .devcontainer/additions/
 │
-├── README-additions.md              # This file
+├── README-additions.md              # This file - How to USE the additions system
+│
+├── addition-templates/              # Templates and creation guide
+│   ├── README-additions-template.md # Complete guide for CREATING new scripts
+│   ├── _template-install-script.sh  # Template for install scripts
+│   └── _template-config-script.sh   # Template for config scripts
 │
 ├── lib/                             # Shared libraries
-│   └── component-scanner.sh         # Script discovery library (v1.1.0)
-│
-├── _template-install-script.sh      # Template for install scripts
-├── _template-config-script.sh       # Template for config scripts
+│   ├── component-scanner.sh         # Script discovery library
+│   ├── prerequisite-check.sh        # Prerequisite checking library
+│   ├── logging.sh                   # Automatic logging library
+│   └── tool-auto-enable.sh          # Auto-enable library
 │
 ├── install-*.sh                     # Install scripts (components/tools)
 │   ├── install-dev-python.sh
@@ -516,13 +547,15 @@ echo "✓ Project dependencies installed"
 
 ### Script Development
 
-1. **Use Templates**: Start with the provided templates for consistency
-2. **Add Metadata**: Always include complete metadata for menu discovery
-3. **Test Check Commands**: Verify check commands work correctly before and after installation
-4. **Handle Errors**: Use `set -euo pipefail` and provide clear error messages
-5. **Be Idempotent**: Scripts should be safe to run multiple times
-6. **Provide Feedback**: Use clear output messages for user feedback
-7. **Document Usage**: Include usage examples in script header comments
+1. **Use Templates**: Start with the provided templates in `addition-templates/` for consistency
+2. **Read the Creation Guide**: See [addition-templates/README-additions-template.md](./addition-templates/README-additions-template.md) for complete instructions
+3. **Add Metadata**: Always include complete metadata for menu discovery
+4. **Include Logging**: Ensure scripts source the logging library for audit trails
+5. **Test Check Commands**: Verify check commands work correctly before and after installation
+6. **Handle Errors**: Use `set -euo pipefail` and provide clear error messages
+7. **Be Idempotent**: Scripts should be safe to run multiple times
+8. **Provide Feedback**: Use clear output messages for user feedback
+9. **Document Usage**: Include usage examples in script header comments
 
 ### Naming Conventions
 
@@ -666,5 +699,6 @@ For questions or issues:
 
 ---
 
-**Last Updated**: 2025-11-17
+**Last Updated**: 2025-11-18
 **Component Scanner Version**: 1.1.0
+**Logging Library**: Enabled

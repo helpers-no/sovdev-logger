@@ -4,7 +4,7 @@
 #          Defines custom scripts that collect metrics and expose them via HTTP
 #          for Prometheus/OTel scraping.
 #
-# Usage: script_exporter --config.file=/workspace/.devcontainer/additions/otel/script-exporter-config.yaml
+# Usage: script_exporter --config.files=/workspace/.devcontainer/additions/otel/script-exporter-config.yaml
 #
 # Each script is executed when the corresponding endpoint is scraped by Prometheus/OTel.
 # Prometheus scrapes at the interval you define, not on a fixed schedule.

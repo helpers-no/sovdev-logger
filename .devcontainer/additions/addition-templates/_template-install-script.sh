@@ -44,6 +44,42 @@
 #     "dpkg -l python3 2>/dev/null | grep -q '^ii'"
 #     "[ -d /opt/tool ]"
 #
+# PREREQUISITE_CONFIGS - Space-separated list of config scripts required (OPTIONAL)
+#   Use this field to declare configuration prerequisites that must exist before
+#   your tool can be installed. The system will automatically check these and
+#   block installation with a clear error if prerequisites are missing.
+#
+#   Format: Space-separated list of config script filenames
+#   Example: "config-devcontainer-identity.sh config-aws-credentials.sh"
+#
+#   How it works:
+#     1. project-installs.sh checks this field BEFORE running your install script
+#     2. Uses lib/prerequisite-check.sh to verify each config is satisfied
+#     3. If any prerequisite missing, shows error and skips installation
+#     4. User fixes prerequisites, re-runs project-installs.sh
+#
+#   Two-Layer System:
+#     Layer 1: Silent Restoration (restore_all_configurations)
+#       - Runs BEFORE tool installation
+#       - Attempts to restore ALL configs from topsecret
+#       - SILENT for missing configs (no noise)
+#
+#     Layer 2: Loud Prerequisites (install_project_tools - uses this field!)
+#       - Runs DURING tool installation for YOUR tool
+#       - Checks YOUR PREREQUISITE_CONFIGS field
+#       - LOUD error if required config missing
+#       - Blocks installation until fixed
+#
+#   Example output when prerequisite missing:
+#     ⚠️  My Tool - missing prerequisites
+#       ❌ Developer Identity (run: bash .../config-devcontainer-identity.sh)
+#
+#     💡 To fix:
+#        1. Run: check-configs
+#        2. Then re-run: bash .../project-installs.sh
+#
+#   Leave empty if no prerequisites needed (most tools don't need this).
+#
 # AUTO-ENABLE PATTERN - Tools automatically add themselves to enabled-tools.conf
 #   When a tool is successfully installed, it automatically adds itself to
 #   .devcontainer.extend/enabled-tools.conf. This ensures the tool will be
@@ -63,12 +99,21 @@ SCRIPT_DESCRIPTION="[Brief description of what this script installs and its purp
 SCRIPT_CATEGORY="DEV_TOOLS"  # Options: DEV_TOOLS, INFRA_CONFIG, AI_TOOLS, MONITORING, DATABASE, CLOUD
 CHECK_INSTALLED_COMMAND="command -v [tool-name] >/dev/null 2>&1"  # Command to check if already installed
 
+# Optional: Prerequisite configurations required before installation
+# Uncomment and modify if your tool requires specific configurations
+# PREREQUISITE_CONFIGS="config-devcontainer-identity.sh"
+# Multiple prerequisites: PREREQUISITE_CONFIGS="config-identity.sh config-aws-credentials.sh"
+
 #------------------------------------------------------------------------------
 
 # Source auto-enable library for automatic addition to enabled-tools.conf
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
+
+# Source logging library for automatic logging to /tmp/devcontainer-install/
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/logging.sh"
 
 #------------------------------------------------------------------------------
 # INSTALLATION FUNCTIONS

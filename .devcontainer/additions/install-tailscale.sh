@@ -12,6 +12,11 @@ set -euo pipefail
 # Source all library files
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 readonly SCRIPT_DIR
+
+# Source logging library (before other libraries)
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/logging.sh"
+
 readonly LIB_DIR="${SCRIPT_DIR}/tailscale"
 
 # List of required library files

@@ -27,6 +27,10 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
 
+# Source logging library
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/logging.sh"
+
 #------------------------------------------------------------------------------
 
 # Custom function BEFORE standard package installation

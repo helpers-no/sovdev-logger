@@ -29,8 +29,12 @@ SERVICE_AUTO_RESTART="true"
 
 set -euo pipefail
 
-# Source all library files
+# Source logging library (before other libraries)
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/logging.sh"
+
+# Source all library files
 readonly SCRIPT_DIR
 readonly LIB_DIR="${SCRIPT_DIR}/tailscale"
 
