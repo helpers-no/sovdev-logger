@@ -213,10 +213,8 @@ verify_installations() {
         echo
         echo "🔍 Verifying installations..."
         for cmd in "${VERIFY_COMMANDS[@]}"; do
-            echo "Running: $cmd"
-            if ! eval "$cmd"; then
-                echo "❌ Verification failed for: $cmd"
-            fi
+            # Run command silently - commands output their own status messages
+            eval "$cmd" || true
         done
     fi
 }
