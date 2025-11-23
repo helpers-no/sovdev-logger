@@ -20,7 +20,7 @@ SCRIPT_NAME="OTel Collector"
 SCRIPT_DESCRIPTION="Install OpenTelemetry Collector for devcontainer monitoring when connected to our network"
 SCRIPT_CATEGORY="INFRA_CONFIG"
 CHECK_INSTALLED_COMMAND="([ -f /usr/bin/otelcol-contrib ] || command -v otelcol-contrib >/dev/null 2>&1) && ([ -f /usr/local/bin/script_exporter ] || command -v script_exporter >/dev/null 2>&1) && [ -f /etc/supervisor/conf.d/otel-script-exporter.conf ] && [ -f /etc/supervisor/conf.d/otel-lifecycle.conf ] && [ -f /etc/supervisor/conf.d/otel-metrics.conf ]"
-PREREQUISITE_CONFIGS="config-devcontainer-identity.sh"
+PREREQUISITE_CONFIGS="config-devcontainer-identity.sh config-nginx.sh"
 
 #------------------------------------------------------------------------------
 
@@ -473,6 +473,59 @@ check_identity() {
 }
 
 #------------------------------------------------------------------------------
+# OTEL CONFIGURATION GENERATION
+#------------------------------------------------------------------------------
+
+# Generate OTEL collector configs from templates
+generate_otel_configs() {
+    echo ""
+    echo "📝 Generating OTEL collector configurations from templates..."
+    echo ""
+
+    # Load nginx backend configuration
+    local NGINX_CONFIG_FILE="$HOME/.nginx-backend-config"
+    if [ ! -f "$NGINX_CONFIG_FILE" ]; then
+        log_error "Nginx backend config not found: $NGINX_CONFIG_FILE"
+        log_error "Run: bash /workspace/.devcontainer/additions/config-nginx.sh"
+        return 1
+    fi
+
+    # shellcheck source=/dev/null
+    source "$NGINX_CONFIG_FILE"
+
+    if [ -z "${NGINX_OTEL_PORT:-}" ]; then
+        log_error "NGINX_OTEL_PORT not set in $NGINX_CONFIG_FILE"
+        return 1
+    fi
+
+    local OTEL_DIR="/workspace/.devcontainer/additions/otel"
+
+    # Generate lifecycle config
+    if [ -f "$OTEL_DIR/otelcol-lifecycle-config.yaml.template" ]; then
+        sed "s|NGINX_OTEL_PORT|${NGINX_OTEL_PORT}|g" \
+            "$OTEL_DIR/otelcol-lifecycle-config.yaml.template" > \
+            "$OTEL_DIR/otelcol-lifecycle-config.yaml"
+        log_success "Generated otelcol-lifecycle-config.yaml (port: $NGINX_OTEL_PORT)"
+    else
+        log_warning "Template not found: otelcol-lifecycle-config.yaml.template"
+    fi
+
+    # Generate metrics config
+    if [ -f "$OTEL_DIR/otelcol-metrics-config.yaml.template" ]; then
+        sed "s|NGINX_OTEL_PORT|${NGINX_OTEL_PORT}|g" \
+            "$OTEL_DIR/otelcol-metrics-config.yaml.template" > \
+            "$OTEL_DIR/otelcol-metrics-config.yaml"
+        log_success "Generated otelcol-metrics-config.yaml (port: $NGINX_OTEL_PORT)"
+    else
+        log_warning "Template not found: otelcol-metrics-config.yaml.template"
+    fi
+
+    echo ""
+    log_success "OTEL configs generated - routing through nginx on port $NGINX_OTEL_PORT"
+    return 0
+}
+
+#------------------------------------------------------------------------------
 # SUPERVISOR CONFIGURATION
 #------------------------------------------------------------------------------
 
@@ -751,6 +804,9 @@ else
 
     # Check prerequisites before generating configs
     check_identity || exit 1
+
+    # Generate OTEL collector configs from templates (with nginx port)
+    generate_otel_configs || exit 1
 
     # Generate supervisord configuration for the services
     generate_supervisor_configs

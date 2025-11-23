@@ -72,21 +72,42 @@ load_backend_config() {
 }
 
 generate_nginx_config() {
-    log_info "Generating nginx configuration from template..."
+    log_info "Generating nginx configurations from templates..."
 
-    # Check if template exists
+    # Generate LiteLLM proxy config
     if [ ! -f "$NGINX_LITELLM_TEMPLATE" ]; then
-        log_error "Template not found: $NGINX_LITELLM_TEMPLATE"
+        log_error "LiteLLM template not found: $NGINX_LITELLM_TEMPLATE"
         return 1
     fi
 
-    # Generate config from template (replace placeholders)
     sudo sed -e "s|BACKEND_URL|${BACKEND_URL}|g" \
              -e "s|NGINX_LITELLM_PORT|${NGINX_LITELLM_PORT}|g" \
              "$NGINX_LITELLM_TEMPLATE" | \
         sudo tee "$NGINX_LITELLM_CONFIG" >/dev/null
 
-    log_success "Configuration generated with backend: $BACKEND_URL (port: $NGINX_LITELLM_PORT)"
+    log_success "LiteLLM proxy config generated (port: $NGINX_LITELLM_PORT)"
+
+    # Generate OTEL proxy config (if NGINX_OTEL_PORT is set)
+    if [ -n "${NGINX_OTEL_PORT:-}" ]; then
+        local NGINX_OTEL_TEMPLATE="${SCRIPT_DIR}/nginx/otel-proxy.conf.template"
+        local NGINX_OTEL_CONFIG="/etc/nginx/sites-available/otel-proxy.conf"
+
+        if [ -f "$NGINX_OTEL_TEMPLATE" ]; then
+            sudo sed -e "s|BACKEND_URL|${BACKEND_URL}|g" \
+                     -e "s|NGINX_OTEL_PORT|${NGINX_OTEL_PORT}|g" \
+                     "$NGINX_OTEL_TEMPLATE" | \
+                sudo tee "$NGINX_OTEL_CONFIG" >/dev/null
+
+            # Enable OTEL site
+            sudo ln -sf "$NGINX_OTEL_CONFIG" /etc/nginx/sites-enabled/otel-proxy.conf 2>/dev/null || true
+
+            log_success "OTEL proxy config generated (port: $NGINX_OTEL_PORT)"
+        else
+            log_warning "OTEL template not found: $NGINX_OTEL_TEMPLATE (skipping)"
+        fi
+    fi
+
+    log_success "Backend: $BACKEND_URL"
     return 0
 }
 

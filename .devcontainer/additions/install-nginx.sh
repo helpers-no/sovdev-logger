@@ -19,7 +19,7 @@
 SCRIPT_NAME="Nginx Reverse Proxy"
 SCRIPT_DESCRIPTION="Install nginx as reverse proxy for Claude Code → LiteLLM with Host header injection"
 SCRIPT_CATEGORY="INFRA_CONFIG"
-CHECK_INSTALLED_COMMAND="command -v nginx >/dev/null && [ -f /etc/nginx/sites-enabled/litellm-proxy ]"
+CHECK_INSTALLED_COMMAND="command -v nginx >/dev/null 2>&1"
 
 #------------------------------------------------------------------------------
 
@@ -55,20 +55,18 @@ pre_installation_setup() {
         sudo mkdir -p /etc/nginx/sites-enabled
         sudo mkdir -p /etc/nginx/conf.d
 
-        # Copy configuration files
-        echo "→ Installing nginx configuration files..."
+        # Copy base nginx configuration
+        echo "→ Installing base nginx.conf..."
         sudo cp "${SCRIPT_DIR}/nginx/nginx.conf" /etc/nginx/nginx.conf
-        sudo cp "${SCRIPT_DIR}/nginx/litellm-proxy.conf" /etc/nginx/sites-available/litellm-proxy
-
-        # Enable site
-        echo "→ Enabling litellm-proxy site..."
-        sudo ln -sf /etc/nginx/sites-available/litellm-proxy /etc/nginx/sites-enabled/litellm-proxy
 
         # Remove default site if exists
         if [ -f /etc/nginx/sites-enabled/default ]; then
             echo "→ Removing default site..."
             sudo rm /etc/nginx/sites-enabled/default
         fi
+
+        # Note: Proxy configs are generated from templates by start-nginx.sh
+        echo "ℹ️  Proxy configurations will be generated from templates on first start"
     fi
 }
 
@@ -101,33 +99,14 @@ post_installation_message() {
     echo "Purpose: $SCRIPT_DESCRIPTION"
     echo
 
-    # Test nginx configuration
-    echo "→ Testing nginx configuration..."
-    if sudo nginx -t 2>&1 | grep -q "successful"; then
-        echo "✅ Nginx configuration is valid"
-    else
-        echo "❌ Nginx configuration test failed"
-        sudo nginx -t
-        return 1
-    fi
-
-    # Start nginx
-    echo "→ Starting nginx service..."
-    if sudo service nginx start 2>&1; then
-        echo "✅ Nginx started successfully"
-    else
-        echo "⚠️  Nginx may already be running or needs manual start"
-    fi
-
-    echo
-    echo "Testing nginx proxy:"
-    echo "  curl http://localhost:8080/nginx-health"
-    echo
-    echo "Expected response:"
-    echo "  'nginx proxy is running'"
+    echo "Next steps:"
+    echo "1. Configure backend: bash /workspace/.devcontainer/additions/config-nginx.sh"
+    echo "2. Start nginx: bash /workspace/.devcontainer/additions/start-nginx.sh"
+    echo "   (or nginx will auto-start via supervisord on next rebuild)"
     echo
     echo "Architecture:"
     echo "  Claude Code → http://localhost:8080 → nginx → Traefik → LiteLLM"
+    echo "  OTEL Collector → http://localhost:8081 → nginx → Traefik → K8s OTel"
     echo
 }
 
@@ -141,8 +120,13 @@ post_uninstallation_message() {
     echo "2. Stopped nginx service"
     echo
 
-    # Cleanup configuration files
+    # Cleanup configuration files (both old and new formats)
     echo "→ Cleaning up nginx configuration..."
+    sudo rm -f /etc/nginx/sites-available/litellm-proxy.conf
+    sudo rm -f /etc/nginx/sites-enabled/litellm-proxy.conf
+    sudo rm -f /etc/nginx/sites-available/otel-proxy.conf
+    sudo rm -f /etc/nginx/sites-enabled/otel-proxy.conf
+    # Old format (if any)
     sudo rm -f /etc/nginx/sites-available/litellm-proxy
     sudo rm -f /etc/nginx/sites-enabled/litellm-proxy
 
