@@ -199,7 +199,7 @@ reload_supervisor() {
         log_success "Supervisor reloaded"
     else
         log_info "Supervisor not running - starting it now..."
-        sudo supervisord -c /etc/supervisor/supervisord.conf
+        sudo supervisord -c /etc/supervisor/supervisord.conf > /dev/null 2>&1
         sleep 2
         if pgrep supervisord > /dev/null; then
             log_success "Supervisor started and services are now running"
