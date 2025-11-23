@@ -48,24 +48,9 @@ pre_installation_setup() {
         fi
     else
         echo "🔧 Performing pre-installation setup for nginx..."
-
-        # Create directory structure
-        echo "→ Creating configuration directories..."
-        sudo mkdir -p /etc/nginx/sites-available
-        sudo mkdir -p /etc/nginx/sites-enabled
-        sudo mkdir -p /etc/nginx/conf.d
-
-        # Copy base nginx configuration
-        echo "→ Installing base nginx.conf..."
-        sudo cp "${SCRIPT_DIR}/nginx/nginx.conf" /etc/nginx/nginx.conf
-
-        # Remove default site if exists
-        if [ -f /etc/nginx/sites-enabled/default ]; then
-            echo "→ Removing default site..."
-            sudo rm /etc/nginx/sites-enabled/default
-        fi
-
-        # Note: Proxy configs are generated from templates by start-nginx.sh
+        # Note: nginx.conf will be installed by nginx-light package
+        # Note: Proxy configs will be generated from templates by start-nginx.sh
+        echo "ℹ️  nginx.conf will be provided by nginx-light package"
         echo "ℹ️  Proxy configurations will be generated from templates on first start"
     fi
 }
@@ -99,6 +84,13 @@ post_installation_message() {
     echo "Purpose: $SCRIPT_DESCRIPTION"
     echo
 
+    # Remove default site (nginx-light installs one)
+    if [ -f /etc/nginx/sites-enabled/default ]; then
+        echo "→ Removing default nginx site..."
+        sudo rm -f /etc/nginx/sites-enabled/default
+    fi
+
+    echo
     echo "Next steps:"
     echo "1. Configure backend: bash /workspace/.devcontainer/additions/config-nginx.sh"
     echo "2. Start nginx: bash /workspace/.devcontainer/additions/start-nginx.sh"
