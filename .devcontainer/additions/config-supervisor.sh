@@ -10,7 +10,7 @@
 CONFIG_NAME="Supervisor Auto-Start"
 CONFIG_DESCRIPTION="Regenerate supervisor configuration from enabled services"
 CONFIG_CATEGORY="INFRA_CONFIG"
-CHECK_CONFIG_COMMAND="test -f /etc/supervisor/supervisord.conf"
+CHECK_CONFIGURED_COMMAND="test -f /etc/supervisor/supervisord.conf"
 
 #------------------------------------------------------------------------------
 
@@ -20,16 +20,6 @@ set -e
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/logging.sh"
-
-# Colors
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-log_info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
-log_success() { echo -e "${GREEN}✅ $1${NC}"; }
-log_warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 
 # Paths
 ADDITIONS_DIR="/workspace/.devcontainer/additions"

@@ -15,7 +15,7 @@
 #------------------------------------------------------------------------------
 
 SERVICE_NAME="Tailscale"
-SERVICE_DESCRIPTION="Network connectivity to remote services (CRITICAL)"
+SERVICE_DESCRIPTION="VPN for secure access to remote services and networks"
 SERVICE_CATEGORY="INFRA_CONFIG"
 CHECK_RUNNING_COMMAND="pgrep -x tailscaled >/dev/null 2>&1 && tailscale status --json 2>/dev/null | grep -q '\"Online\":true'"
 

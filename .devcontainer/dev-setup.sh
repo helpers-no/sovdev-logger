@@ -386,7 +386,87 @@ show_service_category_menu() {
 }
 
 #------------------------------------------------------------------------------
-# Services in category menu
+# Show all services in one menu with category emoji prefixes
+#------------------------------------------------------------------------------
+
+show_all_services_menu() {
+    while true; do
+        # Build menu with ALL services, grouped by category with emoji prefixes
+        local menu_options=()
+        local option_num=1
+        declare -A MENU_TO_SERVICE_INDEX
+
+        # Define category prefix mapping (using text since some emojis don't render in dialog)
+        local -A CATEGORY_PREFIX=(
+            ["AI_TOOLS"]="[AI]"
+            ["LANGUAGE_DEV"]="[DEV]"
+            ["INFRA_CONFIG"]="[INFRA]"
+            ["DATA_ANALYTICS"]="[DATA]"
+            ["UNCATEGORIZED"]="[OTHER]"
+        )
+
+        # Iterate through categories in order
+        for category_key in "AI_TOOLS" "LANGUAGE_DEV" "INFRA_CONFIG" "DATA_ANALYTICS" "UNCATEGORIZED"; do
+            local service_indices="${SERVICES_BY_CATEGORY[$category_key]}"
+
+            # Skip empty categories
+            if [[ -z "$service_indices" ]]; then
+                continue
+            fi
+
+            # Convert comma-separated indices to array
+            IFS=',' read -ra INDICES <<< "$service_indices"
+
+            # Add services from this category
+            for service_index in "${INDICES[@]}"; do
+                local service_name="${AVAILABLE_SERVICES[$service_index]}"
+                local service_description="${SERVICE_DESCRIPTIONS[$service_index]}"
+                local prefix="${CATEGORY_PREFIX[$category_key]}"
+
+                # Check if service is running
+                local status_icon="⏸️"
+                if check_service_running "$service_index"; then
+                    status_icon="✅"
+                fi
+
+                menu_options+=("$option_num" "$status_icon $prefix $service_name" "$service_description")
+                MENU_TO_SERVICE_INDEX[$option_num]=$service_index
+                ((option_num++))
+            done
+        done
+
+        # If no services found
+        if [[ ${#menu_options[@]} -eq 0 ]]; then
+            dialog --title "No Services" --msgbox "No services found." $DIALOG_HEIGHT $DIALOG_WIDTH
+            clear
+            return 1
+        fi
+
+        # Show service selection menu
+        local choice
+        choice=$(dialog --clear \
+            --item-help \
+            --title "Service Management" \
+            --menu "Choose a service to manage (ESC to go back):\n\n✅=Running  ⏸️=Stopped" \
+            $DIALOG_HEIGHT $DIALOG_WIDTH $MENU_HEIGHT \
+            "${menu_options[@]}" \
+            2>&1 >/dev/tty)
+
+        # Check if user cancelled (ESC)
+        if [[ $? -ne 0 ]]; then
+            return 0
+        fi
+
+        # Get the actual service index from the menu choice
+        local selected_service_index=${MENU_TO_SERVICE_INDEX[$choice]}
+
+        # Show service details and actions
+        show_service_details_and_actions "$selected_service_index"
+    done
+}
+
+#------------------------------------------------------------------------------
+# Services in category menu (DEPRECATED - kept for backward compatibility)
 #------------------------------------------------------------------------------
 
 show_services_in_category() {
@@ -692,17 +772,8 @@ manage_services() {
 
         case $choice in
             1)
-                # Original service management flow
-                while true; do
-                    local selected_category
-                    selected_category=$(show_service_category_menu)
-
-                    if [[ $? -ne 0 || -z "$selected_category" ]]; then
-                        break
-                    fi
-
-                    show_services_in_category "$selected_category"
-                done
+                # Show all services in one menu with emoji category prefixes
+                show_all_services_menu
                 ;;
             2)
                 show_autostart_services
