@@ -142,6 +142,16 @@ main() {
     # Run custom project-specific installations
     install_custom_project_tools
 
+    # Show environment information using existing function from dev-setup.sh
+    if [ -f "/workspace/.devcontainer/dev-setup.sh" ]; then
+        echo ""
+        # Source dev-setup.sh to get the show_environment_info function
+        # shellcheck source=/dev/null
+        source "/workspace/.devcontainer/dev-setup.sh"
+        # Call without the interactive "Press Enter" prompt
+        show_environment_info_non_interactive
+    fi
+
     echo "🎉 Post-creation setup complete!"
 }
 

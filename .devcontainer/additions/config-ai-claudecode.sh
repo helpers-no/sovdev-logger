@@ -326,6 +326,15 @@ verify_environment() {
     mkdir -p "$PERSISTENT_DIR"
     ln -sf "$PERSISTENT_FILE" "$ENV_FILE"
 
+    # Ensure bashrc is configured to load environment (in case container was rebuilt)
+    if [ -f "$BASHRC_FILE" ] && ! grep -q "Claude Code environment" "$BASHRC_FILE" 2>/dev/null; then
+        cat >> "$BASHRC_FILE" <<'EOF'
+
+# Claude Code environment - managed by config-ai-claudecode.sh
+[ -f ~/.claude-code-env ] && source ~/.claude-code-env
+EOF
+    fi
+
     # Check if env file exists
     if [ ! -f "$ENV_FILE" ]; then
         # File doesn't exist - this is expected on first container creation
@@ -343,7 +352,7 @@ verify_environment() {
 
     if [ ${#missing_vars[@]} -gt 0 ]; then
         echo "⚠️  Claude Code environment exists but is incomplete. Missing: ${missing_vars[*]}"
-        echo "   Run: bash .devcontainer/additions/config-claude-code.sh"
+        echo "   Run: bash .devcontainer/additions/config-ai-claudecode.sh"
         return 1
     fi
 

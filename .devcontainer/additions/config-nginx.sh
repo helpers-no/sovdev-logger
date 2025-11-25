@@ -32,8 +32,10 @@ source "${SCRIPT_DIR}/lib/logging.sh"
 ENV_FILE="$HOME/.nginx-backend-config"
 NGINX_LITELLM_TEMPLATE="${SCRIPT_DIR}/nginx/litellm-proxy.conf.template"
 NGINX_OTEL_TEMPLATE="${SCRIPT_DIR}/nginx/otel-proxy.conf.template"
+NGINX_OPENWEBUI_TEMPLATE="${SCRIPT_DIR}/nginx/openwebui-proxy.conf.template"
 NGINX_LITELLM_CONFIG="/etc/nginx/sites-available/litellm-proxy.conf"
 NGINX_OTEL_CONFIG="/etc/nginx/sites-available/otel-proxy.conf"
+NGINX_OPENWEBUI_CONFIG="/etc/nginx/sites-available/openwebui-proxy.conf"
 
 # Persistent storage paths
 PERSISTENT_DIR="/workspace/topsecret/nginx-config"
@@ -54,10 +56,11 @@ check_if_already_configured() {
             (
                 # shellcheck source=/dev/null
                 source "$ENV_FILE" 2>/dev/null
-                echo "   Backend URL:    ${BACKEND_URL:-<not set>}"
-                echo "   Backend Type:   ${BACKEND_TYPE:-<not set>}"
-                echo "   LiteLLM Port:   ${NGINX_LITELLM_PORT:-<not set>}"
-                echo "   OTEL Port:      ${NGINX_OTEL_PORT:-<not set>}"
+                echo "   Backend URL:      ${BACKEND_URL:-<not set>}"
+                echo "   Backend Type:     ${BACKEND_TYPE:-<not set>}"
+                echo "   LiteLLM Port:     ${NGINX_LITELLM_PORT:-<not set>}"
+                echo "   OTEL Port:        ${NGINX_OTEL_PORT:-<not set>}"
+                echo "   Open WebUI Port:  ${NGINX_OPENWEBUI_PORT:-<not set>}"
             )
         fi
         echo ""
@@ -146,8 +149,12 @@ prompt_for_ports() {
     read -p "OTEL proxy port [8081]: " input_otel_port
     NGINX_OTEL_PORT="${input_otel_port:-8081}"
 
+    # Open WebUI port
+    read -p "Open WebUI proxy port [8082]: " input_openwebui_port
+    NGINX_OPENWEBUI_PORT="${input_openwebui_port:-8082}"
+
     echo ""
-    log_success "Ports configured: LiteLLM=$NGINX_LITELLM_PORT, OTEL=$NGINX_OTEL_PORT"
+    log_success "Ports configured: LiteLLM=$NGINX_LITELLM_PORT, OTEL=$NGINX_OTEL_PORT, Open WebUI=$NGINX_OPENWEBUI_PORT"
 }
 
 prompt_for_custom_url() {
@@ -191,7 +198,7 @@ create_config_file() {
 # This file is used by start-nginx.sh to generate nginx configurations
 # and by OTEL collectors to route telemetry
 
-# Backend URL (serves LiteLLM, OTEL, etc. via Traefik)
+# Backend URL (serves LiteLLM, OTEL, Open WebUI, etc. via Traefik)
 export BACKEND_URL="$BACKEND_URL"
 
 # Backend type (for reference/documentation)
@@ -200,6 +207,7 @@ export BACKEND_TYPE="$BACKEND_TYPE"
 # Nginx proxy ports
 export NGINX_LITELLM_PORT="$NGINX_LITELLM_PORT"
 export NGINX_OTEL_PORT="$NGINX_OTEL_PORT"
+export NGINX_OPENWEBUI_PORT="$NGINX_OPENWEBUI_PORT"
 EOF
 
     # Set permissions (readable only by user)
@@ -244,6 +252,17 @@ generate_nginx_config() {
         log_success "OTEL proxy config generated: $NGINX_OTEL_CONFIG"
     else
         log_warning "OTEL template not found: $NGINX_OTEL_TEMPLATE (will be created later)"
+    fi
+
+    # Generate Open WebUI proxy config
+    if [ -f "$NGINX_OPENWEBUI_TEMPLATE" ]; then
+        sudo sed -e "s|{{BACKEND_URL}}|${BACKEND_URL}|g" \
+                 -e "s|8082|${NGINX_OPENWEBUI_PORT}|g" \
+                 "$NGINX_OPENWEBUI_TEMPLATE" | \
+            sudo tee "$NGINX_OPENWEBUI_CONFIG" >/dev/null
+        log_success "Open WebUI proxy config generated: $NGINX_OPENWEBUI_CONFIG"
+    else
+        log_warning "Open WebUI template not found: $NGINX_OPENWEBUI_TEMPLATE"
     fi
 }
 
@@ -322,10 +341,11 @@ show_completion() {
     echo "  (Symlink to: $PERSISTENT_FILE)"
     echo "  Persists across container rebuilds"
     echo ""
-    echo "• Backend URL:   $BACKEND_URL"
-    echo "• Backend Type:  $BACKEND_TYPE"
-    echo "• LiteLLM Port:  $NGINX_LITELLM_PORT"
-    echo "• OTEL Port:     $NGINX_OTEL_PORT"
+    echo "• Backend URL:      $BACKEND_URL"
+    echo "• Backend Type:     $BACKEND_TYPE"
+    echo "• LiteLLM Port:     $NGINX_LITELLM_PORT"
+    echo "• OTEL Port:        $NGINX_OTEL_PORT"
+    echo "• Open WebUI Port:  $NGINX_OPENWEBUI_PORT"
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
@@ -372,6 +392,11 @@ verify_environment() {
     [ -z "${NGINX_LITELLM_PORT:-}" ] && missing_vars+=("NGINX_LITELLM_PORT")
     [ -z "${NGINX_OTEL_PORT:-}" ] && missing_vars+=("NGINX_OTEL_PORT")
 
+    # Open WebUI port is optional (for backwards compatibility)
+    if [ -z "${NGINX_OPENWEBUI_PORT:-}" ]; then
+        NGINX_OPENWEBUI_PORT="8082"  # Default value
+    fi
+
     if [ ${#missing_vars[@]} -gt 0 ]; then
         echo "⚠️  Backend config exists but is incomplete. Missing: ${missing_vars[*]}"
         echo "   Run: bash .devcontainer/additions/config-nginx.sh"
@@ -384,6 +409,14 @@ verify_environment() {
                  -e "s|NGINX_LITELLM_PORT|${NGINX_LITELLM_PORT}|g" \
                  "$NGINX_LITELLM_TEMPLATE" | \
             sudo tee "$NGINX_LITELLM_CONFIG" >/dev/null 2>&1 || true
+    fi
+
+    # Regenerate Open WebUI proxy config if template exists
+    if [ -f "$NGINX_OPENWEBUI_TEMPLATE" ]; then
+        sudo sed -e "s|{{BACKEND_URL}}|${BACKEND_URL}|g" \
+                 -e "s|8082|${NGINX_OPENWEBUI_PORT}|g" \
+                 "$NGINX_OPENWEBUI_TEMPLATE" | \
+            sudo tee "$NGINX_OPENWEBUI_CONFIG" >/dev/null 2>&1 || true
     fi
 
     # Configuration is valid
@@ -408,7 +441,7 @@ main() {
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
     echo "This script configures the backend infrastructure URL and nginx proxy ports."
-    echo "Services using nginx: LiteLLM (Claude Code), OTEL (telemetry)"
+    echo "Services using nginx: LiteLLM (Claude Code), OTEL (telemetry), Open WebUI (chat interface)"
     echo ""
 
     # Check if already configured

@@ -17,7 +17,7 @@
 SERVICE_NAME="Nginx Reverse Proxy"
 SERVICE_DESCRIPTION="Nginx reverse proxy for LiteLLM (adds Host header)"
 SERVICE_CATEGORY="INFRA_CONFIG"
-CHECK_RUNNING_COMMAND="pgrep -x nginx >/dev/null 2>&1 && curl -s http://localhost:8080/nginx-health >/dev/null 2>&1"
+CHECK_RUNNING_COMMAND="sudo supervisorctl status nginx-reverse-proxy 2>/dev/null | grep -q RUNNING"
 
 # Supervisord metadata
 SERVICE_COMMAND="/workspace/.devcontainer/additions/start-nginx.sh"
@@ -43,7 +43,17 @@ source "${SCRIPT_DIR}/lib/service-auto-enable.sh"
 #------------------------------------------------------------------------------
 
 # Config file locations
-NGINX_CONFIG_FILE="$HOME/.nginx-backend-config"
+# Try multiple locations for config file (handle different environments)
+if [ -f "$HOME/.nginx-backend-config" ]; then
+    NGINX_CONFIG_FILE="$HOME/.nginx-backend-config"
+elif [ -f "/home/vscode/.nginx-backend-config" ]; then
+    NGINX_CONFIG_FILE="/home/vscode/.nginx-backend-config"
+elif [ -f "/workspace/topsecret/nginx-config/.nginx-backend-config" ]; then
+    NGINX_CONFIG_FILE="/workspace/topsecret/nginx-config/.nginx-backend-config"
+else
+    NGINX_CONFIG_FILE=""
+fi
+
 NGINX_LITELLM_TEMPLATE="${SCRIPT_DIR}/nginx/litellm-proxy.conf.template"
 NGINX_LITELLM_CONFIG="/etc/nginx/sites-available/litellm-proxy.conf"
 
@@ -56,12 +66,13 @@ DEFAULT_LITELLM_PORT="8080"
 #------------------------------------------------------------------------------
 
 load_backend_config() {
-    # Check if config file exists
-    if [ -f "$NGINX_CONFIG_FILE" ]; then
+    # Check if config file exists and is not empty
+    if [ -n "$NGINX_CONFIG_FILE" ] && [ -f "$NGINX_CONFIG_FILE" ]; then
         log_info "Loading backend configuration from $NGINX_CONFIG_FILE"
         # shellcheck source=/dev/null
         source "$NGINX_CONFIG_FILE"
         log_success "Backend configured: $BACKEND_TYPE ($BACKEND_URL)"
+        log_info "LiteLLM port: $NGINX_LITELLM_PORT, OTEL port: ${NGINX_OTEL_PORT:-not set}"
     else
         log_warning "No backend configuration found, using defaults"
         log_info "Run 'bash ${SCRIPT_DIR}/config-nginx.sh' to configure backend"
@@ -85,6 +96,9 @@ generate_nginx_config() {
              "$NGINX_LITELLM_TEMPLATE" | \
         sudo tee "$NGINX_LITELLM_CONFIG" >/dev/null
 
+    # Enable LiteLLM site
+    sudo ln -sf "$NGINX_LITELLM_CONFIG" /etc/nginx/sites-enabled/litellm-proxy.conf 2>/dev/null || true
+
     log_success "LiteLLM proxy config generated (port: $NGINX_LITELLM_PORT)"
 
     # Generate OTEL proxy config (if NGINX_OTEL_PORT is set)
@@ -107,6 +121,26 @@ generate_nginx_config() {
         fi
     fi
 
+    # Generate Open WebUI proxy config (if NGINX_OPENWEBUI_PORT is set)
+    if [ -n "${NGINX_OPENWEBUI_PORT:-}" ]; then
+        local NGINX_OPENWEBUI_TEMPLATE="${SCRIPT_DIR}/nginx/openwebui-proxy.conf.template"
+        local NGINX_OPENWEBUI_CONFIG="/etc/nginx/sites-available/openwebui-proxy.conf"
+
+        if [ -f "$NGINX_OPENWEBUI_TEMPLATE" ]; then
+            sudo sed -e "s|{{BACKEND_URL}}|${BACKEND_URL}|g" \
+                     -e "s|8082|${NGINX_OPENWEBUI_PORT}|g" \
+                     "$NGINX_OPENWEBUI_TEMPLATE" | \
+                sudo tee "$NGINX_OPENWEBUI_CONFIG" >/dev/null
+
+            # Enable Open WebUI site
+            sudo ln -sf "$NGINX_OPENWEBUI_CONFIG" /etc/nginx/sites-enabled/openwebui-proxy.conf 2>/dev/null || true
+
+            log_success "Open WebUI proxy config generated (port: $NGINX_OPENWEBUI_PORT)"
+        else
+            log_warning "Open WebUI template not found: $NGINX_OPENWEBUI_TEMPLATE (skipping)"
+        fi
+    fi
+
     log_success "Backend: $BACKEND_URL"
     return 0
 }
@@ -122,13 +156,18 @@ check_nginx_installed() {
 
 check_nginx_config() {
     log_info "Checking nginx configuration..."
-    if ! sudo nginx -t 2>&1 | grep -q "syntax is ok"; then
+    local nginx_test_output
+    nginx_test_output=$(sudo nginx -t 2>&1)
+    local nginx_exit_code=$?
+
+    if [ $nginx_exit_code -eq 0 ]; then
+        log_success "Nginx configuration is valid"
+        return 0
+    else
         log_error "Nginx configuration has errors"
-        sudo nginx -t
+        echo "$nginx_test_output"
         return 1
     fi
-    log_success "Nginx configuration is valid"
-    return 0
 }
 
 stop_nginx() {
