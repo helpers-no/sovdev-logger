@@ -15,34 +15,46 @@
 # Created: November 2024
 #
 #------------------------------------------------------------------------------
-# COMMAND METADATA - For dev-setup.sh menu discovery (FUTURE)
+# SCRIPT METADATA - For dev-setup.sh discovery
 #------------------------------------------------------------------------------
 
-COMMAND_NAME="AI Management"
-COMMAND_DESCRIPTION="LiteLLM usage and spending commands"
-COMMAND_CATEGORY="AI_TOOLS"
-CHECK_AVAILABLE_COMMAND="[ -n \"\${ANTHROPIC_AUTH_TOKEN:-}\" ] && command -v jq >/dev/null 2>&1"
+CMD_SCRIPT_NAME="AI Management"
+CMD_SCRIPT_DESCRIPTION="Manage AI models, spending, and usage through LiteLLM"
+CMD_SCRIPT_CATEGORY="AI_TOOLS"
+CMD_PREREQUISITE_CONFIGS="config-ai-claudecode.sh"
 
-# Menu items for dev-setup.sh integration (format: "Display|--flag|Description")
-COMMAND_MENU_ITEMS=(
-    "List AI models|--models|Show all models you have access to"
-    "Show spending (month)|--spend|Current month spending summary"
-    "Show spending (week)|--spend-week|Last 7 days spending"
-    "Show budget status|--budget|Budget limits and usage percentage"
-    "Detailed activity|--activity|Breakdown by model and date"
-    "Top models by usage|--top-models|Models ranked by spending"
-    "Test model access|--test-all|Test access to all models"
-    "Check LiteLLM health|--health|Check connectivity"
+#------------------------------------------------------------------------------
+# COMMAND DEFINITIONS - Single source of truth
+#------------------------------------------------------------------------------
+
+# Format: category|flag|description|function|requires_arg|param_prompt
+COMMANDS=(
+    "Information|--models|List all models you have access to|cmd_models|false|"
+    "Information|--info|Show user info (teams, budgets)|cmd_info|false|"
+    "Information|--budget|Show budget status with usage percentage|cmd_budget|false|"
+    "Information|--keys|List your API keys and spending|cmd_keys|false|"
+    "Spending|--spend|Show spending summary (current month)|cmd_spend|false|"
+    "Spending|--spend-week|Last 7 days spending|cmd_spend_week|false|"
+    "Spending|--spend-month|Last 30 days spending|cmd_spend_month|false|"
+    "Spending|--spend-today|Today's spending|cmd_spend_today|false|"
+    "Spending|--activity|Detailed breakdown by model and date|cmd_activity|false|"
+    "Analysis|--top-models|Models ranked by usage and spending|cmd_top_models|false|"
+    "Analysis|--daily|Daily spending trend (current month)|cmd_daily|false|"
+    "Testing|--test|Test access to specific model|cmd_test|true|Enter model name"
+    "Testing|--test-all|Test access to all models|cmd_test_all|false|"
+    "Testing|--health|Check LiteLLM connectivity|cmd_health|false|"
 )
 
 #------------------------------------------------------------------------------
 
 set -euo pipefail
 
-# Source logging library
+# Source libraries
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/logging.sh"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/utilities.sh"
 
 # Configuration
 LITELLM_URL="${LITELLM_URL:-http://localhost:8080}"
@@ -115,49 +127,6 @@ call_litellm_api() {
             -H "Content-Type: application/json" \
             -d "$data"
     fi
-}
-
-get_date_range() {
-    local range="$1"
-    local start_date=""
-    local end_date=""
-
-    end_date=$(date -u +%Y-%m-%d)
-
-    case "$range" in
-        month)
-            # Current month (from 1st to today)
-            start_date=$(date -u +%Y-%m-01)
-            ;;
-        week)
-            # Last 7 days
-            start_date=$(date -u -d '7 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-7d +%Y-%m-%d)
-            ;;
-        30days)
-            # Last 30 days
-            start_date=$(date -u -d '30 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-30d +%Y-%m-%d)
-            ;;
-        today)
-            # Today only
-            start_date="$end_date"
-            ;;
-        *)
-            log_error "Unknown date range: $range"
-            return 1
-            ;;
-    esac
-
-    echo "${start_date} ${end_date}"
-}
-
-format_currency() {
-    local amount="$1"
-    printf "\$%.2f" "$amount"
-}
-
-format_number() {
-    local num="$1"
-    printf "%'d" "$num" 2>/dev/null || echo "$num"
 }
 
 # Display user information in standard format (for helpdesk reference)
@@ -857,110 +826,34 @@ cmd_health() {
 #------------------------------------------------------------------------------
 
 show_help() {
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "🤖 AI Management Commands"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "Usage: cmd-ai.sh [COMMAND]"
-    echo ""
-    echo "Information Commands:"
-    echo "  --models              List all models you have access to"
-    echo "  --info                Show user info (teams, budgets)"
-    echo "  --budget              Show budget status with usage percentage"
-    echo "  --keys                List your API keys and spending"
-    echo ""
-    echo "Spending Commands:"
-    echo "  --spend               Show spending summary (current month)"
-    echo "  --spend-week          Last 7 days spending"
-    echo "  --spend-month         Last 30 days spending"
-    echo "  --spend-today         Today's spending"
-    echo "  --activity            Detailed breakdown by model and date"
-    echo ""
-    echo "Analysis Commands:"
-    echo "  --top-models          Models ranked by usage and spending"
-    echo "  --daily               Daily spending trend (current month)"
-    echo ""
-    echo "Testing Commands:"
-    echo "  --test [model]        Test access to specific model"
-    echo "  --test-all            Test access to all your models"
-    echo "  --health              Check LiteLLM connectivity"
-    echo ""
-    echo "Other:"
-    echo "  --help, -h            Show this help message"
+    # Source framework if not already loaded
+    if ! declare -f cmd_framework_generate_help >/dev/null 2>&1; then
+        # shellcheck source=/dev/null
+        source "${SCRIPT_DIR}/lib/cmd-framework.sh"
+    fi
+
+    # Generate help from COMMANDS array
+    cmd_framework_generate_help COMMANDS "cmd-ai.sh"
+
+    # Add examples section
     echo ""
     echo "Examples:"
-    echo "  cmd-ai.sh --models                    # List models"
-    echo "  cmd-ai.sh --spend                     # This month's spending"
-    echo "  cmd-ai.sh --test claude-sonnet-4.5    # Test specific model"
+    echo "  cmd-ai.sh --models                        # List models"
+    echo "  cmd-ai.sh --spend                         # This month's spending"
+    echo "  cmd-ai.sh --test claude-sonnet-4-5        # Test specific model"
+    echo "  cmd-ai.sh --test qwen2.5-coder:7b         # Test Ollama model"
     echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }
 
 parse_args() {
-    case "${1:-}" in
-        --models)
-            cmd_models
-            ;;
-        --info)
-            cmd_info
-            ;;
-        --budget)
-            cmd_budget
-            ;;
-        --keys)
-            cmd_keys
-            ;;
-        --spend)
-            cmd_spend
-            ;;
-        --spend-week)
-            cmd_spend_week
-            ;;
-        --spend-month)
-            cmd_spend_month
-            ;;
-        --spend-today)
-            cmd_spend_today
-            ;;
-        --activity)
-            cmd_activity
-            ;;
-        --top-models)
-            cmd_top_models
-            ;;
-        --daily)
-            cmd_daily
-            ;;
-        --test)
-            if [ -z "${2:-}" ]; then
-                log_error "Model name required. Usage: cmd-ai.sh --test [model-name]"
-                exit 1
-            fi
-            cmd_test "$2"
-            ;;
-        --test-all)
-            cmd_test_all
-            ;;
-        --health)
-            cmd_health
-            ;;
-        --help|-h)
-            show_help
-            ;;
-        "")
-            log_error "No command specified"
-            echo ""
-            show_help
-            exit 1
-            ;;
-        *)
-            log_error "Unknown command: $1"
-            echo ""
-            show_help
-            exit 1
-            ;;
-    esac
+    # Source framework if not already loaded
+    if ! declare -f cmd_framework_parse_args >/dev/null 2>&1; then
+        # shellcheck source=/dev/null
+        source "${SCRIPT_DIR}/lib/cmd-framework.sh"
+    fi
+
+    # Use framework to parse arguments
+    cmd_framework_parse_args COMMANDS "cmd-ai.sh" "$@"
 }
 
 #------------------------------------------------------------------------------

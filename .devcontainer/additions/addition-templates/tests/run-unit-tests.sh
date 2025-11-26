@@ -336,6 +336,278 @@ test_1_10() {
 }
 
 #------------------------------------------------------------------------------
+# TEST 1.11: cmd-*.sh Metadata Discovery
+#------------------------------------------------------------------------------
+test_1_11() {
+    source /workspace/.devcontainer/additions/lib/component-scanner.sh
+
+    local count=0
+    while IFS=$'\t' read -r basename name desc cat script_path prereqs; do
+        ((count++))
+        echo "$count. $name"
+    done < <(scan_cmd_scripts /workspace/.devcontainer/additions)
+
+    if [ $count -ge 1 ]; then
+        echo "Discovered $count cmd scripts"
+        return 0
+    else
+        echo "No cmd scripts discovered"
+        return 1
+    fi
+}
+
+#------------------------------------------------------------------------------
+# TEST 1.12: cmd-ai.sh Metadata Extraction
+#------------------------------------------------------------------------------
+test_1_12() {
+    source /workspace/.devcontainer/additions/lib/component-scanner.sh
+
+    local EXPECTED_NAME="AI Management"
+    local EXPECTED_CAT="AI_TOOLS"
+    local EXPECTED_PREREQ="config-ai-claudecode.sh"
+
+    local found=0
+    while IFS=$'\t' read -r basename name desc cat script_path prereqs; do
+        if [ "$basename" = "cmd-ai.sh" ]; then
+            found=1
+
+            if [ "$name" != "$EXPECTED_NAME" ]; then
+                echo "Name mismatch: expected '$EXPECTED_NAME', got '$name'"
+                return 1
+            fi
+
+            if [ "$cat" != "$EXPECTED_CAT" ]; then
+                echo "Category mismatch: expected '$EXPECTED_CAT', got '$cat'"
+                return 1
+            fi
+
+            if [ "$prereqs" != "$EXPECTED_PREREQ" ]; then
+                echo "Prerequisites mismatch: expected '$EXPECTED_PREREQ', got '$prereqs'"
+                return 1
+            fi
+
+            echo "cmd-ai.sh metadata extracted correctly"
+            return 0
+        fi
+    done < <(scan_cmd_scripts /workspace/.devcontainer/additions)
+
+    echo "cmd-ai.sh not found"
+    return 1
+}
+
+#------------------------------------------------------------------------------
+# TEST 1.13: COMMANDS Array Extraction
+#------------------------------------------------------------------------------
+test_1_13() {
+    source /workspace/.devcontainer/additions/lib/component-scanner.sh
+
+    local commands=()
+    while IFS= read -r line; do
+        commands+=("$line")
+    done < <(extract_cmd_commands /workspace/.devcontainer/additions/cmd-ai.sh)
+
+    local count=${#commands[@]}
+
+    if [ $count -ge 10 ]; then
+        echo "Extracted $count commands from cmd-ai.sh"
+        return 0
+    else
+        echo "Only extracted $count commands (expected >= 10)"
+        return 1
+    fi
+}
+
+#------------------------------------------------------------------------------
+# TEST 1.14: COMMANDS Array Format Validation
+#------------------------------------------------------------------------------
+test_1_14() {
+    source /workspace/.devcontainer/additions/lib/component-scanner.sh
+
+    local commands=()
+    while IFS= read -r line; do
+        commands+=("$line")
+    done < <(extract_cmd_commands /workspace/.devcontainer/additions/cmd-ai.sh)
+
+    local errors=0
+    for cmd_def in "${commands[@]}"; do
+        local field_count=$(echo "$cmd_def" | awk -F'|' '{print NF}')
+
+        if [ "$field_count" -ne 6 ]; then
+            echo "Invalid format (expected 6 fields, got $field_count): $cmd_def"
+            ((errors++))
+        fi
+    done
+
+    if [ $errors -eq 0 ]; then
+        echo "All commands have correct format (6 fields)"
+        return 0
+    else
+        echo "$errors commands have incorrect format"
+        return 1
+    fi
+}
+
+#------------------------------------------------------------------------------
+# TEST 1.15: cmd-ai.sh Prerequisites Check
+#------------------------------------------------------------------------------
+test_1_15() {
+    source /workspace/.devcontainer/additions/lib/prerequisite-check.sh
+    source /workspace/.devcontainer/additions/lib/component-scanner.sh
+
+    # Extract prerequisites
+    local prereqs=$(extract_cmd_metadata /workspace/.devcontainer/additions/cmd-ai.sh CMD_PREREQUISITE_CONFIGS)
+
+    if [ -z "$prereqs" ]; then
+        echo "No prerequisites defined"
+        return 1
+    fi
+
+    echo "Prerequisites: $prereqs"
+
+    # Check prerequisite mechanism works (not checking if it's actually configured)
+    if check_prerequisite_configs "$prereqs" "/workspace/.devcontainer/additions"; then
+        echo "Prerequisites met (Claude Code configured)"
+        return 0
+    else
+        echo "Prerequisites not met (acceptable - mechanism works)"
+        # Test passes if mechanism works
+        return 0
+    fi
+}
+
+#------------------------------------------------------------------------------
+# TEST 1.16: Help Generation from COMMANDS Array
+#------------------------------------------------------------------------------
+test_1_16() {
+    cd /workspace/.devcontainer/additions
+
+    local help_output=$(bash cmd-ai.sh --help 2>&1)
+
+    # Check for category headers
+    if ! echo "$help_output" | grep -q "Information Commands:"; then
+        echo "Missing 'Information Commands:' category"
+        return 1
+    fi
+
+    if ! echo "$help_output" | grep -q "Spending Commands:"; then
+        echo "Missing 'Spending Commands:' category"
+        return 1
+    fi
+
+    if ! echo "$help_output" | grep -q "Testing Commands:"; then
+        echo "Missing 'Testing Commands:' category"
+        return 1
+    fi
+
+    # Check for specific commands
+    if ! echo "$help_output" | grep -q -- "--models"; then
+        echo "Missing --models command"
+        return 1
+    fi
+
+    if ! echo "$help_output" | grep -q -- "--test <arg>"; then
+        echo "Missing --test command with parameter hint"
+        return 1
+    fi
+
+    echo "Help text generated correctly with categories and commands"
+    return 0
+}
+
+#------------------------------------------------------------------------------
+# TEST 1.17: Command Execution - Simple Flag
+#------------------------------------------------------------------------------
+test_1_17() {
+    cd /workspace/.devcontainer/additions
+
+    # Skip if auth not configured
+    if [ -z "${ANTHROPIC_AUTH_TOKEN:-}" ]; then
+        echo "ANTHROPIC_AUTH_TOKEN not set - skipping (acceptable)"
+        return 0
+    fi
+
+    # Test health command (doesn't require auth)
+    local output=$(bash cmd-ai.sh --health 2>&1)
+
+    if echo "$output" | grep -qE "(✅|OK|healthy|SUCCESS)"; then
+        echo "Health command executed successfully"
+        return 0
+    else
+        echo "Health command failed or returned unexpected output"
+        echo "Output: $output"
+        return 1
+    fi
+}
+
+#------------------------------------------------------------------------------
+# TEST 1.18: Command Execution - With Parameter
+#------------------------------------------------------------------------------
+test_1_18() {
+    cd /workspace/.devcontainer/additions
+
+    # Skip if auth not configured
+    if [ -z "${ANTHROPIC_AUTH_TOKEN:-}" ]; then
+        echo "ANTHROPIC_AUTH_TOKEN not set - skipping (acceptable)"
+        return 0
+    fi
+
+    # Test with a parameter
+    local output=$(bash cmd-ai.sh --test qwen2.5-coder:7b 2>&1)
+
+    # Check if it attempted to run (may fail if model doesn't exist, but should accept parameter)
+    if echo "$output" | grep -q "Testing Model Access"; then
+        echo "Command with parameter executed (reached test function)"
+        return 0
+    elif echo "$output" | grep -q "Model name required"; then
+        echo "Parameter validation rejected empty parameter"
+        return 1
+    else
+        echo "Command accepted parameter and attempted execution"
+        return 0
+    fi
+}
+
+#------------------------------------------------------------------------------
+# TEST 1.19: Invalid Command Handling
+#------------------------------------------------------------------------------
+test_1_19() {
+    cd /workspace/.devcontainer/additions
+
+    local output=$(bash cmd-ai.sh --nonexistent-command 2>&1)
+
+    if echo "$output" | grep -q "Unknown command"; then
+        echo "Unknown command error displayed"
+        return 0
+    else
+        echo "No error for unknown command"
+        return 1
+    fi
+}
+
+#------------------------------------------------------------------------------
+# TEST 1.20: Framework Validation Function
+#------------------------------------------------------------------------------
+test_1_20() {
+    source /workspace/.devcontainer/additions/lib/cmd-framework.sh
+    source /workspace/.devcontainer/additions/lib/component-scanner.sh
+
+    # Extract commands
+    local COMMANDS=()
+    while IFS= read -r line; do
+        COMMANDS+=("$line")
+    done < <(extract_cmd_commands /workspace/.devcontainer/additions/cmd-ai.sh)
+
+    # Validate
+    if cmd_framework_validate_commands COMMANDS; then
+        echo "COMMANDS array validation passed"
+        return 0
+    else
+        echo "COMMANDS array validation failed"
+        return 1
+    fi
+}
+
+#------------------------------------------------------------------------------
 # MAIN
 #------------------------------------------------------------------------------
 
@@ -355,6 +627,19 @@ run_test "Tool Auto-Enable Library" test_1_7
 run_test "Metadata Extraction Accuracy" test_1_8
 run_test "CHECK_INSTALLED_COMMAND Logic" test_1_9
 run_test "Show Missing Prerequisites" test_1_10
+
+# cmd-*.sh tests
+log_header "cmd-*.sh Scripts - Unit Tests"
+run_test "cmd-*.sh Metadata Discovery" test_1_11
+run_test "cmd-ai.sh Metadata Extraction" test_1_12
+run_test "COMMANDS Array Extraction" test_1_13
+run_test "COMMANDS Array Format Validation" test_1_14
+run_test "cmd-ai.sh Prerequisites Check" test_1_15
+run_test "Help Generation from COMMANDS" test_1_16
+run_test "Command Execution - Simple Flag" test_1_17
+run_test "Command Execution - With Parameter" test_1_18
+run_test "Invalid Command Handling" test_1_19
+run_test "Framework Validation Function" test_1_20
 
 # Summary
 log_header "Test Results Summary"

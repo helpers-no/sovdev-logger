@@ -322,6 +322,63 @@ check_config_configured() {
 }
 
 #------------------------------------------------------------------------------
+# CMD script discovery and management
+#------------------------------------------------------------------------------
+
+scan_available_cmds() {
+    AVAILABLE_CMDS=()
+    CMD_SCRIPTS=()
+    CMD_DESCRIPTIONS=()
+    CMD_CATEGORIES=()
+    CMD_SCRIPT_PATHS=()
+    CMD_PREREQUISITE_CONFIGS=()
+
+    # Reset category organization
+    CMDS_BY_CATEGORY=()
+    CMD_CATEGORY_COUNTS=()
+
+    if [[ ! -d "$ADDITIONS_DIR" ]]; then
+        dialog --title "Error" --msgbox "Commands directory not found: $ADDITIONS_DIR" $DIALOG_HEIGHT $DIALOG_WIDTH
+        clear
+        return 1
+    fi
+
+    local found=0
+
+    # Use library to scan cmd scripts
+    while IFS=$'\t' read -r script_basename cmd_name cmd_description cmd_category script_path prerequisite_configs; do
+        # Add to arrays
+        AVAILABLE_CMDS+=("$cmd_name")
+        CMD_SCRIPTS+=("$script_basename")
+        CMD_DESCRIPTIONS+=("$cmd_description")
+        CMD_CATEGORIES+=("$cmd_category")
+        CMD_SCRIPT_PATHS+=("$script_path")
+        CMD_PREREQUISITE_CONFIGS+=("$prerequisite_configs")
+
+        # Track cmd index by category
+        local cmd_index=$found
+        if [[ -n "${CMDS_BY_CATEGORY[$cmd_category]}" ]]; then
+            CMDS_BY_CATEGORY[$cmd_category]="${CMDS_BY_CATEGORY[$cmd_category]},$cmd_index"
+        else
+            CMDS_BY_CATEGORY[$cmd_category]="$cmd_index"
+        fi
+
+        # Increment category count
+        CMD_CATEGORY_COUNTS[$cmd_category]=$((${CMD_CATEGORY_COUNTS[$cmd_category]:-0} + 1))
+
+        ((found++))
+    done < <(scan_cmd_scripts "$ADDITIONS_DIR")
+
+    if [[ $found -eq 0 ]]; then
+        dialog --title "No Command Scripts Found" --msgbox "No command scripts found in $ADDITIONS_DIR" $DIALOG_HEIGHT $DIALOG_WIDTH
+        clear
+        return 1
+    fi
+
+    return 0
+}
+
+#------------------------------------------------------------------------------
 # Service category menu
 #------------------------------------------------------------------------------
 
@@ -999,8 +1056,188 @@ execute_config_script() {
 }
 
 #------------------------------------------------------------------------------
+# CMD submenu - Show commands from selected script
+#------------------------------------------------------------------------------
+
+show_cmd_submenu() {
+    local cmd_index=$1
+    local cmd_name="${AVAILABLE_CMDS[$cmd_index]}"
+    local script_path="${CMD_SCRIPT_PATHS[$cmd_index]}"
+    local prerequisite_configs="${CMD_PREREQUISITE_CONFIGS[$cmd_index]}"
+
+    # Check prerequisites first
+    if [[ -n "$prerequisite_configs" ]]; then
+        # Source prerequisite-check library
+        source "$ADDITIONS_DIR/lib/prerequisite-check.sh"
+
+        if ! check_prerequisite_configs "$prerequisite_configs" "$ADDITIONS_DIR"; then
+            # Show missing prerequisites
+            local missing_msg=$(show_missing_prerequisites "$prerequisite_configs" "$ADDITIONS_DIR")
+            dialog --title "Prerequisites Not Met" \
+                --msgbox "Cannot run $cmd_name. Prerequisites not met:\n\n$missing_msg\n\nPlease configure required items first." \
+                20 70
+            clear
+            return 1
+        fi
+    fi
+
+    while true; do
+        # Extract COMMANDS array from the script
+        local commands=()
+        while IFS= read -r cmd_def; do
+            commands+=("$cmd_def")
+        done < <(extract_cmd_commands "$script_path")
+
+        if [[ ${#commands[@]} -eq 0 ]]; then
+            dialog --title "No Commands" --msgbox "No commands found in $cmd_name" $DIALOG_HEIGHT $DIALOG_WIDTH
+            clear
+            return 1
+        fi
+
+        # Build menu with category prefixes (like services display)
+        local menu_options=()
+        local menu_actions=()
+        local option_num=1
+
+        for cmd_def in "${commands[@]}"; do
+            IFS='|' read -r category flag description function requires_arg param_prompt <<< "$cmd_def"
+
+            # Add command with category prefix
+            local display_text="[$category] $description"
+            menu_options+=("$option_num" "$display_text" "$flag")
+            menu_actions[$option_num]="$flag|$requires_arg|$param_prompt"
+            ((option_num++))
+        done
+
+        # Add back option
+        menu_options+=("0" "Back to Command Tools" "")
+
+        # Show submenu
+        local choice
+        choice=$(dialog --clear \
+            --item-help \
+            --title "$cmd_name" \
+            --menu "Select a command (ESC to go back):" \
+            $DIALOG_HEIGHT $DIALOG_WIDTH $MENU_HEIGHT \
+            "${menu_options[@]}" \
+            2>&1 >/dev/tty)
+
+        # Check if user cancelled (ESC)
+        if [[ $? -ne 0 ]]; then
+            return 0
+        fi
+
+        # Handle back option
+        if [[ $choice -eq 0 || -z "$choice" ]]; then
+            return 0
+        fi
+
+        # Execute selected command
+        local action_def="${menu_actions[$choice]}"
+        if [[ -n "$action_def" ]]; then
+            execute_cmd_action "$script_path" "$action_def"
+        fi
+    done
+}
+
+execute_cmd_action() {
+    local script_path="$1"
+    local action_def="$2"
+
+    IFS='|' read -r flag requires_arg param_prompt <<< "$action_def"
+
+    local cmd_args=("$flag")
+
+    # Prompt for parameter if needed
+    if [[ "$requires_arg" = "true" ]]; then
+        local param_value
+        param_value=$(dialog --clear \
+            --title "Parameter Required" \
+            --inputbox "$param_prompt:" \
+            8 60 \
+            2>&1 >/dev/tty)
+
+        # Check if user cancelled
+        if [[ $? -ne 0 ]]; then
+            return 0
+        fi
+
+        if [[ -n "$param_value" ]]; then
+            cmd_args+=("$param_value")
+        else
+            dialog --msgbox "Parameter required - command cancelled" 6 40
+            clear
+            return 1
+        fi
+    fi
+
+    # Execute command
+    clear
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Executing: $(basename "$script_path") ${cmd_args[*]}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    "$script_path" "${cmd_args[@]}"
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    read -p "Press Enter to continue..." -r
+    clear
+}
+
+#------------------------------------------------------------------------------
 # Config management main function
 #------------------------------------------------------------------------------
+
+manage_cmds() {
+    if ! scan_available_cmds; then
+        return 1
+    fi
+
+    while true; do
+        # Build menu with all cmd scripts
+        local menu_options=()
+        local option_num=1
+
+        for i in "${!AVAILABLE_CMDS[@]}"; do
+            local cmd_name="${AVAILABLE_CMDS[$i]}"
+            local cmd_description="${CMD_DESCRIPTIONS[$i]}"
+
+            menu_options+=("$option_num" "$cmd_name" "$cmd_description")
+            ((option_num++))
+        done
+
+        # Add back option
+        menu_options+=("0" "Back to Main Menu" "")
+
+        # Show command scripts menu
+        local choice
+        choice=$(dialog --clear \
+            --item-help \
+            --title "Command Tools" \
+            --menu "Select a command tool (ESC to return to main menu):" \
+            $DIALOG_HEIGHT $DIALOG_WIDTH $MENU_HEIGHT \
+            "${menu_options[@]}" \
+            2>&1 >/dev/tty)
+
+        # Check if user cancelled (ESC)
+        if [[ $? -ne 0 ]]; then
+            return 0
+        fi
+
+        # Handle back option
+        if [[ $choice -eq 0 ]]; then
+            return 0
+        fi
+
+        # Convert choice to array index (choice 1 = index 0)
+        local cmd_index=$((choice - 1))
+
+        # Show command submenu for selected script
+        show_cmd_submenu "$cmd_index"
+    done
+}
 
 manage_configs() {
     if ! scan_available_configs; then
@@ -1303,9 +1540,10 @@ show_main_menu() {
             "1" "Browse & Install Tools" \
             "2" "Manage Services" \
             "3" "Setup & Configuration" \
-            "4" "Create project from template" \
-            "5" "Show Environment Info" \
-            "6" "Exit" \
+            "4" "Command Tools" \
+            "5" "Create project from template" \
+            "6" "Show Environment Info" \
+            "7" "Exit" \
             2>&1 >/dev/tty)
 
         # Check if user cancelled (ESC or Cancel button)
@@ -1331,15 +1569,18 @@ show_main_menu() {
                 manage_configs
                 ;;
             4)
-                create_project_from_template
+                manage_cmds
                 ;;
             5)
+                create_project_from_template
+                ;;
+            6)
                 clear
                 bash "$ADDITIONS_DIR/show-environment.sh"
                 read -p "Press Enter to return to menu..." -r
                 clear
                 ;;
-            6)
+            7)
                 clear
                 echo ""
                 echo "✅ Thanks for using $SCRIPT_NAME! 🚀"

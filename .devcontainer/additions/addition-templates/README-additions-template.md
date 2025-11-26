@@ -69,6 +69,32 @@ Addition scripts are bash scripts that automate the installation of tools, confi
 - Stores configs in `/workspace/topsecret` for persistence across rebuilds
 - Idempotent (safe to reconfigure)
 
+### 3. Command Scripts (`cmd-*.sh`)
+
+**Purpose:** Provide multiple related commands for managing, querying, or analyzing resources
+
+**Naming:** `cmd-<purpose>.sh`
+
+**Examples:**
+- `cmd-ai.sh` - AI model and spending management
+- `cmd-database.sh` - Database query and backup operations
+- `cmd-docker.sh` - Docker container management
+- `cmd-metrics.sh` - System metrics and monitoring
+
+**Characteristics:**
+- Non-interactive (flag-based interface)
+- Multiple commands in single script via COMMANDS array
+- Integrates with dev-setup menu (shows all commands)
+- Help text auto-generated from COMMANDS array
+- Supports both direct CLI usage and menu execution
+- Dynamic argument parsing via cmd-framework.sh
+
+**Key Features:**
+- **Single Source of Truth:** COMMANDS array defines all commands (no manual duplication)
+- **Auto-discovery:** Metadata enables automatic menu integration
+- **Prerequisites:** Can require config scripts before execution
+- **Reusable:** Uses cmd-framework.sh and utilities.sh libraries
+
 ---
 
 ## Quick Start
@@ -122,6 +148,55 @@ cp /workspace/.devcontainer/additions/addition-templates/_template-config-script
 bash /workspace/.devcontainer/additions/config-mytool.sh           # Interactive
 bash /workspace/.devcontainer/additions/config-mytool.sh --verify  # Restoration
 ```
+
+### Creating a Command Script
+
+```bash
+# 1. Copy the template
+cp /workspace/.devcontainer/additions/addition-templates/_template-cmd-script.sh \
+   /workspace/.devcontainer/additions/cmd-mytool.sh
+
+# 2. Edit the metadata section
+# - Update CMD_SCRIPT_NAME, CMD_SCRIPT_DESCRIPTION, CMD_SCRIPT_CATEGORY
+# - Update CMD_PREREQUISITE_CONFIGS (or leave empty if none)
+
+# 3. Define your COMMANDS array
+# Format: "category|flag|description|function|requires_arg|param_prompt"
+COMMANDS=(
+    "Management|--list|List all items|cmd_list|false|"
+    "Management|--delete|Delete an item|cmd_delete|true|Enter item ID"
+    "Analysis|--stats|Show statistics|cmd_stats|false|"
+)
+
+# 4. Implement command functions
+cmd_list() {
+    # Your list implementation
+}
+
+cmd_delete() {
+    local item_id="$1"
+    # Your delete implementation
+}
+
+cmd_stats() {
+    # Your stats implementation
+}
+
+# 5. Test the script
+bash /workspace/.devcontainer/additions/cmd-mytool.sh --help     # Show all commands
+bash /workspace/.devcontainer/additions/cmd-mytool.sh --list     # Test command
+bash /workspace/.devcontainer/additions/cmd-mytool.sh --delete 123  # Test with arg
+
+# 6. Access via menu
+bash /workspace/.devcontainer/dev-setup.sh
+# Select: 4) Command Tools → Your script → Select command
+```
+
+**Benefits:**
+- Add new command = 1 line in COMMANDS array + implement function
+- Help text auto-generated
+- Menu integration automatic
+- No need to modify parse_args()
 
 ---
 
@@ -205,6 +280,62 @@ main() {
 }
 ```
 
+### `_template-cmd-script.sh`
+
+Complete template for creating command scripts with automatic menu integration.
+
+**Includes:**
+- Metadata fields (CMD_SCRIPT_NAME, CMD_SCRIPT_DESCRIPTION, CMD_SCRIPT_CATEGORY, CMD_PREREQUISITE_CONFIGS)
+- COMMANDS array pattern (single source of truth for all commands)
+- cmd-framework.sh integration (automatic argument parsing and help generation)
+- utilities.sh integration (date ranges, currency formatting, number formatting)
+- Example command implementations (management, analysis, testing)
+- Prerequisite checking
+- API call patterns
+
+**Key Sections:**
+```bash
+# Metadata
+CMD_SCRIPT_NAME="Example Management"
+CMD_SCRIPT_DESCRIPTION="Manage and analyze example resources"
+CMD_SCRIPT_CATEGORY="UNCATEGORIZED"
+CMD_PREREQUISITE_CONFIGS="config-example.sh"  # Optional
+
+# COMMANDS array (6 fields)
+# Format: category|flag|description|function|requires_arg|param_prompt
+COMMANDS=(
+    "Management|--list|List all items|cmd_list|false|"
+    "Management|--delete|Delete an item|cmd_delete|true|Enter item ID"
+    "Analysis|--stats|Show statistics|cmd_stats|false|"
+)
+
+# Command functions
+cmd_list() {
+    # Implementation
+}
+
+cmd_delete() {
+    local item_id="$1"
+    # Implementation
+}
+
+# Help and parsing (uses framework)
+show_help() {
+    source "${SCRIPT_DIR}/lib/cmd-framework.sh"
+    cmd_framework_generate_help COMMANDS "cmd-example.sh"
+}
+
+parse_args() {
+    source "${SCRIPT_DIR}/lib/cmd-framework.sh"
+    cmd_framework_parse_args COMMANDS "cmd-example.sh" "$@"
+}
+```
+
+**Adding a new command:**
+1. Add one line to COMMANDS array
+2. Implement the function
+3. Done! (Help text, menu integration, parsing all automatic)
+
 ---
 
 ## Metadata Fields Reference
@@ -241,6 +372,46 @@ main() {
 - `INFRA_CONFIG` - Infrastructure configurations
 - `SECURITY` - Security and authentication
 - `CREDENTIALS` - Credentials and API keys
+
+### Command Scripts
+
+| Field | Required | Description | Example |
+|-------|----------|-------------|---------|
+| `CMD_SCRIPT_NAME` | Yes | Human-readable name (2-4 words) | `"AI Management"` |
+| `CMD_SCRIPT_DESCRIPTION` | Yes | Brief description (one sentence) | `"Manage AI models, spending, and usage"` |
+| `CMD_SCRIPT_CATEGORY` | Yes | Category for menu organization | `"AI_TOOLS"` |
+| `CMD_PREREQUISITE_CONFIGS` | No | Space-separated config scripts | `"config-ai-claudecode.sh"` or `""` |
+| `COMMANDS` | Yes | Array of command definitions | See COMMANDS array format below |
+
+**COMMANDS Array Format (6 fields):**
+```
+"category|flag|description|function|requires_arg|param_prompt"
+```
+
+| Field | Type | Description | Example |
+|-------|------|-------------|---------|
+| category | string | Command grouping | `"Management"`, `"Analysis"` |
+| flag | string | Command line flag (starts with --) | `"--list"`, `"--delete"` |
+| description | string | User-friendly description | `"List all items"` |
+| function | string | Function name to call | `"cmd_list"`, `"cmd_delete"` |
+| requires_arg | boolean | Needs parameter? | `"true"`, `"false"` |
+| param_prompt | string | Parameter prompt (empty if no param) | `"Enter item ID"`, `""` |
+
+**Example:**
+```bash
+COMMANDS=(
+    "Management|--list|List all items|cmd_list|false|"
+    "Management|--delete|Delete an item|cmd_delete|true|Enter item ID"
+)
+```
+
+**Categories:**
+- `AI_TOOLS` - AI and ML tools
+- `DATABASE` - Database operations
+- `MONITORING` - Monitoring and metrics
+- `INFRA_CONFIG` - Infrastructure management
+- `DATA_ANALYTICS` - Data analysis tools
+- `UNCATEGORIZED` - Other commands
 
 ---
 
