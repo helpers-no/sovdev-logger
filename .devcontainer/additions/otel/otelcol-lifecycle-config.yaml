@@ -64,13 +64,13 @@ processors:
     spike_limit_mib: 128
 
 exporters:
-  # OTLP HTTP exporter - sends telemetry to k8s cluster
+  # OTLP HTTP exporter - sends telemetry to k8s cluster via nginx proxy
   otlphttp:
-    endpoint: http://host.docker.internal
+    endpoint: http://localhost:8081
     headers:
       Host: otel.localhost
-    # Note: host.docker.internal resolves to Mac host where K3s/Rancher Desktop runs
-    # Traefik in K3s routes based on Host header to reach k8s OTel Collector
+    # Note: Routes through nginx reverse proxy on localhost:8081
+    # Nginx forwards to backend infrastructure with Host header for Traefik routing
     compression: gzip
     timeout: 10s
     retry_on_failure:

@@ -682,6 +682,7 @@ fi
 
 ## Related Documentation
 
+- [Nginx Reverse Proxy](nginx/README-nginx.md) - Network architecture and proxy configuration for cluster services
 - [OTel Monitoring System](otel/README-otel.md) - OpenTelemetry monitoring documentation
 - [Devcontainer Extend](../../.devcontainer.extend/readme-devcontainer-extend.md) - Project-specific customization
 - [Component Scanner Library](lib/component-scanner.sh) - Script discovery library documentation

@@ -249,7 +249,7 @@ test_1_8() {
     source /workspace/.devcontainer/additions/lib/component-scanner.sh
 
     local EXPECTED_NAME="OTel Collector"
-    local EXPECTED_PREREQ="config-devcontainer-identity.sh"
+    local EXPECTED_PREREQ="config-devcontainer-identity.sh config-nginx.sh"
     local found=0
 
     while IFS=$'\t' read -r basename name desc cat check prereqs; do

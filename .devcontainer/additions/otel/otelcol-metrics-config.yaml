@@ -129,10 +129,10 @@ processors:
 
 # EXPORTERS: Send metrics to backend systems
 exporters:
-  # OTLP HTTP exporter: Send to Kubernetes cluster via Traefik
+  # OTLP HTTP exporter: Send to Kubernetes cluster via nginx proxy
   otlphttp:
-    # Docker host gateway (devcontainer → host machine)
-    endpoint: http://host.docker.internal
+    # Routes through nginx reverse proxy on localhost:8081
+    endpoint: http://localhost:8081
     headers:
       # Traefik routing header: Routes to k8s OTel Collector
       Host: otel.localhost

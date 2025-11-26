@@ -274,6 +274,15 @@ verify_identity() {
     # Always set up symlink first (in case container was rebuilt)
     setup_persistent_storage
 
+    # Ensure bashrc is configured to load identity (in case container was rebuilt)
+    if [ -f "$BASHRC_FILE" ] && ! grep -q "devcontainer-identity" "$BASHRC_FILE" 2>/dev/null; then
+        cat >> "$BASHRC_FILE" <<'EOF'
+
+# Devcontainer identity - managed by config-devcontainer-identity.sh
+[ -f ~/.devcontainer-identity ] && source ~/.devcontainer-identity
+EOF
+    fi
+
     # Check if identity file exists
     if [ ! -f "$IDENTITY_FILE" ]; then
         # File doesn't exist - this is expected on first container creation

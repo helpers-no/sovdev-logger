@@ -199,8 +199,9 @@ reload_supervisor() {
         log_success "Supervisor reloaded"
     else
         log_info "Supervisor not running - starting it now..."
-        sudo supervisord -c /etc/supervisor/supervisord.conf > /dev/null 2>&1
-        sleep 2
+        # Start supervisord in background with output redirected
+        sudo supervisord -c /etc/supervisor/supervisord.conf > /dev/null 2>&1 &
+        sleep 3
         if pgrep supervisord > /dev/null; then
             log_success "Supervisor started and services are now running"
         else
@@ -256,22 +257,7 @@ main() {
     rm -rf "$TEMP_CONF_DIR"
 
     echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "✅ Configuration Generation Complete"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "📋 Service Priority Order:"
-
-    # Sort and display services by priority
-    for i in "${!SERVICE_NAMES[@]}"; do
-        echo "   ${SERVICE_PRIORITIES[$i]}: ${SERVICE_NAMES[$i]}"
-    done | sort -n
-
-    echo ""
-    echo "🔧 Management:"
-    echo "   dev-services status          # Show all services"
-    echo "   dev-services restart <name>  # Restart a service"
-    echo "   dev-services logs <name>     # View service logs"
+    log_success "Supervisor configuration complete"
     echo ""
 }
 

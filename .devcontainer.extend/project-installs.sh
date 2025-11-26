@@ -142,14 +142,10 @@ main() {
     # Run custom project-specific installations
     install_custom_project_tools
 
-    # Show environment information using existing function from dev-setup.sh
-    if [ -f "/workspace/.devcontainer/dev-setup.sh" ]; then
-        echo ""
-        # Source dev-setup.sh to get the show_environment_info function
-        # shellcheck source=/dev/null
-        source "/workspace/.devcontainer/dev-setup.sh"
-        # Call without the interactive "Press Enter" prompt
-        show_environment_info_non_interactive
+    # Show environment information
+    if [ -f "/workspace/.devcontainer/additions/show-environment.sh" ]; then
+        # Ensure clean output by buffering through cat
+        bash "/workspace/.devcontainer/additions/show-environment.sh" | cat
     fi
 
     echo "🎉 Post-creation setup complete!"
@@ -494,8 +490,9 @@ install_project_tools() {
         if [ -d /etc/supervisor/conf.d ] && [ "$(ls -A /etc/supervisor/conf.d/*.conf 2>/dev/null)" ]; then
             if ! pgrep supervisord > /dev/null 2>&1; then
                 echo "🚀 Starting supervisord..."
-                sudo supervisord -c /etc/supervisor/supervisord.conf
-                sleep 2
+                # Start supervisord in background with output redirected
+                sudo supervisord -c /etc/supervisor/supervisord.conf > /dev/null 2>&1 &
+                sleep 3
                 if pgrep supervisord > /dev/null 2>&1; then
                     echo "✅ Supervisord started successfully"
                     # Count running services

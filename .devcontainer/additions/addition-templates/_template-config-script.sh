@@ -203,6 +203,19 @@ verify_your_config() {
     # Path where config should be restored (typically in home directory)
     local HOME_CONFIG_PATH="$HOME/.your-config-file"
 
+    # Optional: Ensure bashrc loads environment variables (for configs with env vars)
+    # This ensures variables are automatically loaded in new terminals after rebuild
+    # Only needed if your config exports environment variables that should be available in shells
+    #
+    # local BASHRC_FILE="$HOME/.bashrc"
+    # if [ -f "$BASHRC_FILE" ] && ! grep -q "your-config-file" "$BASHRC_FILE" 2>/dev/null; then
+    #     cat >> "$BASHRC_FILE" <<'EOF'
+    #
+    # # Your configuration - managed by config-your-name.sh
+    # [ -f ~/.your-config-file ] && source ~/.your-config-file
+    # EOF
+    # fi
+
     # Check if configuration exists in topsecret
     if [ -f "$TOPSECRET_PATH" ]; then
         # Restore configuration (symlink recommended for live updates)

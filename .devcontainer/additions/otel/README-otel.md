@@ -252,10 +252,14 @@ flowchart TB
         AppCode["A9: Application Code<br/>(using sovdev-logger)<br/>Sends to K8s via OTLP HTTP"]
 
         DevcontainerScripts["A10: Devcontainer Scripts<br/>(start/stop monitoring)"]
+
+        NginxProxy["A11: Nginx Reverse Proxy<br/>localhost:8081 → backend<br/>Injects Host: otel.localhost"]
     end
 
+    HostBridge["host.docker.internal<br/>(Bridge to Host Machine)"]
+
     subgraph K8sCluster["Kubernetes Cluster - monitoring namespace"]
-        Traefik["B1: Traefik<br/>(otel.localhost routing)"]
+        Traefik["B1: Traefik Ingress<br/>(Host-based routing)"]
         K8sOTel["B2: K8s OTel Collector<br/>Central aggregation point"]
         Prometheus["B3: Prometheus<br/>Metrics storage"]
         Loki["B4: Loki<br/>Log storage"]
@@ -279,9 +283,13 @@ flowchart TB
 
     DevcontainerScripts -->|"Sends lifecycle events<br/>(monitoring.started, monitoring.stopped)"| OTelLifecycle
 
-    OTelLifecycle -->|"OTLP/HTTP<br/>host.docker.internal<br/>Host: otel.localhost<br/>Lifecycle Events"| Traefik
-    OTelMetrics -->|"OTLP/HTTP<br/>host.docker.internal<br/>Host: otel.localhost<br/>Metrics"| Traefik
-    AppCode -->|"OTLP/HTTP<br/>host.docker.internal<br/>Host: otel.localhost<br/>Logs & Traces"| Traefik
+    OTelLifecycle -->|"OTLP/HTTP<br/>localhost:8081"| NginxProxy
+    OTelMetrics -->|"OTLP/HTTP<br/>localhost:8081"| NginxProxy
+    AppCode -->|"OTLP/HTTP<br/>localhost:8081"| NginxProxy
+
+    NginxProxy -->|"HTTP with<br/>Host: otel.localhost"| HostBridge
+    HostBridge -->|"Forward to<br/>localhost:80"| Traefik
+
     Traefik -->|"Routes to"| K8sOTel
     K8sOTel -->|"Stores metrics"| Prometheus
     K8sOTel -->|"Stores logs"| Loki
@@ -294,16 +302,19 @@ flowchart TB
 ```
 
 **Component Reference:**
-- **A1-A10**: Devcontainer Environment components
+- **A1-A11**: Devcontainer Environment components
   - A1: System Resources, A2: Container Cgroup, A3: Install Scripts
   - A4: Cgroup Script, A5: Devcontainer Info Script
   - A6: Script Exporter (port 9469), A7: Lifecycle Collector (port 4318)
   - A8: Metrics Collector, A9: Application Code (using sovdev-logger)
   - A10: Devcontainer Scripts (start/stop monitoring)
+  - A11: Nginx Reverse Proxy (port 8081 - injects Host header for Traefik routing)
 - **B1-B5**: Kubernetes Cluster components
   - B1: Traefik (ingress routing), B2: K8s OTel Collector, B3: Prometheus, B4: Loki, B5: Tempo
 - **C1-C3**: Grafana Dashboards
   - C1: Developer Activity Dashboard, C2: Resource Monitoring Dashboard, C3: Configuration Info Dashboard
+
+**Networking Note**: Telemetry routing uses nginx reverse proxy on localhost:8081 to forward requests to the Kubernetes cluster. The nginx proxy injects the `Host: otel.localhost` header for Traefik's host-based routing. For complete networking architecture and configuration details, see [Nginx Reverse Proxy Documentation](../nginx/README-nginx.md).
 
 ---
 
@@ -909,6 +920,7 @@ Located in `/workspace/specification/tools/`:
 
 ### Related Documentation
 
+- **Nginx Reverse Proxy**: [nginx/README-nginx.md](../nginx/README-nginx.md) - Network architecture and proxy configuration
 - **sovdev-logger**: See language-specific READMEs in `/workspace/{language}/`
 - **OpenTelemetry Collector**: https://opentelemetry.io/docs/collector/
 - **OpenTelemetry Collector (GitHub)**: https://github.com/open-telemetry/opentelemetry-collector

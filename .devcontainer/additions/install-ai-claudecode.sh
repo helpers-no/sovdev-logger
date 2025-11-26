@@ -37,39 +37,18 @@ pre_installation_setup() {
         echo "🔧 Preparing for uninstallation..."
     else
         echo "🔧 Performing pre-installation setup..."
-        
+
         # Ensure curl is available for any future needs
         if ! command -v curl >/dev/null 2>&1; then
             echo "❌ curl is required but not installed. Installing curl..."
             sudo apt-get update -qq && sudo apt-get install -y curl
         fi
-        
+
         # CRITICAL: Ensure topsecret folder is gitignored before storing credentials there
         ensure_topsecret_gitignored
-        
-        # Create credentials directory in gitignored topsecret folder
-        mkdir -p /workspace/topsecret/.claude-credentials
 
-        # Use the credential sync helper to ensure symlink is properly set up
-        source "${SCRIPT_DIR}/lib/claude-credential-sync.sh"
-        if ensure_claude_credentials; then
-            echo "✅ Claude credentials symlink verified and working"
-        else
-            echo "❌ Failed to set up credentials symlink"
-            return 1
-        fi
-
-        # Diagnostic: Check if credentials exist from previous session
-        if [ -f /workspace/topsecret/.claude-credentials/.credentials.json ]; then
-            echo "🔍 Found existing credentials from previous session"
-            echo "   File: /workspace/topsecret/.claude-credentials/.credentials.json"
-            echo "   Size: $(stat -c%s /workspace/topsecret/.claude-credentials/.credentials.json 2>/dev/null || echo 'unknown') bytes"
-            echo "   Modified: $(stat -c%y /workspace/topsecret/.claude-credentials/.credentials.json 2>/dev/null | cut -d'.' -f1 || echo 'unknown')"
-            echo "   Owner: $(stat -c%U:%G /workspace/topsecret/.claude-credentials/.credentials.json 2>/dev/null || echo 'unknown')"
-            echo "   Permissions: $(stat -c%a /workspace/topsecret/.claude-credentials/.credentials.json 2>/dev/null || echo 'unknown')"
-        else
-            echo "ℹ️  No existing credentials found (first time setup)"
-        fi
+        # Create env-vars directory for environment configuration
+        mkdir -p /workspace/topsecret/env-vars
 
         echo "✅ Pre-installation setup complete"
     fi
@@ -103,15 +82,9 @@ ensure_topsecret_gitignored() {
 install_claude_code() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         echo "🗑️ Removing Claude Code installation..."
-        
-        # Remove symlink if it exists
-        if [ -L "/home/vscode/.claude" ]; then
-            rm -f "/home/vscode/.claude"
-            echo "✅ Claude credentials symlink removed"
-        fi
-        
-        # Note: We preserve credential files during uninstall
-        echo "ℹ️  Credential files preserved in /workspace/topsecret/.claude-credentials/"
+
+        # Note: We preserve environment configuration files during uninstall
+        echo "ℹ️  Environment configuration preserved in /workspace/topsecret/env-vars/"
         return
     fi
     
@@ -148,54 +121,12 @@ setup_claude_code_config() {
         return
     fi
 
-    # Add shell initialization to ensure symlink on every terminal start
-    local bashrc="/home/vscode/.bashrc"
-    local init_marker="# Claude Code credential sync"
-
-    if [ -f "$bashrc" ] && ! grep -q "$init_marker" "$bashrc" 2>/dev/null; then
-        cat >> "$bashrc" << 'EOFBASH'
-
-# Claude Code credential sync - ensures credentials persist across rebuilds
-if [ -f "/workspace/.devcontainer/additions/lib/claude-credential-sync.sh" ]; then
-    source "/workspace/.devcontainer/additions/lib/claude-credential-sync.sh"
-    ensure_claude_credentials > /dev/null 2>&1
-fi
-EOFBASH
-        echo "✅ Added credential sync to shell initialization"
-    fi
+    # Note: Bashrc configuration is handled by config-ai-claudecode.sh --verify
+    # which runs automatically during container startup via project-installs.sh
 
     # Create workspace .claude directory for project-specific settings and skills
     mkdir -p /workspace/.claude/skills
-    
-    # Create basic settings.json if it doesn't exist (for permission controls)
-    local settings_file="/workspace/topsecret/.claude-credentials/settings.json"
-    
-    if [ ! -f "$settings_file" ]; then
-        echo "🔧 Creating security-focused Claude Code configuration..."
-        
-        cat > "$settings_file" << 'EOF'
-{
-  "permissions": {
-    "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
-      "Read(./secrets/**)",
-      "Read(./topsecret/**)",
-      "Read(./config/credentials.json)",
-      "Read(**/*.key)",
-      "Read(**/*.pem)",
-      "Read(**/*_rsa)",
-      "Read(**/*.p12)",
-      "Read(**/*.pfx)"
-    ]
-  }
-}
-EOF
-        echo "✅ Security configuration created with sensitive file protections"
-    else
-        echo "ℹ️  Configuration file already exists"
-    fi
-    
+
     # Create README in skills directory
     local skills_readme="/workspace/.claude/skills/README.md"
     if [ ! -f "$skills_readme" ]; then
@@ -207,17 +138,24 @@ This directory contains custom skills and agents for Claude Code.
 ## Directory Structure
 
 - `/workspace/.claude/skills/` - Project-specific skills (committed to git)
-- `/home/vscode/.claude/` - Personal credentials and settings (NOT in git, stored in topsecret/)
+- `/workspace/topsecret/env-vars/.claude-code-env` - Environment configuration (NOT in git)
 
 ## Adding Custom Skills
 
 Create markdown files in this directory to define custom skills and agents.
 See Claude Code documentation: https://docs.claude.com/en/docs/claude-code
 
+## Authentication
+
+Claude Code uses environment variables for authentication:
+- `ANTHROPIC_BASE_URL` - LiteLLM proxy endpoint (http://localhost:8080)
+- `ANTHROPIC_AUTH_TOKEN` - Your LiteLLM client API key
+
+Configuration is managed by `config-ai-claudecode.sh` script.
+
 ## Security Note
 
 - ✅ This skills directory IS committed to git (shared with team)
-- ❌ Credentials in /home/vscode/.claude/ are NOT committed (stored in topsecret/)
 - ❌ /workspace/topsecret/ is gitignored and contains your API keys
 EOF
         echo "✅ Created skills directory README"
@@ -250,13 +188,12 @@ declare -A EXTENSIONS
 # Define verification commands to run after installation
 VERIFY_COMMANDS=(
     "command -v claude >/dev/null && echo '✅ Claude Code binary is available' || echo '❌ Claude Code binary not found'"
-    "test -L /home/vscode/.claude && echo '✅ Claude credentials symlink exists' || echo '⚠️  Credentials symlink not found'"
-    "[ -L /home/vscode/.claude ] && [ \"\$(readlink -f /home/vscode/.claude)\" = '/workspace/topsecret/.claude-credentials' ] && echo '✅ Symlink points to correct location' || echo '⚠️  Symlink target incorrect'"
-    "test -d /workspace/topsecret/.claude-credentials && echo '✅ Credentials directory exists in topsecret/' || echo '❌ Credentials directory not found'"
-    "test -w /workspace/topsecret/.claude-credentials && echo '✅ Credentials directory is writable' || echo '❌ Credentials directory not writable'"
+    "test -L /home/vscode/.claude-code-env && echo '✅ Environment config symlink exists' || echo '⚠️  Environment config symlink not found'"
+    "test -d /workspace/topsecret/env-vars && echo '✅ Environment directory exists in topsecret/' || echo '❌ Environment directory not found'"
     "test -d /workspace/.claude/skills && echo '✅ Skills directory exists' || echo '⚠️  Skills directory not found'"
     "grep -q 'topsecret/' /workspace/.gitignore && echo '✅ topsecret/ is gitignored' || echo '❌ topsecret/ NOT gitignored (SECURITY RISK!)'"
-    "claude --version >/dev/null 2>&1 && echo '✅ Claude Code is functional' || echo '⚠️  Claude Code may need authentication setup'"
+    "grep -q 'Claude Code environment' /home/vscode/.bashrc && echo '✅ Environment loading added to bashrc' || echo '⚠️  bashrc not configured'"
+    "claude --version >/dev/null 2>&1 && echo '✅ Claude Code is functional' || echo '⚠️  Claude Code installed'"
 )
 
 # Post-installation notes
@@ -265,10 +202,9 @@ post_installation_message() {
     echo "🎉 Installation process complete for: $SCRIPT_NAME!"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     echo
-    echo "🔐 Security Configuration:"
+    echo "🔐 Configuration:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "  Credentials → /workspace/topsecret/.claude-credentials/ (gitignored)"
-    echo "  Symlinked to → /home/vscode/.claude/"
+    echo "  Environment  → /workspace/topsecret/env-vars/ (gitignored)"
     echo "  Skills       → /workspace/.claude/skills/ (in git)"
     echo "  Protected by → .gitignore includes 'topsecret/'"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -276,30 +212,21 @@ post_installation_message() {
     echo "⚠️  IMPORTANT: Never remove 'topsecret/' from .gitignore!"
     echo
     echo "🚀 Quick Start Guide:"
-    echo "1. Set up authentication:"
-    echo "   claude login"
-    echo "   OR"
-    echo "   claude setup-token"
+    echo "1. Configure Claude Code to use LiteLLM proxy:"
+    echo "   bash .devcontainer/additions/config-ai-claudecode.sh"
     echo
-    echo "2. Navigate to your project:"
-    echo "   cd /workspace"
+    echo "2. This will prompt for your LiteLLM client API key and configure:"
+    echo "   - ANTHROPIC_BASE_URL=http://localhost:8080 (nginx proxy)"
+    echo "   - ANTHROPIC_AUTH_TOKEN=<your-litellm-key>"
     echo
-    echo "3. Start Claude Code:"
+    echo "3. After configuration, start Claude Code:"
     echo "   claude"
     echo
-    echo "4. Ask Claude to help with your code!"
-    echo
     echo "🔑 Authentication Details:"
-    echo "- Your API key will be stored in: /workspace/topsecret/.claude-credentials/"
-    echo "- This location is gitignored and will persist across container rebuilds"
-    echo "- Project skills in /workspace/.claude/skills/ are shared with your team"
-    echo
-    echo "⚠️  Known Issue - Re-authentication After Rebuild:"
-    echo "- You may need to re-authenticate after container rebuilds"
-    echo "- This happens when OAuth tokens expire and cannot be auto-refreshed"
-    echo "- Your credentials ARE persisted, but Claude Code may not refresh them properly"
-    echo "- Workaround: Use 'claude setup-token' with an API key instead of OAuth"
-    echo "- API keys don't expire and will work across all rebuilds"
+    echo "- Uses LiteLLM proxy (not direct Anthropic API)"
+    echo "- Environment stored in: /workspace/topsecret/env-vars/.claude-code-env"
+    echo "- Configuration persists across container rebuilds"
+    echo "- Automatically loaded in new terminals via .bashrc"
     echo
     echo "📚 Key Features:"
     echo "- ✅ Terminal-native AI assistant with agentic capabilities"
@@ -315,9 +242,9 @@ post_installation_message() {
     echo "- claude --dangerously-skip-permissions  # Auto-approve (use with caution)"
     echo
     echo "🎨 Customization:"
-    echo "- Settings: /home/vscode/.claude/settings.json"
+    echo "- Environment: ~/.claude-code-env (symlink to /workspace/topsecret/env-vars/)"
     echo "- Project skills: /workspace/.claude/skills/"
-    echo "- Security rules: Already configured to deny access to sensitive files"
+    echo "- Configuration script: .devcontainer/additions/config-ai-claudecode.sh"
     echo
     echo "📖 Documentation Links:"
     echo "- Official Documentation: https://docs.claude.com/en/docs/claude-code"
@@ -339,19 +266,18 @@ post_uninstallation_message() {
     echo
     echo "📋 What was removed:"
     echo "- ✅ Claude Code npm package"
-    echo "- ✅ Symlink from /home/vscode/.claude/"
     echo
     echo "📋 What was preserved:"
-    echo "- ✅ Credential files in /workspace/topsecret/.claude-credentials/"
+    echo "- ✅ Environment configuration in /workspace/topsecret/env-vars/"
     echo "- ✅ Project skills in /workspace/.claude/skills/"
     echo "- ✅ Configuration and settings"
     echo
     echo "🧹 Complete Cleanup (optional):"
     echo "To remove all Claude Code data, run:"
-    echo "  rm -rf /workspace/topsecret/.claude-credentials/"
+    echo "  rm -rf /workspace/topsecret/env-vars/.claude-code-env"
     echo "  rm -rf /workspace/.claude/"
     echo
-    echo "⚠️  Warning: This will delete your API keys and all configuration!"
+    echo "⚠️  Warning: This will delete your environment configuration!"
     echo
     # Verify uninstallation
     if command -v claude >/dev/null; then
