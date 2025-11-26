@@ -54,9 +54,7 @@ declare -a AVAILABLE_SERVICES=()
 declare -a SERVICE_SCRIPTS=()
 declare -a SERVICE_DESCRIPTIONS=()
 declare -a SERVICE_CATEGORIES=()
-declare -a SERVICE_START_SCRIPTS=()
-declare -a SERVICE_STOP_SCRIPTS=()
-declare -a SERVICE_CHECK_COMMANDS=()
+declare -a SERVICE_PREREQUISITE_CONFIGS=()
 
 # Service category organization
 declare -A SERVICES_BY_CATEGORY  # Maps category to comma-separated service indices
@@ -188,9 +186,7 @@ scan_available_services() {
     SERVICE_SCRIPTS=()
     SERVICE_DESCRIPTIONS=()
     SERVICE_CATEGORIES=()
-    SERVICE_START_SCRIPTS=()
-    SERVICE_STOP_SCRIPTS=()
-    SERVICE_CHECK_COMMANDS=()
+    SERVICE_PREREQUISITE_CONFIGS=()
 
     # Reset category organization
     SERVICES_BY_CATEGORY=()
@@ -204,16 +200,14 @@ scan_available_services() {
 
     local found=0
 
-    # Use library to scan service scripts
-    while IFS=$'\t' read -r start_script stop_script service_name service_description service_category check_running_command; do
+    # Scan for service-*.sh scripts
+    while IFS=$'\t' read -r script_basename service_name service_description service_category script_path prerequisite_configs; do
         # Add to arrays
         AVAILABLE_SERVICES+=("$service_name")
-        SERVICE_SCRIPTS+=("$start_script")
+        SERVICE_SCRIPTS+=("$script_basename")
         SERVICE_DESCRIPTIONS+=("$service_description")
         SERVICE_CATEGORIES+=("$service_category")
-        SERVICE_START_SCRIPTS+=("$start_script")
-        SERVICE_STOP_SCRIPTS+=("$stop_script")
-        SERVICE_CHECK_COMMANDS+=("$check_running_command")
+        SERVICE_PREREQUISITE_CONFIGS+=("$prerequisite_configs")
 
         # Track service index by category
         local service_index=$found
@@ -227,7 +221,7 @@ scan_available_services() {
         SERVICE_CATEGORY_COUNTS[$service_category]=$((${SERVICE_CATEGORY_COUNTS[$service_category]:-0} + 1))
 
         ((found++))
-    done < <(scan_service_scripts "$ADDITIONS_DIR")
+    done < <(scan_service_scripts_new "$ADDITIONS_DIR")
 
     if [[ $found -eq 0 ]]; then
         dialog --title "No Services Found" --msgbox "No services found in $ADDITIONS_DIR" $DIALOG_HEIGHT $DIALOG_WIDTH
@@ -236,20 +230,6 @@ scan_available_services() {
     fi
 
     return 0
-}
-
-check_service_running() {
-    local service_index=$1
-    local check_command="${SERVICE_CHECK_COMMANDS[$service_index]}"
-
-    # If no check command, assume not running
-    if [[ -z "$check_command" ]]; then
-        return 1
-    fi
-
-    # Execute the check command
-    eval "$check_command" 2>/dev/null
-    return $?
 }
 
 #------------------------------------------------------------------------------
@@ -480,13 +460,7 @@ show_all_services_menu() {
                 local service_description="${SERVICE_DESCRIPTIONS[$service_index]}"
                 local prefix="${CATEGORY_PREFIX[$category_key]}"
 
-                # Check if service is running
-                local status_icon="⏸️"
-                if check_service_running "$service_index"; then
-                    status_icon="✅"
-                fi
-
-                menu_options+=("$option_num" "$status_icon $prefix $service_name" "$service_description")
+                menu_options+=("$option_num" "$prefix $service_name" "$service_description")
                 MENU_TO_SERVICE_INDEX[$option_num]=$service_index
                 ((option_num++))
             done
@@ -523,64 +497,88 @@ show_all_services_menu() {
 }
 
 #------------------------------------------------------------------------------
-# Services in category menu (DEPRECATED - kept for backward compatibility)
+# Service submenu - Show commands from selected service-*.sh script
 #------------------------------------------------------------------------------
 
-show_services_in_category() {
-    local category_key=$1
-    local category_name="${CATEGORIES[$category_key]}"
+show_service_submenu() {
+    local service_index=$1
+    local service_name="${AVAILABLE_SERVICES[$service_index]}"
+    local script_name="${SERVICE_SCRIPTS[$service_index]}"
+    local script_path="$ADDITIONS_DIR/$script_name"
+    local prerequisite_configs="${SERVICE_PREREQUISITE_CONFIGS[$service_index]}"
 
-    # Get service indices for this category
-    local service_indices="${SERVICES_BY_CATEGORY[$category_key]}"
+    # Check prerequisites first
+    if [[ -n "$prerequisite_configs" ]]; then
+        # Source prerequisite-check library
+        source "$ADDITIONS_DIR/lib/prerequisite-check.sh"
 
-    if [[ -z "$service_indices" ]]; then
-        dialog --title "No Services" --msgbox "No services found in category: $category_name" $DIALOG_HEIGHT $DIALOG_WIDTH
-        clear
-        return 1
+        if ! check_prerequisite_configs "$prerequisite_configs" "$ADDITIONS_DIR"; then
+            # Show missing prerequisites
+            local missing_msg=$(show_missing_prerequisites "$prerequisite_configs" "$ADDITIONS_DIR")
+            dialog --title "Prerequisites Not Met" \
+                --msgbox "Cannot run $service_name. Prerequisites not met:\n\n$missing_msg\n\nPlease configure required items first." \
+                20 70
+            clear
+            return 1
+        fi
     fi
 
     while true; do
-        # Build menu with services in this category
+        # Extract COMMANDS array from the script
+        local commands=()
+        while IFS= read -r cmd_def; do
+            commands+=("$cmd_def")
+        done < <(extract_service_commands "$script_path")
+
+        if [[ ${#commands[@]} -eq 0 ]]; then
+            dialog --title "No Commands" --msgbox "No commands found in $service_name" $DIALOG_HEIGHT $DIALOG_WIDTH
+            clear
+            return 1
+        fi
+
+        # Build menu with category prefixes (like cmd-*.sh display)
         local menu_options=()
+        local menu_actions=()
         local option_num=1
 
-        # Convert comma-separated indices to array
-        IFS=',' read -ra INDICES <<< "$service_indices"
+        for cmd_def in "${commands[@]}"; do
+            IFS='|' read -r category flag description function requires_arg param_prompt <<< "$cmd_def"
 
-        for service_index in "${INDICES[@]}"; do
-            local service_name="${AVAILABLE_SERVICES[$service_index]}"
-            local service_description="${SERVICE_DESCRIPTIONS[$service_index]}"
-
-            # Check if service is running
-            local status_icon="⏸️"
-            if check_service_running "$service_index"; then
-                status_icon="✅"
-            fi
-
-            menu_options+=("$option_num" "$status_icon $service_name" "$service_description")
+            # Add command with category prefix
+            local display_text="[$category] $description"
+            menu_options+=("$option_num" "$display_text" "$flag")
+            menu_actions[$option_num]="$flag|$requires_arg|$param_prompt"
             ((option_num++))
         done
 
-        # Show service selection menu with dynamic help
+        # Add back option
+        menu_options+=("0" "Back to Service List" "")
+
+        # Show submenu
         local choice
         choice=$(dialog --clear \
             --item-help \
-            --title "Service Management - $category_name" \
-            --menu "Choose a service to manage (ESC to go back):" \
+            --title "$service_name" \
+            --menu "Select a command (ESC to go back):" \
             $DIALOG_HEIGHT $DIALOG_WIDTH $MENU_HEIGHT \
             "${menu_options[@]}" \
             2>&1 >/dev/tty)
 
-        # Check if user cancelled (ESC - go back to category menu)
+        # Check if user cancelled (ESC)
         if [[ $? -ne 0 ]]; then
             return 0
         fi
 
-        # Map choice to actual service index
-        local selected_service_index=${INDICES[$((choice - 1))]}
+        # Handle back option
+        if [[ $choice -eq 0 || -z "$choice" ]]; then
+            return 0
+        fi
 
-        # Show service details and actions
-        show_service_details_and_actions "$selected_service_index"
+        # Execute selected command
+        local action_def="${menu_actions[$choice]}"
+        if [[ -n "$action_def" ]]; then
+            execute_service_cmd_action "$script_path" "$action_def"
+        fi
     done
 }
 
@@ -590,179 +588,54 @@ show_services_in_category() {
 
 show_service_details_and_actions() {
     local service_index=$1
-    local service_name="${AVAILABLE_SERVICES[$service_index]}"
-    local service_description="${SERVICE_DESCRIPTIONS[$service_index]}"
-    local stop_script="${SERVICE_STOP_SCRIPTS[$service_index]}"
-
-    # Check if service is running
-    local is_running=false
-    if check_service_running "$service_index"; then
-        is_running=true
-    fi
-
-    # Build menu based on current state
-    local menu_options=()
-    local status_text
-
-    if [[ "$is_running" = true ]]; then
-        status_text="Status: Running ✅"
-        menu_options+=("1" "Stop service")
-
-        # Only show Restart if stop script exists
-        if [[ -n "$stop_script" ]]; then
-            menu_options+=("2" "Restart service")
-        fi
-
-        menu_options+=("3" "Back to service list")
-    else
-        status_text="Status: Stopped ⏸️"
-        menu_options+=("1" "Start service")
-        menu_options+=("2" "Back to service list")
-    fi
-
-    # Show service details with available actions
-    local user_choice
-    user_choice=$(dialog --clear \
-        --title "Service: $service_name" \
-        --menu "$service_description\n\n$status_text\n\nWhat would you like to do?" \
-        $DIALOG_HEIGHT $DIALOG_WIDTH 6 \
-        "${menu_options[@]}" \
-        2>&1 >/dev/tty)
-
-    # Handle user choice
-    if [[ $? -ne 0 ]]; then
-        # User pressed ESC - go back
-        return 0
-    fi
-
-    if [[ "$is_running" = true ]]; then
-        case $user_choice in
-            1)
-                execute_service_action "$service_index" "stop"
-                ;;
-            2)
-                if [[ -n "$stop_script" ]]; then
-                    execute_service_action "$service_index" "restart"
-                fi
-                ;;
-            3|"")
-                # Go back to service list
-                ;;
-        esac
-    else
-        case $user_choice in
-            1)
-                execute_service_action "$service_index" "start"
-                ;;
-            2|"")
-                # Go back to service list
-                ;;
-        esac
-    fi
+    # Show service-*.sh COMMANDS array menu
+    show_service_submenu "$service_index"
 }
 
-execute_service_action() {
-    local service_index=$1
-    local action=$2
-    local service_name="${AVAILABLE_SERVICES[$service_index]}"
-    local start_script="${SERVICE_START_SCRIPTS[$service_index]}"
-    local stop_script="${SERVICE_STOP_SCRIPTS[$service_index]}"
+execute_service_cmd_action() {
+    local script_path="$1"
+    local action_def="$2"
 
+    IFS='|' read -r flag requires_arg param_prompt <<< "$action_def"
+
+    local cmd_args=("$flag")
+
+    # Prompt for parameter if needed
+    if [[ "$requires_arg" = "true" ]]; then
+        local param_value
+        param_value=$(dialog --clear \
+            --title "Parameter Required" \
+            --inputbox "$param_prompt:" \
+            8 60 \
+            2>&1 >/dev/tty)
+
+        # Check if user cancelled
+        if [[ $? -ne 0 ]]; then
+            return 0
+        fi
+
+        if [[ -n "$param_value" ]]; then
+            cmd_args+=("$param_value")
+        else
+            dialog --msgbox "Parameter required - command cancelled" 6 40
+            clear
+            return 1
+        fi
+    fi
+
+    # Execute command
     clear
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Executing: $(basename "$script_path") ${cmd_args[*]}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
 
-    case $action in
-        start)
-            echo "Starting: $service_name"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo ""
-
-            local start_path="$ADDITIONS_DIR/$start_script"
-            if [[ ! -f "$start_path" ]]; then
-                echo "❌ Error: Start script not found: $start_path"
-            else
-                chmod +x "$start_path"
-                if bash "$start_path"; then
-                    echo ""
-                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                    echo "✅ Successfully started: $service_name"
-                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                else
-                    echo ""
-                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                    echo "❌ Failed to start: $service_name"
-                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                fi
-            fi
-            ;;
-        stop)
-            echo "Stopping: $service_name"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo ""
-
-            if [[ -z "$stop_script" ]]; then
-                echo "❌ Error: No stop script available for this service"
-            else
-                local stop_path="$ADDITIONS_DIR/$stop_script"
-                if [[ ! -f "$stop_path" ]]; then
-                    echo "❌ Error: Stop script not found: $stop_path"
-                else
-                    chmod +x "$stop_path"
-                    if bash "$stop_path"; then
-                        echo ""
-                        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                        echo "✅ Successfully stopped: $service_name"
-                        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                    else
-                        echo ""
-                        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                        echo "❌ Failed to stop: $service_name"
-                        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                    fi
-                fi
-            fi
-            ;;
-        restart)
-            echo "Restarting: $service_name"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo ""
-
-            if [[ -z "$stop_script" ]]; then
-                echo "❌ Error: No stop script available for restart"
-            else
-                local stop_path="$ADDITIONS_DIR/$stop_script"
-                local start_path="$ADDITIONS_DIR/$start_script"
-
-                # Stop first
-                echo "Stopping service..."
-                chmod +x "$stop_path"
-                bash "$stop_path"
-
-                echo ""
-                echo "Waiting 2 seconds..."
-                sleep 2
-                echo ""
-
-                # Then start
-                echo "Starting service..."
-                chmod +x "$start_path"
-                if bash "$start_path"; then
-                    echo ""
-                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                    echo "✅ Successfully restarted: $service_name"
-                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                else
-                    echo ""
-                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                    echo "❌ Failed to restart: $service_name"
-                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                fi
-            fi
-            ;;
-    esac
+    bash "$script_path" "${cmd_args[@]}"
 
     echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     read -p "Press Enter to continue..." -r
+    clear
 }
 
 #------------------------------------------------------------------------------
