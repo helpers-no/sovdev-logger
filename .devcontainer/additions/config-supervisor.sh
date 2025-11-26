@@ -98,7 +98,7 @@ is_service_enabled() {
 discover_services() {
     log_info "Discovering services in $ADDITIONS_DIR..."
 
-    # Find all start-*.sh scripts
+    # Pattern 1: Find all start-*.sh scripts (legacy pattern)
     while IFS= read -r -d '' start_script; do
         # Extract metadata
         local service_name
@@ -122,14 +122,47 @@ discover_services() {
                 SERVICE_DEPENDENCIES+=("$service_depends")
                 SERVICE_AUTO_RESTART+=("$service_auto_restart")
 
-                log_info "  Found: $service_name (priority: $service_priority) ✅ ENABLED"
+                log_info "  Found: $service_name (priority: $service_priority) ✅ ENABLED [start-*.sh]"
             else
-                log_info "  Found: $service_name (priority: $service_priority) ⏸️  disabled"
+                log_info "  Found: $service_name (priority: $service_priority) ⏸️  disabled [start-*.sh]"
             fi
         fi
     done < <(find "$ADDITIONS_DIR" -name "start-*.sh" -type f -print0)
 
-    log_success "Discovered ${#SERVICE_NAMES[@]} services"
+    # Pattern 2: Find all service-*.sh scripts (new extensible pattern)
+    while IFS= read -r -d '' service_script; do
+        # Extract metadata from service-*.sh files
+        local service_name
+        local service_command
+        local service_priority
+        local service_depends
+        local service_auto_restart
+
+        # Service scripts use SERVICE_SCRIPT_NAME instead of SERVICE_NAME
+        service_name=$(grep '^SERVICE_SCRIPT_NAME=' "$service_script" 2>/dev/null | cut -d'"' -f2 || echo "")
+        # Command is the script path with --start flag
+        service_command="bash $service_script --start"
+        service_priority=$(grep '^SERVICE_PRIORITY=' "$service_script" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "50")
+        service_depends=$(grep '^SERVICE_DEPENDS=' "$service_script" 2>/dev/null | cut -d'"' -f2 || echo "")
+        service_auto_restart=$(grep '^SERVICE_AUTO_RESTART=' "$service_script" 2>/dev/null | cut -d'"' -f2 || echo "true")
+
+        # Only include if has SERVICE_SCRIPT_NAME and is enabled
+        if [[ -n "$service_name" ]]; then
+            if is_service_enabled "$service_name"; then
+                SERVICE_NAMES+=("$service_name")
+                SERVICE_COMMANDS+=("$service_command")
+                SERVICE_PRIORITIES+=("$service_priority")
+                SERVICE_DEPENDENCIES+=("$service_depends")
+                SERVICE_AUTO_RESTART+=("$service_auto_restart")
+
+                log_info "  Found: $service_name (priority: $service_priority) ✅ ENABLED [service-*.sh]"
+            else
+                log_info "  Found: $service_name (priority: $service_priority) ⏸️  disabled [service-*.sh]"
+            fi
+        fi
+    done < <(find "$ADDITIONS_DIR" -name "service-*.sh" -type f -print0)
+
+    log_success "Discovered ${#SERVICE_NAMES[@]} enabled services (supporting both start-*.sh and service-*.sh patterns)"
 }
 
 #------------------------------------------------------------------------------

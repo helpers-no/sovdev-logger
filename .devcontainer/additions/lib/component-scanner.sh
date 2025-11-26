@@ -1,9 +1,9 @@
 #!/bin/bash
 # file: .devcontainer/additions/lib/component-scanner.sh
-# version: 1.1.0
+# version: 1.2.0
 #
 # DESCRIPTION: Shared library for discovering and querying devcontainer components
-# PURPOSE: Provides reusable functions for scanning install-*.sh, start-*.sh, and config-*.sh scripts
+# PURPOSE: Provides reusable functions for scanning install-*.sh, start-*.sh, service-*.sh, config-*.sh, and cmd-*.sh scripts
 #
 # This library provides functions to:
 #   - Extract metadata from install, service, and config scripts
@@ -43,7 +43,7 @@
 # LIBRARY VERSION
 #------------------------------------------------------------------------------
 
-COMPONENT_SCANNER_VERSION="1.1.0"
+COMPONENT_SCANNER_VERSION="1.2.0"
 
 #------------------------------------------------------------------------------
 # INSTALL SCRIPT FUNCTIONS
@@ -317,6 +317,162 @@ scan_service_scripts() {
             "$service_description" \
             "$service_category" \
             "$check_running_command"
+    done
+
+    return 0
+}
+
+# Extract SERVICE_SCRIPT metadata from a service-*.sh file
+#
+# Usage: extract_service_script_metadata <script_path> <metadata_field>
+#
+# Arguments:
+#   script_path      - Absolute path to the service-*.sh script
+#   metadata_field   - Field name to extract (SERVICE_SCRIPT_NAME, SERVICE_SCRIPT_DESCRIPTION,
+#                      SERVICE_SCRIPT_CATEGORY, SERVICE_PREREQUISITE_CONFIGS)
+#
+# Returns: The value of the requested field via stdout (empty if not found)
+# Exit code: 0 on success, 1 if script not found
+#
+# Example:
+#   service_name=$(extract_service_script_metadata "/path/to/service-nginx.sh" "SERVICE_SCRIPT_NAME")
+#   # Returns: "Nginx Reverse Proxy"
+#
+extract_service_script_metadata() {
+    local script_path="$1"
+    local field_name="$2"
+
+    # Validate inputs
+    if [[ -z "$script_path" || -z "$field_name" ]]; then
+        echo "" >&2
+        return 1
+    fi
+
+    # Check if script exists
+    if [[ ! -f "$script_path" ]]; then
+        echo "" >&2
+        return 1
+    fi
+
+    # Extract the field value (first match only)
+    local value=$(grep -m 1 "^${field_name}=" "$script_path" 2>/dev/null | cut -d'"' -f2)
+
+    # Output the value (may be empty)
+    echo "$value"
+    return 0
+}
+
+# Extract COMMANDS array from service-*.sh script
+#
+# Usage: extract_service_commands <script_path>
+#
+# Arguments:
+#   script_path - Absolute path to the service-*.sh script
+#
+# Returns: COMMANDS array entries, one per line
+# Exit code: 0 on success, 1 if script not found or COMMANDS array not found
+#
+# Example:
+#   while IFS= read -r cmd_def; do
+#       echo "Command: $cmd_def"
+#   done < <(extract_service_commands "/path/to/service-nginx.sh")
+#
+extract_service_commands() {
+    local script_path="$1"
+
+    # Validate input
+    if [[ -z "$script_path" ]]; then
+        echo "Error: script_path parameter is required" >&2
+        return 1
+    fi
+
+    # Check if script exists
+    if [[ ! -f "$script_path" ]]; then
+        echo "Error: Script not found: $script_path" >&2
+        return 1
+    fi
+
+    # Extract COMMANDS array from file
+    # Find lines between COMMANDS=( and closing )
+    sed -n '/^COMMANDS=(/,/^)/p' "$script_path" 2>/dev/null | \
+        grep -v '^COMMANDS=(' | \
+        grep -v '^)' | \
+        sed 's/^[[:space:]]*//' | \
+        sed 's/"$//' | \
+        sed 's/^"//'
+}
+
+# Scan all service-*.sh scripts and output structured data (NEW PATTERN)
+#
+# Usage: scan_service_scripts_new <additions_dir>
+#
+# Arguments:
+#   additions_dir - Directory containing service-*.sh scripts
+#
+# Output format (tab-separated, one line per script):
+#   script_basename<TAB>SERVICE_SCRIPT_NAME<TAB>SERVICE_SCRIPT_DESCRIPTION<TAB>SERVICE_SCRIPT_CATEGORY<TAB>script_path<TAB>SERVICE_PREREQUISITE_CONFIGS
+#
+# Exit code: 0 on success, 1 if directory not found
+#
+# Example:
+#   while IFS=$'\t' read -r basename name desc cat path prereqs; do
+#       echo "Service script: $name (category: $cat)"
+#   done < <(scan_service_scripts_new "/workspace/.devcontainer/additions")
+#
+scan_service_scripts_new() {
+    local additions_dir="$1"
+
+    # Validate input
+    if [[ -z "$additions_dir" ]]; then
+        echo "Error: additions_dir parameter is required" >&2
+        return 1
+    fi
+
+    # Check if directory exists
+    if [[ ! -d "$additions_dir" ]]; then
+        echo "Error: Directory not found: $additions_dir" >&2
+        return 1
+    fi
+
+    # Scan for service scripts (excluding templates and subdirectories)
+    for script in "$additions_dir"/service-*.sh; do
+        # Skip if it's a directory or doesn't exist
+        [[ ! -f "$script" ]] && continue
+
+        # Skip template files
+        [[ "$script" =~ _template ]] && continue
+
+        # Extract metadata
+        local script_basename=$(basename "$script")
+        local script_path=$(cd "$(dirname "$script")" && pwd)/$(basename "$script")
+        local service_name=$(extract_service_script_metadata "$script" "SERVICE_SCRIPT_NAME")
+        local service_description=$(extract_service_script_metadata "$script" "SERVICE_SCRIPT_DESCRIPTION")
+        local service_category=$(extract_service_script_metadata "$script" "SERVICE_SCRIPT_CATEGORY")
+        local prerequisite_configs=$(extract_service_script_metadata "$script" "SERVICE_PREREQUISITE_CONFIGS")
+
+        # Skip if no SERVICE_SCRIPT_NAME found (invalid service script)
+        if [[ -z "$service_name" ]]; then
+            continue
+        fi
+
+        # Default category if not specified
+        if [[ -z "$service_category" ]]; then
+            service_category="UNCATEGORIZED"
+        fi
+
+        # Default description if not specified
+        if [[ -z "$service_description" ]]; then
+            service_description="No description available"
+        fi
+
+        # Output tab-separated values (prerequisite_configs may be empty)
+        printf "%s\t%s\t%s\t%s\t%s\t%s\n" \
+            "$script_basename" \
+            "$service_name" \
+            "$service_description" \
+            "$service_category" \
+            "$script_path" \
+            "$prerequisite_configs"
     done
 
     return 0
