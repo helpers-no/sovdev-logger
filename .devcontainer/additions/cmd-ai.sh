@@ -101,10 +101,16 @@ call_litellm_api() {
 
     local url="${LITELLM_URL}${endpoint}"
 
+    # Timeout settings:
+    # - connect-timeout: 10s to establish connection
+    # - max-time: 120s for total operation (Ollama models can be slow on first load)
     if [ "$method" = "GET" ]; then
-        curl -s -H "Authorization: Bearer ${ANTHROPIC_AUTH_TOKEN}" "$url"
+        curl -s --connect-timeout 10 --max-time 30 \
+            -H "Authorization: Bearer ${ANTHROPIC_AUTH_TOKEN}" \
+            "$url"
     elif [ "$method" = "POST" ]; then
-        curl -s -X POST "$url" \
+        curl -s --connect-timeout 10 --max-time 120 \
+            -X POST "$url" \
             -H "Authorization: Bearer ${ANTHROPIC_AUTH_TOKEN}" \
             -H "Content-Type: application/json" \
             -d "$data"
@@ -641,7 +647,18 @@ EOF
     response=$(call_litellm_api "/v1/chat/completions" "POST" "$data")
 
     if [ -z "$response" ]; then
-        log_error "Failed to test model"
+        log_error "Failed to test model - No response received"
+        echo ""
+        echo "Possible causes:"
+        echo "  • Connection timeout (model may be slow to load)"
+        echo "  • LiteLLM service not responding"
+        echo "  • Network connectivity issue"
+        echo ""
+        echo "Tip: Ollama models can take 30-60 seconds on first request while loading"
+        echo "      Try running the test again if it's the first time."
+        echo ""
+        echo "════════════════════════════════════════════════════════"
+        echo ""
         return 1
     fi
 
