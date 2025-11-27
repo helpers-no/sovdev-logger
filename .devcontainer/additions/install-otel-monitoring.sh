@@ -698,10 +698,6 @@ post_installation_message() {
     echo "   dev-services restart otel-lifecycle  # Restart specific service"
     echo "   dev-services logs otel-metrics       # View service logs"
     echo
-    echo "4. View dashboards in Grafana:"
-    echo "   http://grafana.localhost"
-    echo "   Navigate to: Dashboards → Devcontainer folder"
-    echo
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "📚 Documentation:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
