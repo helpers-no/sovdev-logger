@@ -1,5 +1,5 @@
 #!/bin/bash
-# File: .devcontainer/dev-services
+# File: .devcontainer/manage/dev-services.sh
 # Purpose: Manage devcontainer services via supervisord
 # Usage: dev-services {status|start|stop|restart|logs|enable|disable|list-enabled} [service]
 

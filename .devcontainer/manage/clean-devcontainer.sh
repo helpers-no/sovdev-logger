@@ -1,5 +1,5 @@
 #!/bin/bash
-# File: .devcontainer/clean-devcontainer.sh
+# File: .devcontainer/manage/clean-devcontainer.sh
 # ⚠️  DEVCONTAINER COMPLETE CLEANUP SCRIPT ⚠️
 # 
 # This script will PERMANENTLY DELETE:

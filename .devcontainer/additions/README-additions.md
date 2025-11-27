@@ -35,7 +35,7 @@ The additions system provides:
 The easiest way to manage additions is through the interactive menu:
 
 ```bash
-bash /workspace/.devcontainer/dev-setup.sh
+dev-setup
 ```
 
 This displays all available components, configurations, and services with their current status.

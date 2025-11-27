@@ -1,5 +1,5 @@
 #!/bin/bash
-# File: run-unit-tests.sh
+# File: .devcontainer/additions/addition-templates/tests/run-unit-tests.sh
 # Purpose: Execute all unit tests for DevContainer Toolbox
 # Usage: bash run-unit-tests.sh
 

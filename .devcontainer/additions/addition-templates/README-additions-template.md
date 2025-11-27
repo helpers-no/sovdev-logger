@@ -188,7 +188,7 @@ bash /workspace/.devcontainer/additions/cmd-mytool.sh --list     # Test command
 bash /workspace/.devcontainer/additions/cmd-mytool.sh --delete 123  # Test with arg
 
 # 6. Access via menu
-bash /workspace/.devcontainer/dev-setup.sh
+dev-setup
 # Select: 4) Command Tools → Your script → Select command
 ```
 

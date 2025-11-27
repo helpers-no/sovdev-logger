@@ -1,5 +1,5 @@
 #!/bin/bash
-# file: .devcontainer/dev-setup.sh
+# File: .devcontainer/manage/dev-setup.sh
 # Description: Simple development environment setup and tool selection
 # Purpose: Central setup script for devcontainer development tools and templates
 #

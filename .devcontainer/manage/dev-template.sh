@@ -1,5 +1,5 @@
 #!/bin/bash
-# file: dev-template.sh
+# File: .devcontainer/manage/dev-template.sh
 # Description: Template initializer for the Urbalurba Developer Platform with dialog menu.
 #              Reads TEMPLATE_INFO from each template for display names and descriptions.
 #
