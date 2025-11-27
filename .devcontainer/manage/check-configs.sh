@@ -72,7 +72,7 @@ discover_configs() {
         CONFIG_STATUSES+=("$status")
 
         ((found++))
-    done < <(scan_config_scripts "$SCRIPT_DIR")
+    done < <(scan_config_scripts "$ADDITIONS_DIR")
 
     if [ $found -eq 0 ]; then
         log_warn "No configuration scripts found"
@@ -158,7 +158,7 @@ run_missing_configs() {
         echo "To configure manually:"
         for idx in "${missing_indices[@]}"; do
             local script="${CONFIG_SCRIPTS[$idx]}"
-            echo "  bash $SCRIPT_DIR/$script"
+            echo "  bash $ADDITIONS_DIR/$script"
         done
         echo ""
         return 1
@@ -171,7 +171,7 @@ run_missing_configs() {
     for idx in "${missing_indices[@]}"; do
         local name="${CONFIG_NAMES[$idx]}"
         local script="${CONFIG_SCRIPTS[$idx]}"
-        local script_path="$SCRIPT_DIR/$script"
+        local script_path="$ADDITIONS_DIR/$script"
 
         echo ""
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

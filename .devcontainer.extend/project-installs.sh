@@ -27,9 +27,10 @@ set -e
 #------------------------------------------------------------------------------
 
 install_custom_project_tools() {
-    echo ""
-    echo "🔧 Running custom project-specific installations..."
-    echo ""
+    # Force carriage return before starting (in case terminal state is corrupted)
+    printf "\r\n"
+    printf "🔧 Running custom project-specific installations...\r\n"
+    printf "\r\n"
 
     # === ADD YOUR CUSTOM INSTALLATIONS BELOW ===
 
@@ -56,8 +57,8 @@ install_custom_project_tools() {
 
     # === END CUSTOM INSTALLATIONS ===
 
-    echo "✅ Custom project installations complete"
-    echo ""
+    printf "✅ Custom project installations complete\r\n"
+    printf "\r\n"
 }
 #------------------------------------------------------------------------------
 
@@ -113,9 +114,48 @@ restore_all_configurations() {
     echo ""
 }
 
+# Check if critical configurations are missing and warn user
+check_missing_configs() {
+    local missing_configs=()
+
+    # Check Git identity
+    if ! git config --global user.name >/dev/null 2>&1 || ! git config --global user.email >/dev/null 2>&1; then
+        missing_configs+=("Git Identity")
+    fi
+
+    # Show warning if any critical configs are missing
+    if [ ${#missing_configs[@]} -gt 0 ]; then
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "⚠️  IMPORTANT: Required Configuration Missing"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "The following configurations need to be set up:"
+        for config in "${missing_configs[@]}"; do
+            echo "   ❌ $config"
+        done
+        echo ""
+        echo "📋 To configure these settings, run:"
+        echo "   check-configs"
+        echo ""
+        echo "This will guide you through setting up your developer identity"
+        echo "and other required configurations."
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+    else
+        echo ""
+        echo "✅ All required configurations are set"
+        echo ""
+    fi
+}
+
 # Main execution flow
 main() {
     echo "🚀 Starting project-installs setup..."
+
+    # Setup PATH to include devcontainer commands
+    setup_devcontainer_path
 
     # Create dev-setup symlink for easy access
     setup_dev_setup_command
@@ -123,12 +163,12 @@ main() {
     # Mark the git folder as safe
     mark_git_folder_as_safe
 
-    # Configure Git user identity
-    configure_git_identity
-
     # Restore all configurations from topsecret (non-interactive)
     echo "🔐 Restoring configurations from topsecret..."
     restore_all_configurations
+
+    # Check if critical configurations are missing and warn user
+    check_missing_configs
 
     # Version checks
     echo "🔍 Verifying installed versions..."
@@ -139,16 +179,47 @@ main() {
     # Install enabled tools automatically
     install_project_tools
 
+    # Force terminal reset before custom installations (supervisor may have corrupted it)
+    printf "\r" && sleep 0.1
+
     # Run custom project-specific installations
     install_custom_project_tools
 
-    # Show environment information
-    if [ -f "/workspace/.devcontainer/additions/show-environment.sh" ]; then
-        # Ensure clean output by buffering through cat
-        bash "/workspace/.devcontainer/additions/show-environment.sh" | cat
-    fi
+    # Reset terminal again before final message
+    printf "\r\n"
+    sleep 0.1
 
-    echo "🎉 Post-creation setup complete!"
+    # Show completion message with helpful commands
+    printf "\r\n"
+    printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
+    printf "🎉 Post-creation setup complete!\r\n"
+    printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
+    printf "\r\n"
+    printf "📋 Quick Start:\r\n"
+    printf "\r\n"
+    printf "   dev-setup                 Main menu - install tools, manage services\r\n"
+    printf "   check-configs             Configure required settings (Git identity, etc.)\r\n"
+    printf "   dev-template              Initialize project from template\r\n"
+    printf "   show-environment          Show detailed environment status\r\n"
+    printf "\r\n"
+    printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
+    printf "\r\n"
+
+    # Check if Git identity is configured and show warning at the BOTTOM
+    if ! git config --global user.name >/dev/null 2>&1 || ! git config --global user.email >/dev/null 2>&1; then
+        printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
+        printf "⚠️  FIRST TIME SETUP REQUIRED\r\n"
+        printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
+        printf "\r\n"
+        printf "   Your Git identity is not configured yet.\r\n"
+        printf "   This is required before you can make Git commits.\r\n"
+        printf "\r\n"
+        printf "   Run this command to configure it:\r\n"
+        printf "     check-configs\r\n"
+        printf "\r\n"
+        printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
+        printf "\r\n"
+    fi
 }
 
 # Check Node.js version
@@ -181,152 +252,79 @@ check_npm_packages() {
     npm list -g --depth=0
 }
 
+# Setup PATH to include .devcontainer directory
+setup_devcontainer_path() {
+    echo "🔗 Setting up PATH for devcontainer commands..."
 
-# Configure Git user identity from repository or default values
-configure_git_identity() {
-    echo "🔑 Setting up Git identity..."
-
-    # First try to extract Git identity from repository configuration
-    REPO_USER_NAME=""
-    REPO_USER_EMAIL=""
-    
-    # Check if .git/config exists and is readable
-    if [ -f "/workspace/.git/config" ] && [ -r "/workspace/.git/config" ]; then
-        echo "📚 Attempting to read Git identity from repository..."
-        
-        # Try to extract user.name from repository config
-        if grep -q "name = " "/workspace/.git/config"; then
-            REPO_USER_NAME=$(grep "name = " "/workspace/.git/config" | head -n 1 | cut -d= -f2 | tr -d '[:space:]')
-            echo "   Found name in repo: ${REPO_USER_NAME}"
-        fi
-        
-        # Try to extract user.email from repository config
-        if grep -q "email = " "/workspace/.git/config"; then
-            REPO_USER_EMAIL=$(grep "email = " "/workspace/.git/config" | head -n 1 | cut -d= -f2 | tr -d '[:space:]')
-            echo "   Found email in repo: ${REPO_USER_EMAIL}"
-        fi
-    fi
-    
-    # Alternative approach - check repository's commit history
-    if [ -z "$REPO_USER_NAME" ] || [ -z "$REPO_USER_EMAIL" ]; then
-        echo "🔍 Checking repository commit history..."
-        
-        # Check for user info in last commit (if available)
-        if git log -1 --pretty=format:"%an:%ae" > /dev/null 2>&1; then
-            COMMIT_INFO=$(git log -1 --pretty=format:"%an:%ae")
-            COMMIT_NAME=$(echo "$COMMIT_INFO" | cut -d: -f1)
-            COMMIT_EMAIL=$(echo "$COMMIT_INFO" | cut -d: -f2)
-            
-            # Use commit info if available
-            if [ -n "$COMMIT_NAME" ] && [ -z "$REPO_USER_NAME" ]; then
-                REPO_USER_NAME="$COMMIT_NAME"
-                echo "   Found name in commit: ${REPO_USER_NAME}"
-            fi
-            
-            if [ -n "$COMMIT_EMAIL" ] && [ -z "$REPO_USER_EMAIL" ]; then
-                REPO_USER_EMAIL="$COMMIT_EMAIL"
-                echo "   Found email in commit: ${REPO_USER_EMAIL}"
-            fi
-        fi
-    fi
-    
-    # If we found both name and email from repo, use them
-    if [ -n "$REPO_USER_NAME" ] && [ -n "$REPO_USER_EMAIL" ]; then
-        GIT_USER_NAME="$REPO_USER_NAME"
-        GIT_USER_EMAIL="$REPO_USER_EMAIL"
-        echo "✅ Using Git identity from repository"
+    # Check if PATH already includes /workspace/.devcontainer
+    if ! grep -q 'export PATH="/workspace/.devcontainer:$PATH"' ~/.bashrc; then
+        echo '' >> ~/.bashrc
+        echo '# Add devcontainer commands to PATH' >> ~/.bashrc
+        echo 'export PATH="/workspace/.devcontainer:$PATH"' >> ~/.bashrc
+        echo "✅ Added /workspace/.devcontainer to PATH in ~/.bashrc"
     else
-        # Fallback to environment variables as before
-        echo "⚠️ Could not find complete Git identity in repository"
-        echo "   Using default values based on system username"
-        
-        # For Mac users
-        if [ -n "$DEV_MAC_USER" ]; then
-            GIT_USER_NAME="${DEV_MAC_USER}"
-            GIT_USER_EMAIL="${DEV_MAC_USER}@example.com"
-        # For Windows users
-        elif [ -n "$DEV_WIN_USERNAME" ]; then
-            GIT_USER_NAME="${DEV_WIN_USERNAME}"
-            GIT_USER_EMAIL="${DEV_WIN_USERNAME}@example.com"
-        else
-            # Last resort fallback values
-            GIT_USER_NAME="VSCode User"
-            GIT_USER_EMAIL="vscode@container"
-        fi
+        echo "✅ /workspace/.devcontainer already in PATH"
     fi
 
-    # Set Git user configuration
-    git config --global user.name "${GIT_USER_NAME}"
-    git config --global user.email "${GIT_USER_EMAIL}"
-    
-    # Verify configuration
-    echo "✅ Git identity configured:"
-    echo "   Name: $(git config --global user.name)"
-    echo "   Email: $(git config --global user.email)"
-    
-    # Remind user to update if needed
-    echo "📝 Note: You can update your Git identity by running:"
-    echo "   git config --global user.name \"Your Name\""
-    echo "   git config --global user.email \"your.email@example.com\""
+    # Export for current session
+    export PATH="/workspace/.devcontainer:$PATH"
 }
-
 
 # Create symlink for dev-setup command (without .sh extension)
 setup_dev_setup_command() {
-    echo "🔗 Setting up dev-setup command..."
-    
-    if [ -f "/workspace/.devcontainer/dev-setup.sh" ]; then
-        # Create symlink without .sh extension
-        ln -sf /workspace/.devcontainer/dev-setup.sh /workspace/.devcontainer/dev-setup
-        
-        if [ -L "/workspace/.devcontainer/dev-setup" ]; then
-            echo "✅ dev-setup command is now available (type: dev-setup)"
-        else
-            echo "⚠️  Failed to create dev-setup symlink"
+    echo "🔗 Setting up devcontainer command symlinks..."
+
+    # Create all command symlinks
+    local commands=("dev-setup" "dev-services" "dev-template" "check-configs" "clean-devcontainer" "show-environment")
+    local created=0
+
+    for cmd in "${commands[@]}"; do
+        # Check if there's a corresponding script or symlink already
+        if [ -f "/workspace/.devcontainer/$cmd" ] || [ -L "/workspace/.devcontainer/$cmd" ]; then
+            ((created++))
         fi
+    done
+
+    if [ $created -gt 0 ]; then
+        echo "✅ Devcontainer commands available: ${commands[*]}"
     else
-        echo "⚠️  dev-setup.sh not found, skipping symlink creation"
+        echo "⚠️  Some devcontainer commands may not be available"
     fi
 }
 
+#------------------------------------------------------------------------------
+# Git Infrastructure Setup
+#------------------------------------------------------------------------------
+# NOTE: This is infrastructure setup, NOT user configuration (that's in config-git.sh)
+#
+# WHY THIS IS HERE AND NOT IN config-git.sh:
+# - Must run BEFORE any git commands (including config-git.sh which uses git)
+# - These are container infrastructure settings, not personal user preferences
+# - Same for all users, not personal (unlike name/email in config-git.sh)
+#
+# WHAT IT DOES:
+# - safe.directory: Allows git to work with mounted volumes (security requirement)
+# - core.fileMode: Ignores file permission changes (mounted volumes issue)
+# - core.hideDotFiles: Shows dotfiles properly (cross-platform compatibility)
+#------------------------------------------------------------------------------
 mark_git_folder_as_safe() {
-    echo "🔒 Setting up Git repository safety..."
+    # Mark workspace as safe globally (required for mounted volumes)
+    git config --global --add safe.directory /workspace >/dev/null 2>&1
+    git config --global --add safe.directory '*' >/dev/null 2>&1
 
-    # Check current ownership
-    local repo_owner=$(stat -c '%u' /workspace/.git)
-    local container_user=$(id -u)
-    echo "👤 Repository ownership:"
-    echo "   Repository owner ID: $repo_owner"
-    echo "   Container user ID: $container_user"
-    ls -l /workspace/.git
+    # Container-specific git configurations for mounted volumes
+    git config --global core.fileMode false >/dev/null 2>&1      # Ignore file mode changes
+    git config --global core.hideDotFiles false >/dev/null 2>&1  # Show dotfiles
 
-    # Mark workspace as safe globally
-    git config --global --add safe.directory /workspace
-    git config --global --add safe.directory '*'
-
-    # Additional git configurations for mounted volumes
-    git config --global core.fileMode false  # Ignore file mode changes
-    git config --global core.hideDotFiles false  # Show dotfiles
-
-    # Verify the configuration
-    if git config --global --get-all safe.directory | grep -q "/workspace"; then
-        echo "✅ Git folder marked as safe: /workspace"
-    else
-        echo "❌ Failed to mark Git folder as safe"
-        return 1
-    fi
-
-    # Test Git status to verify it works
+    # Verify git works
     if git status &>/dev/null; then
-        echo "✅ Git commands working correctly"
+        echo "✅ Git repository configured"
     else
-        echo "❌ Git commands still having issues"
+        echo "❌ Git setup failed"
+        echo "   Repository owner ID: $(stat -c '%u' /workspace/.git 2>/dev/null || echo 'unknown')"
+        echo "   Container user ID: $(id -u)"
         return 1
     fi
-
-    # Show final git config for verification
-    echo "🔧 Current Git configuration:"
-    git config --global --list | grep -E "safe|core"
 }
 
 
@@ -474,42 +472,33 @@ install_project_tools() {
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
 
-    # Generate supervisor configs from enabled services
+    # Generate supervisor configs and start services (silently)
     if command -v supervisord >/dev/null 2>&1; then
-        echo "🔧 Generating supervisor configuration..."
         set +e
-        bash "$SCRIPT_DIR/../.devcontainer/additions/config-supervisor.sh"
-        local supervisor_exit_code=$?
-        set -e
-        if [ $supervisor_exit_code -ne 0 ]; then
-            echo "⚠️  Supervisor configuration failed (exit code: $supervisor_exit_code)"
-        fi
-        echo ""
+        # Run config generation silently
+        bash "$SCRIPT_DIR/../.devcontainer/additions/config-supervisor.sh" > /dev/null 2>&1
 
         # Start supervisor if configs exist and it's not running
         if [ -d /etc/supervisor/conf.d ] && [ "$(ls -A /etc/supervisor/conf.d/*.conf 2>/dev/null)" ]; then
             if ! pgrep supervisord > /dev/null 2>&1; then
-                echo "🚀 Starting supervisord..."
-                # Start supervisord in background with output redirected
+                # Start supervisord in background
                 sudo supervisord -c /etc/supervisor/supervisord.conf > /dev/null 2>&1 &
                 sleep 3
-                if pgrep supervisord > /dev/null 2>&1; then
-                    echo "✅ Supervisord started successfully"
-                    # Count running services
-                    local running_count=$(sudo supervisorctl status 2>/dev/null | grep -c "RUNNING" || echo "0")
-                    echo "   Running services: $running_count"
-                else
-                    echo "⚠️  Failed to start supervisord - services will start on next shell"
-                fi
             else
-                echo "✅ Supervisord already running"
                 # Reload to pick up any new configs
                 sudo supervisorctl reread > /dev/null 2>&1
                 sudo supervisorctl update > /dev/null 2>&1
             fi
         fi
-        echo ""
+        set -e
     fi
+
+    # Reset terminal state completely (config-supervisor.sh uses tee which corrupts terminal)
+    # The tee command in logging.sh leaves terminal without proper CR/LF
+    # Send carriage return + newline to reset cursor position
+    printf "\r\n"
+    # Force terminal to process the reset
+    sleep 0.1
 }
 
 
