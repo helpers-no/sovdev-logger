@@ -87,6 +87,15 @@ if [ -f "$IDENTITY_FILE" ]; then
     source "$IDENTITY_FILE"
 fi
 
+# Host information file (for OTEL resource attributes)
+HOST_INFO_FILE="/workspace/topsecret/env-vars/.host-info"
+
+# Source host info file automatically if it exists
+if [ -f "$HOST_INFO_FILE" ]; then
+    # shellcheck source=/dev/null
+    source "$HOST_INFO_FILE"
+fi
+
 #------------------------------------------------------------------------------
 # Helper Functions
 #------------------------------------------------------------------------------
@@ -240,7 +249,7 @@ start_lifecycle_collector() {
     # Check if still running
     if ! kill -0 "$pid" 2>/dev/null; then
         log_error "Lifecycle collector failed to start"
-        echo "Check logs: tail -20 $LOG_FILE_LIFECYCLE"
+        echo "Check logs: bash $0 --logs-lifecycle"
         return 1
     fi
 
@@ -277,7 +286,7 @@ start_metrics_collector() {
     # Check if still running
     if ! kill -0 "$pid" 2>/dev/null; then
         log_error "Metrics collector failed to start"
-        echo "Check logs: tail -20 $LOG_FILE_METRICS"
+        echo "Check logs: bash $0 --logs-metrics"
         return 1
     fi
 
@@ -308,7 +317,7 @@ start_script_exporter() {
     # Check if still running
     if ! kill -0 "$pid" 2>/dev/null; then
         log_error "script_exporter failed to start"
-        echo "Check logs: tail -20 $LOG_FILE_EXPORTER"
+        echo "Check logs: bash $0 --logs-exporter"
         return 1
     fi
 

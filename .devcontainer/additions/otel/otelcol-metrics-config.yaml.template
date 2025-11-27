@@ -43,6 +43,11 @@
 # Environment Variables Required:
 #   - DEVELOPER_ID: Developer identifier (from ~/.devcontainer-identity)
 #   - PROJECT_NAME: Project identifier (from ~/.devcontainer-identity)
+#   - HOST_OS: Host operating system (macOS/Linux/Windows)
+#   - HOST_USER: Host username
+#   - HOST_HOSTNAME: Host machine name
+#   - HOST_DOMAIN: Host domain (Windows only, empty for Mac/Linux)
+#   - HOST_CPU_ARCH: Host CPU architecture (arm64/amd64)
 #
 
 # RECEIVERS: Collect system metrics from inside the devcontainer
@@ -121,6 +126,23 @@ processors:
       # Service identifier (always "devcontainer-monitor")
       - key: service.name
         value: devcontainer-monitor
+        action: upsert
+
+      # Host machine information (from config-host-info.sh)
+      - key: host.os
+        value: ${HOST_OS}
+        action: upsert
+      - key: host.user
+        value: ${HOST_USER}
+        action: upsert
+      - key: host.hostname
+        value: ${HOST_HOSTNAME}
+        action: upsert
+      - key: host.domain
+        value: ${HOST_DOMAIN}
+        action: upsert
+      - key: host.cpu.arch
+        value: ${HOST_CPU_ARCH}
         action: upsert
 
 # NOTE: We collect only hostmetrics (system-level metrics from inside the container).

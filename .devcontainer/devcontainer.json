@@ -8,10 +8,8 @@
         "args": {
             "DEV_MAC_LOGNAME": "${localEnv:LOGNAME}",
             "DEV_MAC_USER": "${localEnv:USER}",
-            "DEV_MAC_HOSTNAME": "${localEnv:HOSTNAME}",
             "DEV_LINUX_LOGNAME": "${localEnv:LOGNAME}",
             "DEV_LINUX_USER": "${localEnv:USER}",
-            "DEV_LINUX_HOSTNAME": "${localEnv:HOSTNAME}",
             "DEV_WIN_USERDNSDOMAIN": "${localEnv:USERDNSDOMAIN}",
             "DEV_WIN_USERDOMAIN": "${localEnv:USERDOMAIN}",
             "DEV_WIN_USERDOMAIN_ROAMINGPROFILE": "${localEnv:USERDOMAIN_ROAMINGPROFILE}",

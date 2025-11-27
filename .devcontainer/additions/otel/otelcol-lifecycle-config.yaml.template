@@ -7,6 +7,11 @@
 #   DEVELOPER_EMAIL    - Developer email address
 #   PROJECT_NAME       - Project identifier
 #   TS_HOSTNAME        - Tailscale hostname
+#   HOST_OS            - Host operating system (macOS/Linux/Windows)
+#   HOST_USER          - Host username
+#   HOST_HOSTNAME      - Host machine name
+#   HOST_DOMAIN        - Host domain (Windows only, empty for Mac/Linux)
+#   HOST_CPU_ARCH      - Host CPU architecture (arm64/amd64)
 
 receivers:
   # OTLP receiver - receives telemetry from applications
@@ -55,6 +60,23 @@ processors:
       # Host identification
       - key: host_name
         value: ${TS_HOSTNAME}
+        action: upsert
+
+      # Host machine information (from config-host-info.sh)
+      - key: host.os
+        value: ${HOST_OS}
+        action: upsert
+      - key: host.user
+        value: ${HOST_USER}
+        action: upsert
+      - key: host.hostname
+        value: ${HOST_HOSTNAME}
+        action: upsert
+      - key: host.domain
+        value: ${HOST_DOMAIN}
+        action: upsert
+      - key: host.cpu.arch
+        value: ${HOST_CPU_ARCH}
         action: upsert
 
   # Memory limiter - prevents OOM by limiting memory usage
