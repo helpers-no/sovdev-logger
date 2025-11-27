@@ -78,8 +78,8 @@ LOG_FILE_LIFECYCLE="/var/log/otelcol-lifecycle.log"
 LOG_FILE_METRICS="/var/log/otelcol-metrics.log"
 LOG_FILE_EXPORTER="/var/log/script-exporter.log"
 
-# Identity file
-IDENTITY_FILE="$HOME/.devcontainer-identity"
+# Identity file (always use vscode user's home, even when run by supervisord)
+IDENTITY_FILE="/home/vscode/.devcontainer-identity"
 
 # Source identity file automatically if it exists
 if [ -f "$IDENTITY_FILE" ]; then
@@ -299,7 +299,7 @@ start_script_exporter() {
     sudo chmod 666 "$LOG_FILE_EXPORTER" 2>/dev/null || true
 
     # Start script_exporter in background
-    nohup script_exporter --config.file="$SCRIPT_EXPORTER_CONFIG" >> "$LOG_FILE_EXPORTER" 2>&1 &
+    nohup script_exporter --config.files="$SCRIPT_EXPORTER_CONFIG" >> "$LOG_FILE_EXPORTER" 2>&1 &
     local pid=$!
 
     # Wait for startup
