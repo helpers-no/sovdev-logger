@@ -1,1 +1,1 @@
-/workspace/.devcontainer/additions/check-required-configs.sh
+manage/check-configs.sh
