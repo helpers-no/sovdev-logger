@@ -1,7 +1,7 @@
 #!/bin/bash
-# file: .devcontainer/additions/install-az-cli.sh
+# file: .devcontainer/additions/install-azure.sh
 #
-# Usage: ./install-az-cli.sh [options]
+# Usage: ./install-azure.sh [options]
 #
 # Options:
 #   --debug     : Enable debug output for troubleshooting
@@ -13,8 +13,8 @@
 #------------------------------------------------------------------------------
 
 # Script metadata - must be at the very top of the configuration section
-SCRIPT_NAME="Azure CLI"
-SCRIPT_DESCRIPTION="Installs Azure CLI for Azure cloud management and VS Code Azure extensions"
+SCRIPT_NAME="Azure Development Tools"
+SCRIPT_DESCRIPTION="Installs Azure CLI and all Azure VS Code extensions for comprehensive Azure cloud development"
 SCRIPT_CATEGORY="CLOUD_TOOLS"
 CHECK_INSTALLED_COMMAND="[ -f /usr/bin/az ] || [ -f /usr/local/bin/az ] || command -v az >/dev/null 2>&1"
 
@@ -34,9 +34,9 @@ source "${SCRIPT_DIR}/lib/logging.sh"
 # Before running installation, we need to add any required repositories
 pre_installation_setup() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        echo "🔧 Preparing for Azure CLI uninstallation..."
+        echo "🔧 Preparing for Azure tools uninstallation..."
     else
-        echo "🔧 Performing pre-installation setup for Azure CLI..."
+        echo "🔧 Performing pre-installation setup for Azure tools..."
 
         # Check if already installed
         if command -v az >/dev/null 2>&1; then
@@ -68,13 +68,15 @@ pre_installation_setup() {
 # Define system packages (none needed - Azure CLI installer handles everything)
 SYSTEM_PACKAGES=()
 
-# Define VS Code extensions
+# Define VS Code extensions - Complete Azure development suite
 declare -A EXTENSIONS
 EXTENSIONS["ms-vscode.azure-account"]="Azure Account|Azure account management and subscriptions"
 EXTENSIONS["ms-azuretools.vscode-azurecli"]="Azure CLI Tools|Azure CLI IntelliSense and code snippets"
 EXTENSIONS["ms-azuretools.vscode-azureresourcegroups"]="Azure Resources|View and manage Azure resources"
 EXTENSIONS["ms-azuretools.vscode-azurefunctions"]="Azure Functions|Create, debug, and deploy Azure Functions"
 EXTENSIONS["ms-azuretools.vscode-azurestorage"]="Azure Storage|Manage Azure Storage accounts and blobs"
+EXTENSIONS["ms-azuretools.azure-dev"]="Azure Developer CLI|Project scaffolding and management"
+EXTENSIONS["ms-azuretools.vscode-bicep"]="Bicep|Azure Bicep language support for Infrastructure as Code"
 
 # Define verification commands
 VERIFY_COMMANDS=(
@@ -98,10 +100,10 @@ post_installation_message() {
     echo
     echo "Important Notes:"
     echo "1. Azure CLI version: $az_version"
-    echo "2. Use 'az login' to authenticate with your Azure account"
-    echo "3. Use 'az login --use-device-code' for browser-less authentication"
-    echo "4. Use 'az account set --subscription <name>' to set active subscription"
-    echo "5. Extensions and modules can be managed with 'az extension' commands"
+    echo "2. All Azure VS Code extensions have been installed"
+    echo "3. Use 'az login' to authenticate with your Azure account"
+    echo "4. Use 'az login --use-device-code' for browser-less authentication"
+    echo "5. Use 'az account set --subscription <name>' to set active subscription"
     echo
     echo "Quick Start Commands:"
     echo "- Login to Azure:           az login"
@@ -113,11 +115,21 @@ post_installation_message() {
     echo "- Install extensions:       az extension add --name <extension-name>"
     echo "- Update Azure CLI:         az upgrade"
     echo
+    echo "VS Code Extensions Installed:"
+    echo "- Azure Account:            Authentication and subscription management"
+    echo "- Azure CLI Tools:          CLI IntelliSense and snippets"
+    echo "- Azure Resources:          Browse and manage Azure resources"
+    echo "- Azure Functions:          Develop and deploy serverless functions"
+    echo "- Azure Storage:            Work with Azure Storage accounts"
+    echo "- Azure Developer CLI:      azd command for project scaffolding"
+    echo "- Bicep:                    Infrastructure as Code for Azure"
+    echo
     echo "Documentation Links:"
     echo "- Azure CLI Documentation: https://learn.microsoft.com/cli/azure/"
     echo "- Azure CLI Reference:     https://learn.microsoft.com/cli/azure/reference-index"
     echo "- Get Started Guide:       https://learn.microsoft.com/cli/azure/get-started-with-azure-cli"
-    echo "- VS Code Azure Ext:       https://marketplace.visualstudio.com/items?itemName=ms-vscode.azure-account"
+    echo "- Azure Functions:         https://learn.microsoft.com/azure/azure-functions/"
+    echo "- Bicep Documentation:     https://learn.microsoft.com/azure/azure-resource-manager/bicep/"
     echo
     echo "Authentication Options:"
     echo "- Interactive browser:     az login"
@@ -295,7 +307,7 @@ else
     post_installation_message
 
     # Auto-enable for container rebuild
-    auto_enable_tool "azure-cli" "Azure CLI"
+    auto_enable_tool "azure" "Azure Development Tools"
 fi
 
 echo "✅ Script execution finished."

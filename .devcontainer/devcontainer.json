@@ -29,14 +29,14 @@
     ],
     "customizations": {
         "vscode": {
-            // by default we set up these extensions
+            // Universal extensions useful for any project
             "extensions": [
-                "ms-vscode.azure-account",
-                "ms-vscode.azurecli",
                 "yzhang.markdown-all-in-one",
                 "bierner.markdown-mermaid",
                 "redhat.vscode-yaml",
-                "donjayamanne.githistory"
+                "donjayamanne.githistory",
+                "ms-azuretools.vscode-docker",
+                "timonwong.shellcheck"
             ]
         }
     },

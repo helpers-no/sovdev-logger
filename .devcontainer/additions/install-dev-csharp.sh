@@ -219,9 +219,6 @@ declare -A EXTENSIONS
 EXTENSIONS["ms-dotnettools.csdevkit"]="C# Dev Kit|Complete C# development experience"
 EXTENSIONS["ms-dotnettools.csharp"]="C#|C# language support"
 EXTENSIONS["ms-dotnettools.vscode-dotnet-runtime"]="NET Runtime|.NET runtime support"
-EXTENSIONS["ms-azuretools.vscode-azurefunctions"]="Azure Functions|Azure Functions development"
-EXTENSIONS["ms-azuretools.azure-dev"]="Azure Developer CLI|Project scaffolding and management"
-EXTENSIONS["ms-azuretools.vscode-bicep"]="Bicep|Azure Bicep language support for IaC"
 
 # Define verification commands (using proper command substitution to avoid early evaluation)
 VERIFY_COMMANDS=(
@@ -229,7 +226,6 @@ VERIFY_COMMANDS=(
     'if dotnet --list-sdks | grep -q "8.0"; then echo "✅ .NET SDK 8.0 is installed"; else echo "❌ .NET SDK 8.0 not found"; fi'
     'if command -v func >/dev/null; then echo "✅ Azure Functions Core Tools: $(func --version)"; else echo "❌ Azure Functions Core Tools not found"; fi'
     'if code --list-extensions | grep -q ms-dotnettools.csdevkit; then echo "✅ C# Dev Kit is installed"; else echo "❌ C# Dev Kit not installed"; fi'
-    'if code --list-extensions | grep -q ms-azuretools.vscode-azurefunctions; then echo "✅ Azure Functions extension is installed"; else echo "❌ Azure Functions extension not installed"; fi'
 )
 
 # Post-installation notes

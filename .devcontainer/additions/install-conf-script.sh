@@ -52,14 +52,12 @@ PYTHON_PACKAGES=()
 
 # Define VS Code extensions
 declare -A EXTENSIONS
-EXTENSIONS["ms-azuretools.vscode-bicep"]="Bicep|Azure Bicep language support for IaC"
 EXTENSIONS["redhat.ansible"]="Ansible|Ansible language support and tools"
 
 # Define verification commands to run after installation
 VERIFY_COMMANDS=(
     "command -v ansible >/dev/null && ansible --version | head -n1 || echo '❌ ansible not found'"
     "command -v ansible-lint >/dev/null && ansible-lint --version || echo '❌ ansible-lint not found'"
-    "code --list-extensions | grep -q ms-azuretools.vscode-bicep && echo '✅ Bicep extension is installed' || echo '❌ Bicep extension is not installed'"
     "code --list-extensions | grep -q redhat.ansible && echo '✅ Ansible extension is installed' || echo '❌ Ansible extension is not installed'"
 )
 

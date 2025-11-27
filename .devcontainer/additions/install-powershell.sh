@@ -156,8 +156,6 @@ PWSH_MODULES=(
 # Define VS Code extensions
 declare -A EXTENSIONS
 EXTENSIONS["ms-vscode.powershell"]="PowerShell|PowerShell language support and debugging"
-EXTENSIONS["ms-vscode.azure-account"]="Azure Account|Azure account management and subscriptions"
-EXTENSIONS["ms-azuretools.vscode-azureresourcegroups"]="Azure Resources|An extension for viewing and managing Azure resources"
 
 # Define verification commands
 VERIFY_COMMANDS=(

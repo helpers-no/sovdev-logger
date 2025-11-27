@@ -132,8 +132,6 @@ declare -A EXTENSIONS
 EXTENSIONS["golang.go"]="Go|Core Go language support"
 EXTENSIONS["premparihar.gotestexplorer"]="Go Test Explorer|Test runner and debugger"
 EXTENSIONS["zxh404.vscode-proto3"]="Protocol Buffers|Protocol Buffer support"
-EXTENSIONS["redhat.vscode-yaml"]="YAML|YAML support for Go configuration"
-EXTENSIONS["ms-azuretools.vscode-docker"]="Docker|Docker support for Go applications"
 
 # --- Define verification commands ---
 VERIFY_COMMANDS=(
