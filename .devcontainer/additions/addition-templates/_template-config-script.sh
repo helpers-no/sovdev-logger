@@ -7,7 +7,7 @@
 #
 # Usage:
 #   bash .devcontainer/additions/config-[name].sh           # Interactive configuration
-#   bash .devcontainer/additions/config-[name].sh --verify  # Non-interactive restoration from topsecret
+#   bash .devcontainer/additions/config-[name].sh --verify  # Non-interactive restoration from .devcontainer.secrets
 #
 # Configuration scripts should be:
 #   - Interactive (prompt user for input)
@@ -15,7 +15,7 @@
 #   - Support reconfiguration (allow updating existing config)
 #   - Validate user input
 #   - Provide clear feedback
-#   - Support --verify flag for automatic restoration from topsecret
+#   - Support --verify flag for automatic restoration from .devcontainer.secrets
 #
 #------------------------------------------------------------------------------
 # METADATA PATTERN - Required for automatic script discovery
@@ -48,24 +48,24 @@
 # For more details, see: .devcontainer/additions/README-additions.md
 #
 #------------------------------------------------------------------------------
-# --VERIFY FLAG PATTERN - For automatic restoration from topsecret
+# --VERIFY FLAG PATTERN - For automatic restoration from .devcontainer.secrets
 #------------------------------------------------------------------------------
 #
 # The --verify flag enables automatic, non-interactive restoration of configurations
-# from the /workspace/topsecret folder during devcontainer setup. This allows
+# from the /workspace/.devcontainer.secrets folder during devcontainer setup. This allows
 # configurations to persist across container rebuilds.
 #
 # THE --VERIFY CONTRACT:
 #
 # When your script is called with --verify flag:
 #   1. Run NON-INTERACTIVELY (no prompts, minimal output)
-#   2. Check if configuration exists in /workspace/topsecret/
+#   2. Check if configuration exists in /workspace/.devcontainer.secrets/
 #   3. If found, restore it (symlink or copy to home directory)
 #   4. Return exit code 0 if successfully restored
-#   5. Return exit code 1 if not found in topsecret (SILENT FAILURE - this is normal!)
+#   5. Return exit code 1 if not found in .devcontainer.secrets (SILENT FAILURE - this is normal!)
 #   6. DO NOT create new configurations or prompt user
 #
-# IMPORTANT: Exit code 1 is NOT an error - it just means "config not in topsecret yet"
+# IMPORTANT: Exit code 1 is NOT an error - it just means "config not in .devcontainer.secrets yet"
 # This is expected behavior for configs the user hasn't configured yet.
 # The system handles this gracefully (silent during restoration, loud if actually required).
 #
@@ -74,17 +74,17 @@
 # Add a verify function and handler at the beginning of your script:
 #
 #   verify_your_config() {
-#       local topsecret_path="/workspace/topsecret/your-config-file"
+#       local .devcontainer.secrets_path="/workspace/.devcontainer.secrets/your-config-file"
 #       local home_path="$HOME/.your-config-file"
 #
-#       # Check if exists in topsecret
-#       if [ -f "$topsecret_path" ]; then
+#       # Check if exists in .devcontainer.secrets
+#       if [ -f "$.devcontainer.secrets_path" ]; then
 #           # Restore (symlink recommended for live updates)
-#           ln -sf "$topsecret_path" "$home_path"
+#           ln -sf "$.devcontainer.secrets_path" "$home_path"
 #           echo "✅ Your configuration restored"
 #           return 0
 #       fi
-#       # Not found in topsecret (silent failure)
+#       # Not found in .devcontainer.secrets (silent failure)
 #       return 1
 #   }
 #
@@ -99,7 +99,7 @@
 # project-installs.sh automatically calls restore_all_configurations() which:
 #   - Discovers ALL config-*.sh scripts automatically
 #   - Runs each with --verify flag
-#   - Restores configurations from topsecret if they exist
+#   - Restores configurations from .devcontainer.secrets if they exist
 #   - Reports only successful restorations (SILENT for missing configs)
 #
 # Your script will be automatically discovered and restored - no hardcoding needed!
@@ -108,7 +108,7 @@
 #
 # Layer 1: Silent Config Restoration (restore_all_configurations)
 #   - Runs BEFORE tool installation
-#   - Attempts to restore ALL configs from topsecret
+#   - Attempts to restore ALL configs from .devcontainer.secrets
 #   - Shows ✅ for successful restorations
 #   - SILENT for missing configs (no noise)
 #   - Non-blocking - always continues
@@ -127,15 +127,15 @@
 #
 # TOPSECRET FOLDER:
 #
-# The /workspace/topsecret folder is:
+# The /workspace/.devcontainer.secrets folder is:
 #   - Git-ignored (never committed)
 #   - Persists across container rebuilds
 #   - Stored on host machine
 #   - Used for credentials, API keys, config files, etc.
 #
-# When user configures your script interactively, save a symlink target in topsecret:
-#   - Interactive: User provides values → Saved to /workspace/topsecret/your-config
-#   - Rebuild: --verify restores from /workspace/topsecret/your-config automatically
+# When user configures your script interactively, save a symlink target in .devcontainer.secrets:
+#   - Interactive: User provides values → Saved to /workspace/.devcontainer.secrets/your-config
+#   - Rebuild: --verify restores from /workspace/.devcontainer.secrets/your-config automatically
 #
 #------------------------------------------------------------------------------
 # CONFIGURATION METADATA - For dev-setup.sh menu discovery
@@ -191,14 +191,14 @@ log_error() {
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
-# VERIFY FUNCTION - For non-interactive restoration from topsecret
+# VERIFY FUNCTION - For non-interactive restoration from .devcontainer.secrets
 #------------------------------------------------------------------------------
 # This function is called with --verify flag by project-installs.sh
-# It should restore configuration from topsecret without user interaction
+# It should restore configuration from .devcontainer.secrets without user interaction
 #
 verify_your_config() {
-    # Path to config in topsecret (persists across rebuilds)
-    local TOPSECRET_PATH="/workspace/topsecret/your-config-file"
+    # Path to config in .devcontainer.secrets (persists across rebuilds)
+    local TOPSECRET_PATH="/workspace/.devcontainer.secrets/your-config-file"
 
     # Path where config should be restored (typically in home directory)
     local HOME_CONFIG_PATH="$HOME/.your-config-file"
@@ -216,14 +216,14 @@ verify_your_config() {
     # EOF
     # fi
 
-    # Check if configuration exists in topsecret
+    # Check if configuration exists in .devcontainer.secrets
     if [ -f "$TOPSECRET_PATH" ]; then
         # Restore configuration (symlink recommended for live updates)
         ln -sf "$TOPSECRET_PATH" "$HOME_CONFIG_PATH"
 
         # Optional: Restore additional files if needed
-        # if [ -f "/workspace/topsecret/your-other-file" ]; then
-        #     ln -sf "/workspace/topsecret/your-other-file" "$HOME/.your-other-file"
+        # if [ -f "/workspace/.devcontainer.secrets/your-other-file" ]; then
+        #     ln -sf "/workspace/.devcontainer.secrets/your-other-file" "$HOME/.your-other-file"
         # fi
 
         # Success message (keep minimal)
@@ -231,7 +231,7 @@ verify_your_config() {
         return 0
     fi
 
-    # Configuration not found in topsecret (silent failure)
+    # Configuration not found in .devcontainer.secrets (silent failure)
     return 1
 }
 
@@ -329,25 +329,25 @@ show_configuration_summary() {
 write_configuration() {
     log_info "Writing configuration..."
 
-    # IMPORTANT: Save to topsecret folder for persistence across rebuilds
-    # Then create symlink from home directory to topsecret
+    # IMPORTANT: Save to .devcontainer.secrets folder for persistence across rebuilds
+    # Then create symlink from home directory to .devcontainer.secrets
     #
     # Example:
-    # TOPSECRET_CONFIG="/workspace/topsecret/your-config-file"
+    # TOPSECRET_CONFIG="/workspace/.devcontainer.secrets/your-config-file"
     # cat > "$TOPSECRET_CONFIG" <<EOF
     # SETTING_1="${SETTING_1}"
     # SETTING_2="${SETTING_2}"
     # EOF
     #
-    # # Set permissions on topsecret file
+    # # Set permissions on .devcontainer.secrets file
     # chmod 600 "$TOPSECRET_CONFIG"  # For sensitive files
     # chmod 644 "$TOPSECRET_CONFIG"  # For non-sensitive files
     #
-    # # Create symlink from home to topsecret (this is what gets checked)
+    # # Create symlink from home to .devcontainer.secrets (this is what gets checked)
     # ln -sf "$TOPSECRET_CONFIG" "$CONFIG_FILE"
     #
     # This way:
-    #   - Original file in /workspace/topsecret/ (persists across rebuilds)
+    #   - Original file in /workspace/.devcontainer.secrets/ (persists across rebuilds)
     #   - Symlink in $HOME/.config-file (used by applications)
     #   - verify_your_config() can restore the symlink on rebuild
 
@@ -420,7 +420,7 @@ show_completion_message() {
 # --VERIFY FLAG HANDLER
 #------------------------------------------------------------------------------
 # This must be placed BEFORE main() function
-# When called with --verify, restore from topsecret and exit
+# When called with --verify, restore from .devcontainer.secrets and exit
 #
 if [ "${1:-}" = "--verify" ]; then
     verify_your_config

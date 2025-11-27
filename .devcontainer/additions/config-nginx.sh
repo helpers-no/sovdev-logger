@@ -38,7 +38,7 @@ NGINX_OTEL_CONFIG="/etc/nginx/sites-available/otel-proxy.conf"
 NGINX_OPENWEBUI_CONFIG="/etc/nginx/sites-available/openwebui-proxy.conf"
 
 # Persistent storage paths
-PERSISTENT_DIR="/workspace/topsecret/nginx-config"
+PERSISTENT_DIR="/workspace/.devcontainer.secrets/nginx-config"
 PERSISTENT_FILE="$PERSISTENT_DIR/.nginx-backend-config"
 
 #------------------------------------------------------------------------------

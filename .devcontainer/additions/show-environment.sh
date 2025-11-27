@@ -255,9 +255,9 @@ show_environment_info() {
     echo ""
 
     # Host information (if available)
-    if [ -f /workspace/topsecret/env-vars/.host-info ]; then
+    if [ -f /workspace/.devcontainer.secrets/env-vars/.host-info ]; then
         # shellcheck source=/dev/null
-        source /workspace/topsecret/env-vars/.host-info
+        source /workspace/.devcontainer.secrets/env-vars/.host-info
         echo "Host Information:"
         echo "  • Operating System: $HOST_OS"
         echo "  • User: $HOST_USER"

@@ -47,7 +47,7 @@ bash .devcontainer/additions/config-host-info.sh --verify
 2. Extracts username from environment
 3. Detects CPU architecture using `uname -m`
 4. Normalizes all values to standard HOST_* variables
-5. Saves to persistent file: `/workspace/topsecret/env-vars/.host-info`
+5. Saves to persistent file: `/workspace/.devcontainer.secrets/env-vars/.host-info`
 
 **Example output:**
 ```bash
@@ -63,7 +63,7 @@ When OTEL collectors start, they source the host-info file:
 
 ```bash
 # In service-otel-monitoring.sh
-source /workspace/topsecret/env-vars/.host-info
+source /workspace/.devcontainer.secrets/env-vars/.host-info
 ```
 
 OTEL configs then include these as resource attributes:
@@ -114,7 +114,7 @@ system_memory_usage_bytes{host_user="terje.christensen"}
 > **Important:** The `.yaml` files are generated from `.template` files at runtime with environment variables substituted. Only commit the `.template` files. The generated `.yaml` files will always show as modified in git - this is expected and should NOT be committed.
 
 ### Persistent Storage
-- **`/workspace/topsecret/env-vars/.host-info`** - Persistent host information
+- **`/workspace/.devcontainer.secrets/env-vars/.host-info`** - Persistent host information
   - Created automatically on container rebuild
   - Sourced by OTEL services
   - Recreated on each rebuild (to detect machine changes)
@@ -130,7 +130,7 @@ system_memory_usage_bytes{host_user="terje.christensen"}
 ### Check Host Information
 ```bash
 # View current host information
-cat /workspace/topsecret/env-vars/.host-info
+cat /workspace/.devcontainer.secrets/env-vars/.host-info
 
 # Or use show-environment command
 show-environment
@@ -159,7 +159,7 @@ bash .devcontainer/additions/config-host-info.sh --verify
 ### Host info not detected
 ```bash
 # Check if file exists
-ls -la /workspace/topsecret/env-vars/.host-info
+ls -la /workspace/.devcontainer.secrets/env-vars/.host-info
 
 # Re-run detection
 bash .devcontainer/additions/config-host-info.sh
@@ -174,7 +174,7 @@ env | grep "^DEV_"
 env | grep "^HOST_"
 
 # If empty, source the file manually
-source /workspace/topsecret/env-vars/.host-info
+source /workspace/.devcontainer.secrets/env-vars/.host-info
 env | grep "^HOST_"
 
 # Check OTEL logs for errors
@@ -221,7 +221,7 @@ OTEL requires non-empty values. The script uses "none" for empty domains:
 - CPU architecture type
 
 **Storage:**
-- Stored locally in `/workspace/topsecret/env-vars/.host-info`
+- Stored locally in `/workspace/.devcontainer.secrets/env-vars/.host-info`
 - Sent to Grafana via OTEL as resource attributes
 - No sensitive data or passwords collected
 

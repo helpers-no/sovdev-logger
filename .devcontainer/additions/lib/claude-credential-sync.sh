@@ -5,7 +5,7 @@
 # This script can be called before running claude to ensure credentials are available
 
 ensure_claude_credentials() {
-    local target_dir="/workspace/topsecret/.claude-credentials"
+    local target_dir="/workspace/.devcontainer.secrets/.claude-credentials"
     local link_path="/home/vscode/.claude"
 
     # Ensure target directory exists

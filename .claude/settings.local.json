@@ -41,7 +41,18 @@
       "Bash(.devcontainer.extend/enabled-tools.conf)",
       "Bash(/Users/terje.christensen/learn/redcross-public/sovdev-logger/.devcontainer/additions/otel/otelcol-lifecycle-config.yaml.template)",
       "Bash(/Users/terje.christensen/learn/redcross-public/sovdev-logger/.devcontainer/additions/otel/otelcol-metrics-config.yaml.template)",
-      "Bash(ollama list:*)"
+      "Bash(ollama list:*)",
+      "WebFetch(domain:code.visualstudio.com)",
+      "Bash(terchris/refactoring-plan/test-results/baseline-before-rename.txt)",
+      "Bash(.devcontainer/additions/cmd-otel-monitoring.sh:*)",
+      "Bash(terchris/refactoring-plan/test-results/phase1-execution.txt)",
+      "Bash(find:*)",
+      "Bash(terchris/refactoring-plan/test-results/phase2-incremental.txt)",
+      "Bash(if git check-ignore /Users/terje.christensen/learn/redcross-public/sovdev-logger/.devcontainer.secrets/test-file.txt)",
+      "Bash(then echo \"✅ Git will ignore .devcontainer.secrets/\")",
+      "Bash(else echo \"❌ FAIL: Git does NOT ignore .devcontainer.secrets/\")",
+      "Bash(fi)",
+      "Bash(terchris/refactoring-plan/test-results/final-validation.txt)"
     ],
     "deny": [],
     "ask": []

@@ -14,7 +14,7 @@ When implementing or validating sovdev-logger, follow these directory access res
 
 **DO NOT access these directories:**
 - ❌ `terchris/` - Personal working directory (not part of specification)
-- ❌ `topsecret/` - Contains credentials (never access)
+- ❌ `.devcontainer.secrets/` - Contains credentials (never access)
 
 **ONLY use these directories:**
 - ✅ `specification/` - Specification documents (source of truth)
@@ -25,7 +25,7 @@ When implementing or validating sovdev-logger, follow these directory access res
 
 **Rationale:**
 - Personal directories (`terchris/`) may contain experimental or outdated code
-- Credentials directories (`topsecret/`) must never be accessed for security
+- Credentials directories (`.devcontainer.secrets/`) must never be accessed for security
 - Only official specification and reference implementations should guide development
 
 **If you find code in personal folders, IGNORE IT.** Only use the official specification and reference implementations.

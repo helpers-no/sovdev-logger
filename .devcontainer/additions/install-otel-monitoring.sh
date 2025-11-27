@@ -482,7 +482,7 @@ check_identity() {
 #
 # Required environment variables (sourced automatically by service-otel-monitoring.sh):
 #   - DEVELOPER_ID, DEVELOPER_EMAIL, PROJECT_NAME, TS_HOSTNAME (from ~/.devcontainer-identity)
-#   - HOST_OS, HOST_USER, HOST_HOSTNAME, HOST_DOMAIN, HOST_CPU_ARCH (from topsecret/env-vars/.host-info)
+#   - HOST_OS, HOST_USER, HOST_HOSTNAME, HOST_DOMAIN, HOST_CPU_ARCH (from .devcontainer.secrets/env-vars/.host-info)
 #   - NGINX_OTEL_PORT (from ~/.nginx-backend-config)
 validate_otel_configs() {
     echo ""

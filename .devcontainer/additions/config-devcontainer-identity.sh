@@ -40,7 +40,7 @@ IDENTITY_FILE="$HOME/.devcontainer-identity"
 BASHRC_FILE="$HOME/.bashrc"
 
 # Persistent storage paths
-PERSISTENT_DIR="/workspace/topsecret/env-vars"
+PERSISTENT_DIR="/workspace/.devcontainer.secrets/env-vars"
 PERSISTENT_FILE="$PERSISTENT_DIR/.devcontainer-identity"
 
 #------------------------------------------------------------------------------
@@ -223,7 +223,7 @@ show_completion() {
     echo "📋 Additional Info:"
     echo ""
     echo "• Your identity is stored in: ~/.devcontainer-identity"
-    echo "  (Symlink to: /workspace/topsecret/env-vars/.devcontainer-identity)"
+    echo "  (Symlink to: /workspace/.devcontainer.secrets/env-vars/.devcontainer-identity)"
     echo "  Persists across container rebuilds"
     echo ""
     echo "• To verify your identity anytime:"
@@ -253,7 +253,7 @@ show_completion() {
 }
 
 #------------------------------------------------------------------------------
-# PERSISTENT STORAGE SETUP - Use topsecret folder for persistence across rebuilds
+# PERSISTENT STORAGE SETUP - Use .devcontainer.secrets folder for persistence across rebuilds
 #------------------------------------------------------------------------------
 
 setup_persistent_storage() {

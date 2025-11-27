@@ -17,7 +17,7 @@ When the user asks to implement sovdev-logger in a new programming language, ini
 
 **See:** `.claude/skills/_SHARED.md` → "Directory Restrictions"
 
-**Summary:** Only use `specification/`, `typescript/`, `{language}/`, and `.claude/skills/` directories. Do NOT access `terchris/` or `topsecret/`.
+**Summary:** Only use `specification/`, `typescript/`, `{language}/`, and `.claude/skills/` directories. Do NOT access `terchris/` or `.devcontainer.secrets/`.
 
 ---
 

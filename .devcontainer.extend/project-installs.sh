@@ -68,7 +68,7 @@ install_custom_project_tools() {
 
 
 
-# Restore all configurations from topsecret folder
+# Restore all configurations from .devcontainer.secrets folder
 restore_all_configurations() {
     local SCRIPT_DIR="$(dirname "$(realpath "$0")")"
     local ADDITIONS_DIR="$SCRIPT_DIR/../.devcontainer/additions"
@@ -91,7 +91,7 @@ restore_all_configurations() {
 
         # Check if script supports --verify flag (non-interactive restore)
         if grep -q '= "--verify"' "$config_path" 2>/dev/null; then
-            # Run with --verify flag (non-interactive, just restore from topsecret)
+            # Run with --verify flag (non-interactive, just restore from .devcontainer.secrets)
             # Silent if not found - user might not need this config
             if bash "$config_path" --verify 2>/dev/null; then
                 echo "   ✅ $config_name restored"
@@ -106,7 +106,7 @@ restore_all_configurations() {
     if [ $scanned_count -eq 0 ]; then
         echo "ℹ️  No configuration scripts found"
     elif [ $restored_count -eq 0 ]; then
-        echo "ℹ️  No configurations found in topsecret (this is normal for new users)"
+        echo "ℹ️  No configurations found in .devcontainer.secrets (this is normal for new users)"
     else
         echo "📊 Configuration Restoration Summary:"
         echo "   ✅ Restored: $restored_count"
@@ -163,8 +163,8 @@ main() {
     # Mark the git folder as safe
     mark_git_folder_as_safe
 
-    # Restore all configurations from topsecret (non-interactive)
-    echo "🔐 Restoring configurations from topsecret..."
+    # Restore all configurations from .devcontainer.secrets (non-interactive)
+    echo "🔐 Restoring configurations from .devcontainer.secrets..."
     restore_all_configurations
 
     # Check if critical configurations are missing and warn user

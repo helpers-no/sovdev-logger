@@ -81,5 +81,5 @@ vendor/
 # Terchris personal working directory (never commit)
 terchris/
 
-# Top secret folder - contains credentials (NEVER commit)
-topsecret/
+# Devcontainer secrets folder - contains credentials (NEVER commit)
+.devcontainer.secrets/

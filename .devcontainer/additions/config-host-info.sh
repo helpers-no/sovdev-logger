@@ -10,7 +10,7 @@
 CONFIG_NAME="Host Information"
 CONFIG_DESCRIPTION="Detect host OS, user, and architecture for telemetry monitoring"
 CONFIG_CATEGORY="INFRA_CONFIG"
-CHECK_CONFIG_COMMAND="[ -f /workspace/topsecret/env-vars/.host-info ]"
+CHECK_CONFIG_COMMAND="[ -f /workspace/.devcontainer.secrets/env-vars/.host-info ]"
 
 #------------------------------------------------------------------------------
 
@@ -32,7 +32,7 @@ log_success() { echo -e "${GREEN}✅ $1${NC}"; }
 log_warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 
 # Persistent storage paths
-PERSISTENT_DIR="/workspace/topsecret/env-vars"
+PERSISTENT_DIR="/workspace/.devcontainer.secrets/env-vars"
 PERSISTENT_FILE="$PERSISTENT_DIR/.host-info"
 
 #------------------------------------------------------------------------------

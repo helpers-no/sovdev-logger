@@ -566,7 +566,7 @@ The OTEL collector configurations use **native OTEL environment variable expansi
 3. No file generation needed - configs work as-is
 4. Variables sourced automatically by `service-otel-monitoring.sh` from:
    - `~/.devcontainer-identity` (developer identity)
-   - `/workspace/topsecret/env-vars/.host-info` (host platform info)
+   - `/workspace/.devcontainer.secrets/env-vars/.host-info` (host platform info)
    - `~/.nginx-backend-config` (infrastructure settings)
 
 **Benefits**:
@@ -673,13 +673,13 @@ The system automatically captures host machine information for platform visibili
 **How it works**:
 1. Environment variables passed at container build time via `devcontainer.json`
 2. `config-host-info.sh` auto-runs on container rebuild to detect platform
-3. Info saved to `/workspace/topsecret/env-vars/.host-info`
+3. Info saved to `/workspace/.devcontainer.secrets/env-vars/.host-info`
 4. OTEL collectors source this file and include as resource attributes
 5. Grafana dashboards visualize platform distribution
 
 **View host info**:
 ```bash
-cat /workspace/topsecret/env-vars/.host-info
+cat /workspace/.devcontainer.secrets/env-vars/.host-info
 ```
 
 **Re-detect host info**:

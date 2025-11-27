@@ -1,7 +1,7 @@
 #!/bin/bash
 # file: .devcontainer/additions/install-kubectl.sh
 #
-# Installs kubectl and sets up topsecret folder for credentials
+# Installs kubectl and sets up .devcontainer.secrets folder for credentials
 #
 # Usage: ./install-kubectl.sh [options]
 #
@@ -16,7 +16,7 @@
 
 # Script metadata
 SCRIPT_NAME="Kubernetes kubectl CLI"
-SCRIPT_DESCRIPTION="Installs kubectl and sets up topsecret folder for credentials"
+SCRIPT_DESCRIPTION="Installs kubectl and sets up .devcontainer.secrets folder for credentials"
 SCRIPT_CATEGORY="INFRA_CONFIG"
 CHECK_INSTALLED_COMMAND="[ -f /usr/local/bin/kubectl ] || [ -f /usr/bin/kubectl ] || command -v kubectl >/dev/null 2>&1"
 
@@ -38,8 +38,8 @@ pre_installation_setup() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         echo "🔧 Preparing for uninstallation..."
     else
-        echo "🔧 Setting up topsecret folder structure..."
-        setup_topsecret_folder
+        echo "🔧 Setting up .devcontainer.secrets folder structure..."
+        setup_devcontainer_secrets_folder
     fi
 }
 
@@ -47,58 +47,58 @@ pre_installation_setup() {
 # CUSTOM FUNCTIONS (kubectl-specific logic)
 #------------------------------------------------------------------------------
 
-# Function: setup_topsecret_folder
+# Function: setup_devcontainer_secrets_folder
 # Creates folder structure, README, .gitignore, helper scripts
-setup_topsecret_folder() {
-    echo "📁 Creating topsecret/ folder for sensitive files..."
+setup_devcontainer_secrets_folder() {
+    echo "📁 Creating .devcontainer.secrets/ folder for sensitive files..."
 
     # 1. Add to root .gitignore
     add_to_gitignore
 
     # 2. Create folder
-    mkdir -p /workspace/topsecret
+    mkdir -p /workspace/.devcontainer.secrets
 
-    # 3. Create topsecret/README.md
-    create_topsecret_readme
+    # 3. Create .devcontainer.secrets/README.md
+    create_devcontainer_secrets_readme
 
-    # 4. Create topsecret/.gitignore
-    create_topsecret_gitignore
+    # 4. Create .devcontainer.secrets/.gitignore
+    create_devcontainer_secrets_gitignore
 
-    # 5. Create topsecret/copy-kubeconfig-mac.sh
+    # 5. Create .devcontainer.secrets/copy-kubeconfig-mac.sh
     create_mac_helper_script
 
-    # 6. Create topsecret/copy-kubeconfig-win.ps1
+    # 6. Create .devcontainer.secrets/copy-kubeconfig-win.ps1
     create_windows_helper_script
 
-    echo "✅ topsecret/ folder structure created"
+    echo "✅ .devcontainer.secrets/ folder structure created"
 }
 
 # Function: add_to_gitignore
-# Adds topsecret/ to root .gitignore if not already there
+# Adds .devcontainer.secrets/ to root .gitignore if not already there
 add_to_gitignore() {
     local gitignore_file="/workspace/.gitignore"
-    local gitignore_line="topsecret/"
+    local gitignore_line=".devcontainer.secrets/"
 
     if [ -f "$gitignore_file" ]; then
-        if grep -q "^topsecret/" "$gitignore_file"; then
-            echo "  ✅ topsecret/ already in .gitignore"
+        if grep -q "^.devcontainer.secrets/" "$gitignore_file"; then
+            echo "  ✅ .devcontainer.secrets/ already in .gitignore"
         else
             echo "" >> "$gitignore_file"
             echo "# Top secret folder - contains credentials (NEVER commit)" >> "$gitignore_file"
-            echo "topsecret/" >> "$gitignore_file"
-            echo "  ✅ Added topsecret/ to .gitignore"
+            echo ".devcontainer.secrets/" >> "$gitignore_file"
+            echo "  ✅ Added .devcontainer.secrets/ to .gitignore"
         fi
     else
         echo "# Top secret folder - contains credentials (NEVER commit)" > "$gitignore_file"
-        echo "topsecret/" >> "$gitignore_file"
-        echo "  ✅ Created .gitignore with topsecret/"
+        echo ".devcontainer.secrets/" >> "$gitignore_file"
+        echo "  ✅ Created .gitignore with .devcontainer.secrets/"
     fi
 }
 
-# Function: create_topsecret_readme
+# Function: create_devcontainer_secrets_readme
 # Creates README.md with heredoc
-create_topsecret_readme() {
-    cat > /workspace/topsecret/README.md <<'EOF'
+create_devcontainer_secrets_readme() {
+    cat > /workspace/.devcontainer.secrets/README.md <<'EOF'
 # Top Secret Folder
 
 This folder stores **sensitive files for local development only**.
@@ -135,21 +135,21 @@ Run the helper script on your **host machine** (not in devcontainer):
 
 **Mac/Linux:**
 ```bash
-./topsecret/copy-kubeconfig-mac.sh
+./.devcontainer.secrets/copy-kubeconfig-mac.sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
-.\topsecret\copy-kubeconfig-win.ps1
+.\.devcontainer.secrets\copy-kubeconfig-win.ps1
 ```
 
 This script:
-1. Copies `~/.kube/config` to `topsecret/.kube/config`
+1. Copies `~/.kube/config` to `.devcontainer.secrets/.kube/config`
 2. **Rewrites server URLs** for container networking (see below)
 
 Then inside devcontainer:
 ```bash
-export KUBECONFIG=/workspace/topsecret/.kube/config
+export KUBECONFIG=/workspace/.devcontainer.secrets/.kube/config
 kubectl get nodes
 ```
 
@@ -167,7 +167,7 @@ The helper scripts automatically rewrite server URLs to use `host.docker.interna
 # Original (from host ~/.kube/config):
 server: https://127.0.0.1:6443
 
-# Rewritten (in topsecret/.kube/config):
+# Rewritten (in .devcontainer.secrets/.kube/config):
 server: https://host.docker.internal:6443
 ```
 
@@ -187,10 +187,10 @@ Just re-run the helper script on your host machine. It will copy and rewrite the
 
 **Root `.gitignore`:**
 ```
-topsecret/
+.devcontainer.secrets/
 ```
 
-**Local `topsecret/.gitignore`:**
+**Local `.devcontainer.secrets/.gitignore`:**
 ```
 *
 !README.md
@@ -201,13 +201,13 @@ topsecret/
 
 Only documentation and helper scripts are tracked in git. Everything else is ignored.
 EOF
-    echo "  ✅ Created topsecret/README.md"
+    echo "  ✅ Created .devcontainer.secrets/README.md"
 }
 
-# Function: create_topsecret_gitignore
-create_topsecret_gitignore() {
-    cat > /workspace/topsecret/.gitignore <<'EOF'
-# Ignore everything in topsecret/
+# Function: create_devcontainer_secrets_gitignore
+create_devcontainer_secrets_gitignore() {
+    cat > /workspace/.devcontainer.secrets/.gitignore <<'EOF'
+# Ignore everything in .devcontainer.secrets/
 *
 
 # Except these files (documentation and helper scripts)
@@ -216,15 +216,15 @@ create_topsecret_gitignore() {
 !copy-kubeconfig-mac.sh
 !copy-kubeconfig-win.ps1
 EOF
-    echo "  ✅ Created topsecret/.gitignore"
+    echo "  ✅ Created .devcontainer.secrets/.gitignore"
 }
 
 # Function: create_mac_helper_script
 create_mac_helper_script() {
-    cat > /workspace/topsecret/copy-kubeconfig-mac.sh <<'EOF'
+    cat > /workspace/.devcontainer.secrets/copy-kubeconfig-mac.sh <<'EOF'
 #!/bin/bash
-# file: topsecret/copy-kubeconfig-mac.sh
-# Copies ~/.kube/config to topsecret/.kube/config
+# file: .devcontainer.secrets/copy-kubeconfig-mac.sh
+# Copies ~/.kube/config to .devcontainer.secrets/.kube/config
 # CRITICAL: Rewrites server URLs to use host.docker.internal for container access
 
 set -e
@@ -264,13 +264,13 @@ sed -i.bak \
 # Remove backup file
 rm -f "$SCRIPT_DIR/.kube/config.bak"
 
-echo "✅ Kubeconfig copied to topsecret/.kube/config"
+echo "✅ Kubeconfig copied to .devcontainer.secrets/.kube/config"
 echo "✅ Server URLs rewritten to use host.docker.internal"
 echo ""
 echo "Next steps:"
 echo "1. If not already there, open this project in VSCode devcontainer"
 echo "2. Inside container, add to ~/.bashrc:"
-echo "     export KUBECONFIG=/workspace/topsecret/.kube/config"
+echo "     export KUBECONFIG=/workspace/.devcontainer.secrets/.kube/config"
 echo "3. Reload: source ~/.bashrc"
 echo "4. Test: kubectl get nodes"
 echo ""
@@ -278,15 +278,15 @@ echo "Note: Server URLs have been rewritten for container networking."
 echo "      Original: https://127.0.0.1:6443"
 echo "      Rewritten: https://host.docker.internal:6443"
 EOF
-    chmod +x /workspace/topsecret/copy-kubeconfig-mac.sh
-    echo "  ✅ Created topsecret/copy-kubeconfig-mac.sh"
+    chmod +x /workspace/.devcontainer.secrets/copy-kubeconfig-mac.sh
+    echo "  ✅ Created .devcontainer.secrets/copy-kubeconfig-mac.sh"
 }
 
 # Function: create_windows_helper_script
 create_windows_helper_script() {
-    cat > /workspace/topsecret/copy-kubeconfig-win.ps1 <<'EOF'
-# file: topsecret/copy-kubeconfig-win.ps1
-# Copies %USERPROFILE%\.kube\config to topsecret\.kube\config
+    cat > /workspace/.devcontainer.secrets/copy-kubeconfig-win.ps1 <<'EOF'
+# file: .devcontainer.secrets/copy-kubeconfig-win.ps1
+# Copies %USERPROFILE%\.kube\config to .devcontainer.secrets\.kube\config
 # CRITICAL: Rewrites server URLs to use host.docker.internal for container access
 
 Write-Host "🔐 Setting up Kubernetes credentials for devcontainer..." -ForegroundColor Cyan
@@ -333,13 +333,13 @@ $content = $content -replace '(?m)^      certificate-authority-data:.*$', '     
 # Write back
 $content | Set-Content $targetConfig -NoNewline
 
-Write-Host "✅ Kubeconfig copied to topsecret\.kube\config" -ForegroundColor Green
+Write-Host "✅ Kubeconfig copied to .devcontainer.secrets\.kube\config" -ForegroundColor Green
 Write-Host "✅ Server URLs rewritten to use host.docker.internal" -ForegroundColor Green
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
 Write-Host "1. If not already there, open this project in VSCode devcontainer"
 Write-Host "2. Inside container, add to ~/.bashrc:"
-Write-Host "     export KUBECONFIG=/workspace/topsecret/.kube/config"
+Write-Host "     export KUBECONFIG=/workspace/.devcontainer.secrets/.kube/config"
 Write-Host "3. Reload: source ~/.bashrc"
 Write-Host "4. Test: kubectl get nodes"
 Write-Host ""
@@ -347,7 +347,7 @@ Write-Host "Note: Server URLs have been rewritten for container networking." -Fo
 Write-Host "      Original: https://127.0.0.1:6443" -ForegroundColor Yellow
 Write-Host "      Rewritten: https://host.docker.internal:6443" -ForegroundColor Yellow
 EOF
-    echo "  ✅ Created topsecret/copy-kubeconfig-win.ps1"
+    echo "  ✅ Created .devcontainer.secrets/copy-kubeconfig-win.ps1"
 }
 
 # Function: install_kubectl_binary
@@ -394,9 +394,9 @@ install_kubectl_binary() {
 check_kubeconfig_and_guide() {
     # Always configure KUBECONFIG in ~/.bashrc
     local bashrc="$HOME/.bashrc"
-    local kubeconfig_line='export KUBECONFIG=/workspace/topsecret/.kube/config'
+    local kubeconfig_line='export KUBECONFIG=/workspace/.devcontainer.secrets/.kube/config'
 
-    if ! grep -q "KUBECONFIG=/workspace/topsecret/.kube/config" "$bashrc" 2>/dev/null; then
+    if ! grep -q "KUBECONFIG=/workspace/.devcontainer.secrets/.kube/config" "$bashrc" 2>/dev/null; then
         echo "" >> "$bashrc"
         echo "# kubectl configuration (auto-added by install-kubectl.sh)" >> "$bashrc"
         echo "$kubeconfig_line" >> "$bashrc"
@@ -405,16 +405,16 @@ check_kubeconfig_and_guide() {
         echo "✅ KUBECONFIG already configured in ~/.bashrc"
     fi
 
-    if [ -f /workspace/topsecret/.kube/config ]; then
-        echo "✅ Kubeconfig found at /workspace/topsecret/.kube/config"
+    if [ -f /workspace/.devcontainer.secrets/.kube/config ]; then
+        echo "✅ Kubeconfig found at /workspace/.devcontainer.secrets/.kube/config"
         echo ""
         echo "kubectl is ready to use!"
-        echo "  Current session: export KUBECONFIG=/workspace/topsecret/.kube/config"
+        echo "  Current session: export KUBECONFIG=/workspace/.devcontainer.secrets/.kube/config"
         echo "  New sessions: automatically configured via ~/.bashrc"
         echo ""
         echo "Test with: kubectl get nodes"
     else
-        echo "⚠️  Kubeconfig not found at /workspace/topsecret/.kube/config"
+        echo "⚠️  Kubeconfig not found at /workspace/.devcontainer.secrets/.kube/config"
         echo ""
         echo "To enable kubectl access:"
         echo "1. Exit devcontainer (open host terminal)"
@@ -422,15 +422,15 @@ check_kubeconfig_and_guide() {
         echo "3. Run helper script:"
         echo ""
         echo "   Mac/Linux:"
-        echo "     ./topsecret/copy-kubeconfig-mac.sh"
+        echo "     ./.devcontainer.secrets/copy-kubeconfig-mac.sh"
         echo ""
         echo "   Windows (PowerShell):"
-        echo "     .\\topsecret\\copy-kubeconfig-win.ps1"
+        echo "     .\\.devcontainer.secrets\\copy-kubeconfig-win.ps1"
         echo ""
         echo "4. Reload shell or restart devcontainer"
         echo ""
         echo "kubectl will work automatically in new sessions!"
-        echo "See: /workspace/topsecret/README.md for details"
+        echo "See: /workspace/.devcontainer.secrets/README.md for details"
     fi
 }
 
@@ -452,7 +452,7 @@ EXTENSIONS["ms-kubernetes-tools.vscode-kubernetes-tools"]="Kubernetes|Kubernetes
 
 VERIFY_COMMANDS=(
     "command -v kubectl >/dev/null && kubectl version --client || echo '❌ kubectl not found'"
-    "test -f /workspace/topsecret/.kube/config && echo '✅ kubeconfig found' || echo '⚠️  kubeconfig not found'"
+    "test -f /workspace/.devcontainer.secrets/.kube/config && echo '✅ kubeconfig found' || echo '⚠️  kubeconfig not found'"
 )
 
 # Post-installation notes
@@ -465,7 +465,7 @@ post_installation_message() {
 
     echo ""
     echo "📚 Documentation:"
-    echo "  - topsecret folder: /workspace/topsecret/README.md"
+    echo "  - .devcontainer.secrets folder: /workspace/.devcontainer.secrets/README.md"
     echo "  - kubectl usage: .devcontainer/howto/howto-kubectl.md (to be created)"
 }
 
@@ -476,7 +476,7 @@ post_uninstallation_message() {
     echo ""
     echo "Additional Notes:"
     echo "1. kubectl binary has been removed"
-    echo "2. topsecret/ folder is still present (manual cleanup if needed)"
+    echo "2. .devcontainer.secrets/ folder is still present (manual cleanup if needed)"
     echo "3. VSCode extension may need manual removal"
 }
 
@@ -580,7 +580,7 @@ else
     echo "🔄 Starting installation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
 
-    # Custom setup (creates topsecret/)
+    # Custom setup (creates .devcontainer.secrets/)
     pre_installation_setup
 
     # Install kubectl binary

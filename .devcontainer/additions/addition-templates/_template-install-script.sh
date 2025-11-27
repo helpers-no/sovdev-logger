@@ -61,7 +61,7 @@
 #   Two-Layer System:
 #     Layer 1: Silent Restoration (restore_all_configurations)
 #       - Runs BEFORE tool installation
-#       - Attempts to restore ALL configs from topsecret
+#       - Attempts to restore ALL configs from .devcontainer.secrets
 #       - SILENT for missing configs (no noise)
 #
 #     Layer 2: Loud Prerequisites (install_project_tools - uses this field!)

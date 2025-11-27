@@ -41,7 +41,7 @@
 # Environment:
 #   - Must run INSIDE devcontainer (not from host)
 #   - Requires Kubernetes cluster with monitoring stack (Loki, Prometheus, Tempo)
-#   - Requires kubeconfig at /workspace/topsecret/.kube/config
+#   - Requires kubeconfig at /workspace/.devcontainer.secrets/.kube/config
 #   - Uses /workspace paths (devcontainer workspace)
 #
 # Prerequisites:
@@ -53,8 +53,8 @@
 set -e
 
 # Configure kubectl to use kubeconfig from workspace
-if [ -f "/workspace/topsecret/.kube/config" ]; then
-    export KUBECONFIG="/workspace/topsecret/.kube/config"
+if [ -f "/workspace/.devcontainer.secrets/.kube/config" ]; then
+    export KUBECONFIG="/workspace/.devcontainer.secrets/.kube/config"
 elif [ -f "$HOME/.kube/config" ]; then
     export KUBECONFIG="$HOME/.kube/config"
 fi
@@ -139,7 +139,7 @@ if ! kubectl cluster-info &> /dev/null; then
     print_error "kubectl cannot access Kubernetes cluster"
     echo ""
     echo "Kubeconfig not properly configured."
-    echo "Expected location: /workspace/topsecret/.kube/config"
+    echo "Expected location: /workspace/.devcontainer.secrets/.kube/config"
     echo ""
     echo "Current KUBECONFIG: ${KUBECONFIG:-not set}"
     echo ""

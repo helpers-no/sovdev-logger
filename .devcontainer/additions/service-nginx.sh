@@ -69,8 +69,8 @@ if [ -f "$HOME/.nginx-backend-config" ]; then
     NGINX_CONFIG_FILE="$HOME/.nginx-backend-config"
 elif [ -f "/home/vscode/.nginx-backend-config" ]; then
     NGINX_CONFIG_FILE="/home/vscode/.nginx-backend-config"
-elif [ -f "/workspace/topsecret/nginx-config/.nginx-backend-config" ]; then
-    NGINX_CONFIG_FILE="/workspace/topsecret/nginx-config/.nginx-backend-config"
+elif [ -f "/workspace/.devcontainer.secrets/nginx-config/.nginx-backend-config" ]; then
+    NGINX_CONFIG_FILE="/workspace/.devcontainer.secrets/nginx-config/.nginx-backend-config"
 else
     NGINX_CONFIG_FILE=""
 fi

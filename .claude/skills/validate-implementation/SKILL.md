@@ -17,7 +17,7 @@ When the user asks to validate a sovdev-logger implementation, guide them throug
 
 **See:** `.claude/skills/_SHARED.md` → "Directory Restrictions"
 
-**Summary:** Only use `specification/`, `typescript/`, and `{language}/` directories. Do NOT access `terchris/` or `topsecret/`.
+**Summary:** Only use `specification/`, `typescript/`, and `{language}/` directories. Do NOT access `terchris/` or `.devcontainer.secrets/`.
 
 ## 📚 Authoritative Documentation
 

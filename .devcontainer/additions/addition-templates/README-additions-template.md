@@ -65,8 +65,8 @@ Addition scripts are bash scripts that automate the installation of tools, confi
 
 **Characteristics:**
 - Interactive (prompts user for input)
-- Supports `--verify` flag for automatic restoration from topsecret
-- Stores configs in `/workspace/topsecret` for persistence across rebuilds
+- Supports `--verify` flag for automatic restoration from .devcontainer.secrets
+- Stores configs in `/workspace/.devcontainer.secrets` for persistence across rebuilds
 - Idempotent (safe to reconfigure)
 
 ### 3. Command Scripts (`cmd-*.sh`)
@@ -135,13 +135,13 @@ cp /workspace/.devcontainer/additions/addition-templates/_template-config-script
 # - Update CHECK_CONFIGURED_COMMAND
 
 # 3. Implement verify_your_config() function
-# - Check /workspace/topsecret/your-config-file
+# - Check /workspace/.devcontainer.secrets/your-config-file
 # - Restore with symlink if exists
 # - Return 0 if restored, 1 if not found
 
 # 4. Implement interactive configuration
 # - Prompt user for values
-# - Save to /workspace/topsecret/your-config-file
+# - Save to /workspace/.devcontainer.secrets/your-config-file
 # - Create symlink from home directory
 
 # 5. Test both modes
@@ -241,11 +241,11 @@ Complete template for creating configuration scripts with automatic restoration 
 
 **Includes:**
 - Metadata fields (CONFIG_NAME, CONFIG_DESCRIPTION, CONFIG_CATEGORY, CHECK_CONFIGURED_COMMAND)
-- --verify flag support (automatic restoration from topsecret)
+- --verify flag support (automatic restoration from .devcontainer.secrets)
 - Logging integration
 - Interactive configuration flow
 - Validation functions
-- topsecret integration patterns
+- .devcontainer.secrets integration patterns
 
 **Key Sections:**
 ```bash
@@ -257,11 +257,11 @@ CHECK_CONFIGURED_COMMAND="[ -f ~/.mytool-config ]"
 
 # Non-interactive restoration (--verify flag)
 verify_your_config() {
-    local topsecret_path="/workspace/topsecret/mytool-config"
+    local .devcontainer.secrets_path="/workspace/.devcontainer.secrets/mytool-config"
     local home_path="$HOME/.mytool-config"
 
-    if [ -f "$topsecret_path" ]; then
-        ln -sf "$topsecret_path" "$home_path"
+    if [ -f "$.devcontainer.secrets_path" ]; then
+        ln -sf "$.devcontainer.secrets_path" "$home_path"
         echo "✅ My Tool configuration restored"
         return 0
     fi
@@ -276,7 +276,7 @@ fi
 
 # Interactive configuration
 main() {
-    # Prompt user, validate, save to topsecret
+    # Prompt user, validate, save to .devcontainer.secrets
 }
 ```
 
@@ -442,7 +442,7 @@ The devcontainer uses a two-layer approach for managing configurations and prere
    ✅ Restored: 2
 ```
 
-**Purpose:** Restore configs that exist in topsecret without noise. Missing configs are expected (user might not need them).
+**Purpose:** Restore configs that exist in .devcontainer.secrets without noise. Missing configs are expected (user might not need them).
 
 ### Layer 2: Loud Tool Prerequisites
 
@@ -475,9 +475,9 @@ The devcontainer uses a two-layer approach for managing configurations and prere
 
 **Problem:** If we warn about every missing config during restoration, it's noisy and confusing:
 ```bash
-⚠️  Tailscale: not found in topsecret  ← User doesn't use Tailscale
-⚠️  kubectl: not found in topsecret   ← User doesn't use kubectl
-⚠️  AWS CLI: not found in topsecret   ← User doesn't use AWS
+⚠️  Tailscale: not found in .devcontainer.secrets  ← User doesn't use Tailscale
+⚠️  kubectl: not found in .devcontainer.secrets   ← User doesn't use kubectl
+⚠️  AWS CLI: not found in .devcontainer.secrets   ← User doesn't use AWS
 ```
 
 **Solution:**
@@ -594,13 +594,13 @@ PREREQUISITE_CONFIGS="config-aws-credentials.sh"
 ### Config Scripts
 
 1. **Implement --verify support** - Enable automatic restoration
-2. **Save to topsecret first** - Then symlink from home directory
+2. **Save to .devcontainer.secrets first** - Then symlink from home directory
    ```bash
    # Good - persists across rebuilds
-   cat > /workspace/topsecret/mytool-config <<EOF
+   cat > /workspace/.devcontainer.secrets/mytool-config <<EOF
    config data
    EOF
-   ln -sf /workspace/topsecret/mytool-config ~/.mytool-config
+   ln -sf /workspace/.devcontainer.secrets/mytool-config ~/.mytool-config
 
    # Bad - lost on rebuild
    cat > ~/.mytool-config <<EOF
@@ -679,14 +679,14 @@ bash /workspace/.devcontainer/additions/config-mytool.sh
 
 # Verify config exists
 ls -la ~/.mytool-config
-ls -la /workspace/topsecret/mytool-config
+ls -la /workspace/.devcontainer.secrets/mytool-config
 
 # Test --verify restoration
 rm ~/.mytool-config
 bash /workspace/.devcontainer/additions/config-mytool.sh --verify
 
-# Test with missing config in topsecret
-rm /workspace/topsecret/mytool-config
+# Test with missing config in .devcontainer.secrets
+rm /workspace/.devcontainer.secrets/mytool-config
 rm ~/.mytool-config
 bash /workspace/.devcontainer/additions/config-mytool.sh --verify
 # Should return exit code 1, no error message
@@ -877,11 +877,11 @@ source "${SCRIPT_DIR}/lib/logging.sh"
 
 # Non-interactive restoration (--verify flag)
 verify_database_config() {
-    local topsecret_config="/workspace/topsecret/database-config"
+    local .devcontainer.secrets_config="/workspace/.devcontainer.secrets/database-config"
     local home_config="$HOME/.database-config"
 
-    if [ -f "$topsecret_config" ]; then
-        ln -sf "$topsecret_config" "$home_config"
+    if [ -f "$.devcontainer.secrets_config" ]; then
+        ln -sf "$.devcontainer.secrets_config" "$home_config"
         echo "✅ Database configuration restored"
         return 0
     fi
@@ -925,24 +925,24 @@ main() {
         exit 1
     fi
 
-    # Save to topsecret first
-    local topsecret_config="/workspace/topsecret/database-config"
-    cat > "$topsecret_config" <<EOF
+    # Save to .devcontainer.secrets first
+    local .devcontainer.secrets_config="/workspace/.devcontainer.secrets/database-config"
+    cat > "$.devcontainer.secrets_config" <<EOF
 DB_HOST=$DB_HOST
 DB_PORT=${DB_PORT:-5432}
 DB_NAME=$DB_NAME
 DB_USER=$DB_USER
 DB_PASS=$DB_PASS
 EOF
-    chmod 600 "$topsecret_config"
+    chmod 600 "$.devcontainer.secrets_config"
 
     # Create symlink from home
-    ln -sf "$topsecret_config" "$HOME/.database-config"
+    ln -sf "$.devcontainer.secrets_config" "$HOME/.database-config"
 
     echo ""
     echo "✅ Database configuration saved!"
     echo "   Config: $HOME/.database-config"
-    echo "   Persists: /workspace/topsecret/database-config"
+    echo "   Persists: /workspace/.devcontainer.secrets/database-config"
 }
 
 main "$@"
@@ -1003,8 +1003,8 @@ install_optional_components() {
 
 ```bash
 verify_myapp_config() {
-    local main_config="/workspace/topsecret/myapp-config"
-    local credentials="/workspace/topsecret/myapp-credentials"
+    local main_config="/workspace/.devcontainer.secrets/myapp-config"
+    local credentials="/workspace/.devcontainer.secrets/myapp-credentials"
 
     local restored=0
 

@@ -32,7 +32,7 @@ log_success() { echo -e "${GREEN}✅ $1${NC}"; }
 log_warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 
 # Persistent storage paths
-PERSISTENT_DIR="/workspace/topsecret/env-vars"
+PERSISTENT_DIR="/workspace/.devcontainer.secrets/env-vars"
 PERSISTENT_FILE="$PERSISTENT_DIR/.git-identity"
 
 #------------------------------------------------------------------------------

@@ -224,7 +224,7 @@ fi
 **Expected:**
 - ✅ Exit code 0
 - ✅ ~/.devcontainer-identity exists
-- ✅ Points to topsecret
+- ✅ Points to .devcontainer.secrets
 
 **Pass Criteria:** File restored, exit code 0
 
@@ -448,7 +448,7 @@ exit 0
 **Purpose:** Verify restore_all_configurations() works during container creation
 
 **Setup:**
-1. Ensure config exists in topsecret: `/workspace/topsecret/env-vars/devcontainer-identity`
+1. Ensure config exists in .devcontainer.secrets: `/workspace/.devcontainer.secrets/env-vars/devcontainer-identity`
 2. Note current container state
 
 **Test Procedure:**
@@ -458,7 +458,7 @@ exit 0
 
 **Expected Output:**
 ```
-🔐 Restoring configurations from topsecret...
+🔐 Restoring configurations from .devcontainer.secrets...
 📋 Scanning for configuration scripts...
    ✅ Developer Identity restored
 
@@ -470,10 +470,10 @@ exit 0
 ```bash
 # After container rebuild completes
 ls -la ~/.devcontainer-identity
-# Should be symlink to /workspace/topsecret/env-vars/devcontainer-identity
+# Should be symlink to /workspace/.devcontainer.secrets/env-vars/devcontainer-identity
 
 readlink ~/.devcontainer-identity
-# Should show: /workspace/topsecret/env-vars/devcontainer-identity
+# Should show: /workspace/.devcontainer.secrets/env-vars/devcontainer-identity
 ```
 
 **Pass Criteria:**
@@ -485,10 +485,10 @@ readlink ~/.devcontainer-identity
 
 ### Test 2.2: Layer 1 - Silent for Missing Configs
 
-**Purpose:** Verify no warnings for configs not in topsecret
+**Purpose:** Verify no warnings for configs not in .devcontainer.secrets
 
 **Setup:**
-1. Remove a non-critical config from topsecret (e.g., kubectl config)
+1. Remove a non-critical config from .devcontainer.secrets (e.g., kubectl config)
 2. Note current state
 
 **Test Procedure:**
@@ -497,7 +497,7 @@ readlink ~/.devcontainer-identity
 
 **Expected Output:**
 ```
-🔐 Restoring configurations from topsecret...
+🔐 Restoring configurations from .devcontainer.secrets...
 📋 Scanning for configuration scripts...
    ✅ Developer Identity restored
    (no warning for kubectl)
@@ -509,7 +509,7 @@ readlink ~/.devcontainer-identity
 **Verification:**
 ```bash
 # Should NOT see:
-# ⚠️  kubectl Configuration: not found in topsecret
+# ⚠️  kubectl Configuration: not found in .devcontainer.secrets
 ```
 
 **Pass Criteria:**
@@ -524,7 +524,7 @@ readlink ~/.devcontainer-identity
 
 **Setup:**
 1. Enable OTel in enabled-tools.conf
-2. Remove identity from topsecret: `rm -rf /workspace/topsecret/env-vars/devcontainer-identity`
+2. Remove identity from .devcontainer.secrets: `rm -rf /workspace/.devcontainer.secrets/env-vars/devcontainer-identity`
 3. Remove identity from home: `rm ~/.devcontainer-identity`
 
 **Test Procedure:**
@@ -570,7 +570,7 @@ bash /workspace/.devcontainer/additions/config-devcontainer-identity.sh
 
 **Setup:**
 1. Enable OTel in enabled-tools.conf
-2. Ensure identity exists in topsecret
+2. Ensure identity exists in .devcontainer.secrets
 
 **Test Procedure:**
 1. Rebuild container
@@ -681,7 +681,7 @@ ls -la /etc/supervisor/conf.d/otel-*.conf
 **Purpose:** Verify complete flow for new user with nothing configured
 
 **Setup:**
-1. Clean slate: `rm -rf /workspace/topsecret/env-vars/`
+1. Clean slate: `rm -rf /workspace/.devcontainer.secrets/env-vars/`
 2. Empty configs: `echo "" > /workspace/.devcontainer.extend/enabled-tools.conf`
 
 **Test Procedure:**
@@ -690,10 +690,10 @@ ls -la /etc/supervisor/conf.d/otel-*.conf
 
 **Expected Output:**
 ```
-🔐 Restoring configurations from topsecret...
+🔐 Restoring configurations from .devcontainer.secrets...
 📋 Scanning for configuration scripts...
 
-ℹ️  No configurations found in topsecret (this is normal for new users)
+ℹ️  No configurations found in .devcontainer.secrets (this is normal for new users)
 
 📦 Installing enabled tools...
 
@@ -718,7 +718,7 @@ echo $?  # Should be 0
 **Purpose:** Verify complete flow for existing user with everything configured
 
 **Setup:**
-1. Identity in topsecret
+1. Identity in .devcontainer.secrets
 2. OTel enabled in enabled-tools.conf
 3. Services enabled in enabled-services.conf
 
@@ -728,7 +728,7 @@ echo $?  # Should be 0
 
 **Expected Output:**
 ```
-🔐 Restoring configurations from topsecret...
+🔐 Restoring configurations from .devcontainer.secrets...
    ✅ Developer Identity restored
 
 📦 Installing enabled tools...
@@ -765,7 +765,7 @@ test -f /etc/supervisor/conf.d/otel-script-exporter.conf && echo "PASS" || echo 
 **Purpose:** Verify system handles partial configs gracefully
 
 **Setup:**
-1. Identity in topsecret
+1. Identity in .devcontainer.secrets
 2. Other configs missing
 3. Tools enabled that don't need missing configs
 

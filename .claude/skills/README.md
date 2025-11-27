@@ -99,7 +99,7 @@ Claude: [Automatically uses implement-language skill]
 **To avoid duplication, common content is maintained in `_SHARED.md`:**
 
 ### What's Shared
-- **Directory Restrictions**: Access rules for terchris/, topsecret/, specification/, etc.
+- **Directory Restrictions**: Access rules for terchris/, .devcontainer.secrets/, specification/, etc.
 - **Execute Commands Warning**: Critical reminder to execute commands, not describe them
 - **Common Cross-References**: Frequently referenced specification documents
 

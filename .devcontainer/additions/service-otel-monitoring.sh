@@ -88,7 +88,7 @@ if [ -f "$IDENTITY_FILE" ]; then
 fi
 
 # Host information file (for OTEL resource attributes)
-HOST_INFO_FILE="/workspace/topsecret/env-vars/.host-info"
+HOST_INFO_FILE="/workspace/.devcontainer.secrets/env-vars/.host-info"
 
 # Source host info file automatically if it exists
 if [ -f "$HOST_INFO_FILE" ]; then

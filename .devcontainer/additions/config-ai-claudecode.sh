@@ -45,7 +45,7 @@ ENV_FILE="$HOME/.claude-code-env"
 BASHRC_FILE="$HOME/.bashrc"
 
 # Persistent storage paths
-PERSISTENT_DIR="/workspace/topsecret/env-vars"
+PERSISTENT_DIR="/workspace/.devcontainer.secrets/env-vars"
 PERSISTENT_FILE="$PERSISTENT_DIR/.claude-code-env"
 
 #------------------------------------------------------------------------------
@@ -277,7 +277,7 @@ show_completion() {
     echo "📋 Configuration Details:"
     echo ""
     echo "• Environment file: ~/.claude-code-env"
-    echo "  (Symlink to: /workspace/topsecret/env-vars/.claude-code-env)"
+    echo "  (Symlink to: /workspace/.devcontainer.secrets/env-vars/.claude-code-env)"
     echo "  Persists across container rebuilds"
     echo ""
     echo "• Variables configured:"

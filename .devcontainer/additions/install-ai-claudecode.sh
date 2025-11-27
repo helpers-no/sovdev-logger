@@ -44,18 +44,18 @@ pre_installation_setup() {
             sudo apt-get update -qq && sudo apt-get install -y curl
         fi
 
-        # CRITICAL: Ensure topsecret folder is gitignored before storing credentials there
-        ensure_topsecret_gitignored
+        # CRITICAL: Ensure .devcontainer.secrets folder is gitignored before storing credentials there
+        ensure_devcontainer_secrets_gitignored
 
         # Create env-vars directory for environment configuration
-        mkdir -p /workspace/topsecret/env-vars
+        mkdir -p /workspace/.devcontainer.secrets/env-vars
 
         echo "✅ Pre-installation setup complete"
     fi
 }
 
-# Function to ensure topsecret/ is in .gitignore
-ensure_topsecret_gitignored() {
+# Function to ensure .devcontainer.secrets/ is in .gitignore
+ensure_devcontainer_secrets_gitignored() {
     local gitignore_file="/workspace/.gitignore"
     
     # Create .gitignore if it doesn't exist
@@ -64,18 +64,18 @@ ensure_topsecret_gitignored() {
         touch "$gitignore_file"
     fi
     
-    # Check if topsecret/ is already in .gitignore
-    if grep -q "^topsecret/" "$gitignore_file" 2>/dev/null || grep -q "^# Top secret folder" "$gitignore_file" 2>/dev/null; then
-        echo "✅ topsecret/ already in .gitignore"
+    # Check if .devcontainer.secrets/ is already in .gitignore
+    if grep -q "^.devcontainer.secrets/" "$gitignore_file" 2>/dev/null || grep -q "^# Top secret folder" "$gitignore_file" 2>/dev/null; then
+        echo "✅ .devcontainer.secrets/ already in .gitignore"
         return 0
     fi
     
-    # Add topsecret/ to .gitignore with warning comment
+    # Add .devcontainer.secrets/ to .gitignore with warning comment
     echo "" >> "$gitignore_file"
     echo "# Top secret folder - contains credentials (NEVER commit)" >> "$gitignore_file"
-    echo "topsecret/" >> "$gitignore_file"
+    echo ".devcontainer.secrets/" >> "$gitignore_file"
     
-    echo "✅ Added topsecret/ to .gitignore for credential safety"
+    echo "✅ Added .devcontainer.secrets/ to .gitignore for credential safety"
 }
 
 # Custom Claude Code installation function
@@ -84,7 +84,7 @@ install_claude_code() {
         echo "🗑️ Removing Claude Code installation..."
 
         # Note: We preserve environment configuration files during uninstall
-        echo "ℹ️  Environment configuration preserved in /workspace/topsecret/env-vars/"
+        echo "ℹ️  Environment configuration preserved in /workspace/.devcontainer.secrets/env-vars/"
         return
     fi
     
@@ -138,7 +138,7 @@ This directory contains custom skills and agents for Claude Code.
 ## Directory Structure
 
 - `/workspace/.claude/skills/` - Project-specific skills (committed to git)
-- `/workspace/topsecret/env-vars/.claude-code-env` - Environment configuration (NOT in git)
+- `/workspace/.devcontainer.secrets/env-vars/.claude-code-env` - Environment configuration (NOT in git)
 
 ## Adding Custom Skills
 
@@ -156,7 +156,7 @@ Configuration is managed by `config-ai-claudecode.sh` script.
 ## Security Note
 
 - ✅ This skills directory IS committed to git (shared with team)
-- ❌ /workspace/topsecret/ is gitignored and contains your API keys
+- ❌ /workspace/.devcontainer.secrets/ is gitignored and contains your API keys
 EOF
         echo "✅ Created skills directory README"
     fi
@@ -189,9 +189,9 @@ declare -A EXTENSIONS
 VERIFY_COMMANDS=(
     "command -v claude >/dev/null && echo '✅ Claude Code binary is available' || echo '❌ Claude Code binary not found'"
     "test -L /home/vscode/.claude-code-env && echo '✅ Environment config symlink exists' || echo '⚠️  Environment config symlink not found'"
-    "test -d /workspace/topsecret/env-vars && echo '✅ Environment directory exists in topsecret/' || echo '❌ Environment directory not found'"
+    "test -d /workspace/.devcontainer.secrets/env-vars && echo '✅ Environment directory exists in .devcontainer.secrets/' || echo '❌ Environment directory not found'"
     "test -d /workspace/.claude/skills && echo '✅ Skills directory exists' || echo '⚠️  Skills directory not found'"
-    "grep -q 'topsecret/' /workspace/.gitignore && echo '✅ topsecret/ is gitignored' || echo '❌ topsecret/ NOT gitignored (SECURITY RISK!)'"
+    "grep -q '.devcontainer.secrets/' /workspace/.gitignore && echo '✅ .devcontainer.secrets/ is gitignored' || echo '❌ .devcontainer.secrets/ NOT gitignored (SECURITY RISK!)'"
     "grep -q 'Claude Code environment' /home/vscode/.bashrc && echo '✅ Environment loading added to bashrc' || echo '⚠️  bashrc not configured'"
     "claude --version >/dev/null 2>&1 && echo '✅ Claude Code is functional' || echo '⚠️  Claude Code installed'"
 )
@@ -204,12 +204,12 @@ post_installation_message() {
     echo
     echo "🔐 Configuration:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "  Environment  → /workspace/topsecret/env-vars/ (gitignored)"
+    echo "  Environment  → /workspace/.devcontainer.secrets/env-vars/ (gitignored)"
     echo "  Skills       → /workspace/.claude/skills/ (in git)"
-    echo "  Protected by → .gitignore includes 'topsecret/'"
+    echo "  Protected by → .gitignore includes '.devcontainer.secrets/'"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo
-    echo "⚠️  IMPORTANT: Never remove 'topsecret/' from .gitignore!"
+    echo "⚠️  IMPORTANT: Never remove '.devcontainer.secrets/' from .gitignore!"
     echo
     echo "🚀 Quick Start Guide:"
     echo "1. Configure Claude Code to use LiteLLM proxy:"
@@ -224,7 +224,7 @@ post_installation_message() {
     echo
     echo "🔑 Authentication Details:"
     echo "- Uses LiteLLM proxy (not direct Anthropic API)"
-    echo "- Environment stored in: /workspace/topsecret/env-vars/.claude-code-env"
+    echo "- Environment stored in: /workspace/.devcontainer.secrets/env-vars/.claude-code-env"
     echo "- Configuration persists across container rebuilds"
     echo "- Automatically loaded in new terminals via .bashrc"
     echo
@@ -242,7 +242,7 @@ post_installation_message() {
     echo "- claude --dangerously-skip-permissions  # Auto-approve (use with caution)"
     echo
     echo "🎨 Customization:"
-    echo "- Environment: ~/.claude-code-env (symlink to /workspace/topsecret/env-vars/)"
+    echo "- Environment: ~/.claude-code-env (symlink to /workspace/.devcontainer.secrets/env-vars/)"
     echo "- Project skills: /workspace/.claude/skills/"
     echo "- Configuration script: .devcontainer/additions/config-ai-claudecode.sh"
     echo
@@ -268,13 +268,13 @@ post_uninstallation_message() {
     echo "- ✅ Claude Code npm package"
     echo
     echo "📋 What was preserved:"
-    echo "- ✅ Environment configuration in /workspace/topsecret/env-vars/"
+    echo "- ✅ Environment configuration in /workspace/.devcontainer.secrets/env-vars/"
     echo "- ✅ Project skills in /workspace/.claude/skills/"
     echo "- ✅ Configuration and settings"
     echo
     echo "🧹 Complete Cleanup (optional):"
     echo "To remove all Claude Code data, run:"
-    echo "  rm -rf /workspace/topsecret/env-vars/.claude-code-env"
+    echo "  rm -rf /workspace/.devcontainer.secrets/env-vars/.claude-code-env"
     echo "  rm -rf /workspace/.claude/"
     echo
     echo "⚠️  Warning: This will delete your environment configuration!"

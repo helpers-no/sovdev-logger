@@ -341,12 +341,12 @@ bash .devcontainer/additions/config-nginx.sh --verify
 **What it does**:
 1. Prompts for backend URL (default: `host.docker.internal`)
 2. Generates proxy configs from templates
-3. Saves configuration to `/workspace/topsecret/env-vars/.nginx-backend-url`
+3. Saves configuration to `/workspace/.devcontainer.secrets/env-vars/.nginx-backend-url`
 4. Creates symlink to home directory
 5. Starts nginx with new configuration
 
 **Persistence**:
-- Configuration stored in `/workspace/topsecret/` (persists across rebuilds)
+- Configuration stored in `/workspace/.devcontainer.secrets/` (persists across rebuilds)
 - Automatically restored on container startup via `--verify` flag
 
 ### Automatic Startup
@@ -356,7 +356,7 @@ Nginx is automatically configured and started during container creation:
 **Process**:
 1. `project-installs.sh` runs `restore_all_configurations()`
 2. Calls `config-nginx.sh --verify` (silent mode)
-3. Restores backend URL from topsecret if exists
+3. Restores backend URL from .devcontainer.secrets if exists
 4. Generates proxy configurations
 5. `install-nginx.sh` auto-installs nginx if needed
 6. `start-nginx.sh` starts nginx with generated config

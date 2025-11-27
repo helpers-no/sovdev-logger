@@ -18,7 +18,7 @@ When the user is actively developing sovdev-logger and wants to test changes, gu
 
 **See:** `.claude/skills/_SHARED.md` → "Directory Restrictions"
 
-**Summary:** Only use `specification/` and `{language}/` directories. Do NOT access `terchris/` or `topsecret/`.
+**Summary:** Only use `specification/` and `{language}/` directories. Do NOT access `terchris/` or `.devcontainer.secrets/`.
 
 ## 📚 Authoritative Documentation
 

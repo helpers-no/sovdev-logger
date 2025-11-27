@@ -75,8 +75,8 @@
 set -euo pipefail
 
 # Configure kubectl to use kubeconfig from workspace (devcontainer)
-if [ -f "/workspace/topsecret/.kube/config" ]; then
-    export KUBECONFIG="/workspace/topsecret/.kube/config"
+if [ -f "/workspace/.devcontainer.secrets/.kube/config" ]; then
+    export KUBECONFIG="/workspace/.devcontainer.secrets/.kube/config"
 elif [ -f "$HOME/.kube/config" ]; then
     export KUBECONFIG="$HOME/.kube/config"
 fi
