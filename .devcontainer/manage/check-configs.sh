@@ -1,5 +1,5 @@
 #!/bin/bash
-# File: .devcontainer/additions/check-required-configs.sh
+# File: .devcontainer/manage/check-configs.sh
 # Purpose: Check and configure all required prerequisites
 # Usage: bash check-required-configs.sh
 #
@@ -23,12 +23,21 @@ log_success() { echo -e "${GREEN}✅ $1${NC}"; }
 log_error() { echo -e "${RED}❌ $1${NC}"; }
 log_warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 
-# Script directory
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# Get script directory and calculate paths
+# Resolve symlinks to get actual script location
+SCRIPT_SOURCE="$0"
+while [ -L "$SCRIPT_SOURCE" ]; do
+    SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+    SCRIPT_SOURCE="$(readlink "$SCRIPT_SOURCE")"
+    [[ $SCRIPT_SOURCE != /* ]] && SCRIPT_SOURCE="$SCRIPT_DIR/$SCRIPT_SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+DEVCONTAINER_DIR="$(dirname "$SCRIPT_DIR")"
+ADDITIONS_DIR="$DEVCONTAINER_DIR/additions"
 
 # Source component scanner library
 # shellcheck source=/dev/null
-source "${SCRIPT_DIR}/lib/component-scanner.sh"
+source "${ADDITIONS_DIR}/lib/component-scanner.sh"
 
 #------------------------------------------------------------------------------
 # Configuration Discovery

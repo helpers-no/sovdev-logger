@@ -18,16 +18,26 @@ set -e
 # Script metadata
 SCRIPT_VERSION="3.4.0"
 SCRIPT_NAME="DevContainer Setup"
-DEVCONTAINER_DIR=".devcontainer"
+
+# Get script directory and calculate absolute paths
+# Resolve symlinks to get actual script location
+SCRIPT_SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SCRIPT_SOURCE" ]; do
+    SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+    SCRIPT_SOURCE="$(readlink "$SCRIPT_SOURCE")"
+    [[ $SCRIPT_SOURCE != /* ]] && SCRIPT_SOURCE="$SCRIPT_DIR/$SCRIPT_SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+DEVCONTAINER_DIR="$(dirname "$SCRIPT_DIR")"
 ADDITIONS_DIR="$DEVCONTAINER_DIR/additions"
-DEV_TEMPLATE_SCRIPT="$DEVCONTAINER_DIR/dev/dev-template.sh"
+DEV_TEMPLATE_SCRIPT="$SCRIPT_DIR/dev-template.sh"
 
 # Source component scanner library
-LIB_DIR="$DEVCONTAINER_DIR/additions/lib"
+LIB_DIR="$ADDITIONS_DIR/lib"
 if [[ -f "$LIB_DIR/component-scanner.sh" ]]; then
     source "$LIB_DIR/component-scanner.sh"
 else
-    echo "Error: component-scanner.sh library not found" >&2
+    echo "Error: component-scanner.sh library not found at $LIB_DIR" >&2
     exit 1
 fi
 
