@@ -96,6 +96,15 @@ if [ -f "$HOST_INFO_FILE" ]; then
     source "$HOST_INFO_FILE"
 fi
 
+# Nginx backend configuration (for NGINX_OTEL_PORT)
+NGINX_CONFIG_FILE="/home/vscode/.nginx-backend-config"
+
+# Source nginx config file automatically if it exists
+if [ -f "$NGINX_CONFIG_FILE" ]; then
+    # shellcheck source=/dev/null
+    source "$NGINX_CONFIG_FILE"
+fi
+
 #------------------------------------------------------------------------------
 # Helper Functions
 #------------------------------------------------------------------------------

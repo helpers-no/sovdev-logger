@@ -19,7 +19,7 @@
 SCRIPT_NAME="OTel Collector"
 SCRIPT_DESCRIPTION="Install OpenTelemetry Collector for devcontainer monitoring when connected to our network"
 SCRIPT_CATEGORY="INFRA_CONFIG"
-CHECK_INSTALLED_COMMAND="([ -f /usr/bin/otelcol-contrib ] || command -v otelcol-contrib >/dev/null 2>&1) && ([ -f /usr/local/bin/script_exporter ] || command -v script_exporter >/dev/null 2>&1) && [ -f /etc/supervisor/conf.d/otel-script-exporter.conf ] && [ -f /etc/supervisor/conf.d/otel-lifecycle.conf ] && [ -f /etc/supervisor/conf.d/otel-metrics.conf ]"
+CHECK_INSTALLED_COMMAND="([ -f /usr/bin/otelcol-contrib ] || command -v otelcol-contrib >/dev/null 2>&1) && ([ -f /usr/local/bin/script_exporter ] || command -v script_exporter >/dev/null 2>&1)"
 PREREQUISITE_CONFIGS="config-devcontainer-identity.sh config-nginx.sh"
 
 #------------------------------------------------------------------------------
@@ -267,12 +267,12 @@ remove_supervisor_configs() {
     # Stop services if supervisord is running
     if pgrep supervisord > /dev/null 2>&1; then
         echo "   Stopping OTel services..."
-        sudo supervisorctl stop otel-script-exporter otel-lifecycle otel-metrics 2>/dev/null || true
+        sudo supervisorctl stop otel-monitoring otel-script-exporter otel-lifecycle otel-metrics 2>/dev/null || true
         sleep 2
     fi
 
-    # Remove supervisor config files
-    local configs=("otel-script-exporter.conf" "otel-lifecycle.conf" "otel-metrics.conf")
+    # Remove supervisor config files (both old individual configs and new unified config)
+    local configs=("otel-script-exporter.conf" "otel-lifecycle.conf" "otel-metrics.conf" "auto-otel-monitoring.conf")
     for config in "${configs[@]}"; do
         local config_path="/etc/supervisor/conf.d/${config}"
         if [ -f "$config_path" ]; then
@@ -281,11 +281,11 @@ remove_supervisor_configs() {
         fi
     done
 
-    # Remove from enabled services
+    # Remove from enabled services (both old and new entries)
     local enabled_services_conf="/workspace/.devcontainer.extend/enabled-services.conf"
     if [ -f "$enabled_services_conf" ]; then
         echo "   Removing from enabled services..."
-        for service in "otel-script-exporter" "otel-lifecycle" "otel-metrics"; do
+        for service in "otel-monitoring" "otel-script-exporter" "otel-lifecycle" "otel-metrics"; do
             sed -i "/^${service}$/d" "$enabled_services_conf" 2>/dev/null || true
         done
     fi
@@ -477,51 +477,32 @@ check_identity() {
 #------------------------------------------------------------------------------
 
 # Generate OTEL collector configs from templates
-generate_otel_configs() {
+# NOTE: OTEL configs now use native environment variable expansion (${env:VAR})
+# No generation needed - OTEL Collector reads environment variables directly at runtime
+#
+# Required environment variables (sourced automatically by service-otel-monitoring.sh):
+#   - DEVELOPER_ID, DEVELOPER_EMAIL, PROJECT_NAME, TS_HOSTNAME (from ~/.devcontainer-identity)
+#   - HOST_OS, HOST_USER, HOST_HOSTNAME, HOST_DOMAIN, HOST_CPU_ARCH (from topsecret/env-vars/.host-info)
+#   - NGINX_OTEL_PORT (from ~/.nginx-backend-config)
+validate_otel_configs() {
     echo ""
-    echo "📝 Generating OTEL collector configurations from templates..."
+    echo "✅ OTEL configs use native environment variable expansion - no generation needed"
     echo ""
-
-    # Load nginx backend configuration
-    local NGINX_CONFIG_FILE="$HOME/.nginx-backend-config"
-    if [ ! -f "$NGINX_CONFIG_FILE" ]; then
-        log_error "Nginx backend config not found: $NGINX_CONFIG_FILE"
-        log_error "Run: bash /workspace/.devcontainer/additions/config-nginx.sh"
-        return 1
-    fi
-
-    # shellcheck source=/dev/null
-    source "$NGINX_CONFIG_FILE"
-
-    if [ -z "${NGINX_OTEL_PORT:-}" ]; then
-        log_error "NGINX_OTEL_PORT not set in $NGINX_CONFIG_FILE"
-        return 1
-    fi
 
     local OTEL_DIR="/workspace/.devcontainer/additions/otel"
 
-    # Generate lifecycle config
-    if [ -f "$OTEL_DIR/otelcol-lifecycle-config.yaml.template" ]; then
-        sed "s|NGINX_OTEL_PORT|${NGINX_OTEL_PORT}|g" \
-            "$OTEL_DIR/otelcol-lifecycle-config.yaml.template" > \
-            "$OTEL_DIR/otelcol-lifecycle-config.yaml"
-        log_success "Generated otelcol-lifecycle-config.yaml (port: $NGINX_OTEL_PORT)"
-    else
-        log_warning "Template not found: otelcol-lifecycle-config.yaml.template"
+    # Verify config files exist
+    if [ ! -f "$OTEL_DIR/otelcol-lifecycle-config.yaml" ]; then
+        log_error "Lifecycle config not found: $OTEL_DIR/otelcol-lifecycle-config.yaml"
+        return 1
     fi
 
-    # Generate metrics config
-    if [ -f "$OTEL_DIR/otelcol-metrics-config.yaml.template" ]; then
-        sed "s|NGINX_OTEL_PORT|${NGINX_OTEL_PORT}|g" \
-            "$OTEL_DIR/otelcol-metrics-config.yaml.template" > \
-            "$OTEL_DIR/otelcol-metrics-config.yaml"
-        log_success "Generated otelcol-metrics-config.yaml (port: $NGINX_OTEL_PORT)"
-    else
-        log_warning "Template not found: otelcol-metrics-config.yaml.template"
+    if [ ! -f "$OTEL_DIR/otelcol-metrics-config.yaml" ]; then
+        log_error "Metrics config not found: $OTEL_DIR/otelcol-metrics-config.yaml"
+        return 1
     fi
 
-    echo ""
-    log_success "OTEL configs generated - routing through nginx on port $NGINX_OTEL_PORT"
+    log_success "OTEL configuration files verified"
     return 0
 }
 
@@ -544,86 +525,14 @@ generate_supervisor_configs() {
     # Set default for TS_HOSTNAME if not present (optional variable)
     TS_HOSTNAME="${TS_HOSTNAME:-unknown}"
 
-    # Config paths
-    local supervisor_conf_dir="/etc/supervisor/conf.d"
-    local script_exporter_conf="${supervisor_conf_dir}/otel-script-exporter.conf"
-    local lifecycle_conf="${supervisor_conf_dir}/otel-lifecycle.conf"
-    local metrics_conf="${supervisor_conf_dir}/otel-metrics.conf"
-
-    # 1. Generate script-exporter config (base service, no dependencies)
-    echo "   Creating: otel-script-exporter.conf"
-    sudo tee "$script_exporter_conf" > /dev/null << EOF
-# OpenTelemetry script_exporter Service
-# Auto-generated by install-otel-monitoring.sh
-# Exposes custom devcontainer metrics via Prometheus format
-
-[program:otel-script-exporter]
-command=/usr/local/bin/script_exporter --config.files=/workspace/.devcontainer/additions/otel/script-exporter-config.yaml
-autostart=true
-autorestart=true
-priority=30
-user=vscode
-stdout_logfile=/var/log/supervisor/otel-script-exporter.log
-stderr_logfile=/var/log/supervisor/otel-script-exporter-error.log
-stdout_logfile_maxbytes=10MB
-stderr_logfile_maxbytes=10MB
-startsecs=5
-stopwaitsecs=10
-EOF
-
-    # 2. Generate otel-lifecycle config (depends on script-exporter)
-    echo "   Creating: otel-lifecycle.conf"
-    sudo tee "$lifecycle_conf" > /dev/null << EOF
-# OpenTelemetry Lifecycle Collector Service
-# Auto-generated by install-otel-monitoring.sh
-# Collects logs, events, and lifecycle telemetry
-
-[program:otel-lifecycle]
-command=/usr/bin/otelcol-contrib --config=/workspace/.devcontainer/additions/otel/otelcol-lifecycle-config.yaml
-autostart=true
-autorestart=true
-priority=31
-user=vscode
-environment=DEVELOPER_ID="${DEVELOPER_ID:-}",DEVELOPER_EMAIL="${DEVELOPER_EMAIL:-}",PROJECT_NAME="${PROJECT_NAME:-}",TS_HOSTNAME="${TS_HOSTNAME}"
-stdout_logfile=/var/log/supervisor/otel-lifecycle.log
-stderr_logfile=/var/log/supervisor/otel-lifecycle-error.log
-stdout_logfile_maxbytes=10MB
-stderr_logfile_maxbytes=10MB
-startsecs=5
-stopwaitsecs=10
-depends_on=otel-script-exporter
-EOF
-
-    # 3. Generate otel-metrics config (depends on script-exporter)
-    echo "   Creating: otel-metrics.conf"
-    sudo tee "$metrics_conf" > /dev/null << EOF
-# OpenTelemetry Metrics Collector Service
-# Auto-generated by install-otel-monitoring.sh
-# Collects system metrics (CPU, memory, disk, network)
-
-[program:otel-metrics]
-command=/usr/bin/otelcol-contrib --config=/workspace/.devcontainer/additions/otel/otelcol-metrics-config.yaml
-autostart=true
-autorestart=true
-priority=32
-user=vscode
-environment=DEVELOPER_ID="${DEVELOPER_ID:-}",DEVELOPER_EMAIL="${DEVELOPER_EMAIL:-}",PROJECT_NAME="${PROJECT_NAME:-}",TS_HOSTNAME="${TS_HOSTNAME}"
-stdout_logfile=/var/log/supervisor/otel-metrics.log
-stderr_logfile=/var/log/supervisor/otel-metrics-error.log
-stdout_logfile_maxbytes=10MB
-stderr_logfile_maxbytes=10MB
-startsecs=5
-stopwaitsecs=10
-depends_on=otel-script-exporter
-EOF
-
     echo ""
-    echo "✅ Supervisord configuration generated successfully"
+    echo "✅ Binaries installed successfully"
     echo ""
-    echo "   Services configured:"
-    echo "   • otel-script-exporter (priority 30) - Custom metrics exporter"
-    echo "   • otel-lifecycle (priority 31) - Lifecycle & logs collector"
-    echo "   • otel-metrics (priority 32) - System metrics collector"
+    echo "   OTEL monitoring will be managed by service-otel-monitoring.sh"
+    echo "   This unified service manages all three components:"
+    echo "   • script_exporter (port 9469) - Custom metrics exporter"
+    echo "   • otel-lifecycle (port 4318) - Lifecycle & logs collector"
+    echo "   • otel-metrics - System metrics collector"
     echo ""
 
     # Add to enabled services
@@ -635,30 +544,30 @@ EOF
         cat > "$enabled_services_conf" << 'EOFCONF'
 # Enabled Services for Auto-Start
 # Services listed here will automatically start when the container starts
-# Format: One service identifier per line (matches program name in supervisor config)
+# Format: One service identifier per line (matches SERVICE_NAME in lowercase-with-dashes)
 #
 # Management:
 #   dev-services enable <service>   - Enable a service
 #   dev-services disable <service>  - Disable a service
 #   dev-services list-enabled       - Show enabled services
+#
+# Note: Services auto-enable themselves when first started successfully
 
 EOFCONF
     fi
 
-    # Add OTel services if not already present
-    for service in "otel-script-exporter" "otel-lifecycle" "otel-metrics"; do
-        if ! grep -q "^${service}$" "$enabled_services_conf" 2>/dev/null; then
-            echo "$service" >> "$enabled_services_conf"
-            echo "   ✅ Auto-enabled: $service"
-        fi
-    done
+    # Add otel-monitoring service (unified service that manages all components)
+    if ! grep -q "^otel-monitoring$" "$enabled_services_conf" 2>/dev/null; then
+        echo "otel-monitoring" >> "$enabled_services_conf"
+        echo "   ✅ Auto-enabled: otel-monitoring"
+    fi
 
     echo ""
     echo "📋 Management commands:"
-    echo "   dev-services status                  # Show service status"
-    echo "   dev-services start                   # Start all services"
-    echo "   dev-services restart otel-lifecycle  # Restart specific service"
-    echo "   dev-services logs otel-metrics       # View service logs"
+    echo "   bash /workspace/.devcontainer/additions/service-otel-monitoring.sh --status   # Show service status"
+    echo "   bash /workspace/.devcontainer/additions/service-otel-monitoring.sh --start    # Start all components"
+    echo "   bash /workspace/.devcontainer/additions/service-otel-monitoring.sh --restart  # Restart all components"
+    echo "   bash /workspace/.devcontainer/additions/service-otel-monitoring.sh --logs     # View service logs"
     echo ""
 }
 
@@ -694,9 +603,9 @@ post_installation_message() {
     echo "   The services will auto-start on your next shell session."
     echo
     echo "3. Manage services:"
-    echo "   dev-services status                  # Show service status"
-    echo "   dev-services restart otel-lifecycle  # Restart specific service"
-    echo "   dev-services logs otel-metrics       # View service logs"
+    echo "   bash .devcontainer/additions/service-otel-monitoring.sh --status   # Show service status"
+    echo "   bash .devcontainer/additions/service-otel-monitoring.sh --restart  # Restart all components"
+    echo "   bash .devcontainer/additions/service-otel-monitoring.sh --logs     # View service logs"
     echo
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "📚 Documentation:"
@@ -705,7 +614,7 @@ post_installation_message() {
     echo "• Main documentation: $OTEL_CONFIG_DIR/README-otel.md"
     echo "• Grafana dashboards: $OTEL_CONFIG_DIR/grafana/"
     echo "• Configuration files: $OTEL_CONFIG_DIR/"
-    echo "• Supervisor configs: /etc/supervisor/conf.d/otel-*.conf"
+    echo "• Service script: /workspace/.devcontainer/additions/service-otel-monitoring.sh"
     echo
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "ℹ️  Note:"
@@ -798,11 +707,11 @@ else
     install_script_exporter || exit 1
     verify_installations
 
-    # Check prerequisites before generating configs
+    # Check prerequisites before validating configs
     check_identity || exit 1
 
-    # Generate OTEL collector configs from templates (with nginx port)
-    generate_otel_configs || exit 1
+    # Validate OTEL collector configs exist (they use native env var expansion)
+    validate_otel_configs || exit 1
 
     # Generate supervisord configuration for the services
     generate_supervisor_configs

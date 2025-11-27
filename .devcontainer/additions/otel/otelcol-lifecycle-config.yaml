@@ -2,11 +2,11 @@
 # OpenTelemetry Collector Configuration for Devcontainer Monitoring
 # Purpose: Tracks developer activity, sends logs and system metrics to k8s observability stack
 #
-# Required environment variables:
-#   DEVELOPER_ID       - Unique developer identifier
-#   DEVELOPER_EMAIL    - Developer email address
-#   PROJECT_NAME       - Project identifier
-#   TS_HOSTNAME        - Tailscale hostname
+# This config uses OTEL's native environment variable expansion: ${env:VARIABLE_NAME}
+# Variables are automatically sourced by service-otel-monitoring.sh from:
+#   - ~/.devcontainer-identity (DEVELOPER_ID, DEVELOPER_EMAIL, PROJECT_NAME, TS_HOSTNAME)
+#   - /workspace/topsecret/env-vars/.host-info (HOST_OS, HOST_USER, HOST_HOSTNAME, HOST_DOMAIN, HOST_CPU_ARCH)
+#   - ~/.nginx-backend-config (NGINX_OTEL_PORT)
 
 receivers:
   # OTLP receiver - receives telemetry from applications
@@ -28,15 +28,15 @@ processors:
     attributes:
       # Developer identity (using underscores to match Loki ingestion format)
       - key: developer_id
-        value: ${DEVELOPER_ID}
+        value: ${env:DEVELOPER_ID}
         action: upsert
       - key: developer_email
-        value: ${DEVELOPER_EMAIL}
+        value: ${env:DEVELOPER_EMAIL}
         action: upsert
 
       # Project identity
       - key: project_name
-        value: ${PROJECT_NAME}
+        value: ${env:PROJECT_NAME}
         action: upsert
 
       # Service identification (using service.name per OpenTelemetry spec)
@@ -54,7 +54,24 @@ processors:
 
       # Host identification
       - key: host_name
-        value: ${TS_HOSTNAME}
+        value: ${env:TS_HOSTNAME}
+        action: upsert
+
+      # Host machine information (from config-host-info.sh)
+      - key: host.os
+        value: ${env:HOST_OS}
+        action: upsert
+      - key: host.user
+        value: ${env:HOST_USER}
+        action: upsert
+      - key: host.hostname
+        value: ${env:HOST_HOSTNAME}
+        action: upsert
+      - key: host.domain
+        value: ${env:HOST_DOMAIN}
+        action: upsert
+      - key: host.cpu.arch
+        value: ${env:HOST_CPU_ARCH}
         action: upsert
 
   # Memory limiter - prevents OOM by limiting memory usage
@@ -66,10 +83,10 @@ processors:
 exporters:
   # OTLP HTTP exporter - sends telemetry to k8s cluster via nginx proxy
   otlphttp:
-    endpoint: http://localhost:8081
+    endpoint: http://localhost:${env:NGINX_OTEL_PORT}
     headers:
       Host: otel.localhost
-    # Note: Routes through nginx reverse proxy on localhost:8081
+    # Note: Routes through nginx reverse proxy on localhost:${env:NGINX_OTEL_PORT}
     # Nginx forwards to backend infrastructure with Host header for Traefik routing
     compression: gzip
     timeout: 10s

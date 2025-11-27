@@ -530,13 +530,14 @@ kubectl rollout restart deployment grafana -n monitoring
 ```
 .devcontainer/additions/
 ├── config-devcontainer-identity.sh        # Developer: Configure identity (Step 2 of onboarding)
+├── config-host-info.sh                    # Auto-detect host platform info (OS, user, architecture)
 ├── start-otel-monitoring.sh              # Start all monitoring services (lifecycle + metrics collectors)
 ├── stop-otel-monitoring.sh               # Stop all monitoring services
 │
 └── otel/
     ├── README-otel.md                    # This file
-    ├── otelcol-lifecycle-config.yaml     # Lifecycle collector config (port 4318)
-    ├── otelcol-metrics-config.yaml       # Metrics collector config
+    ├── otelcol-lifecycle-config.yaml     # Lifecycle collector config (uses ${env:VAR} expansion)
+    ├── otelcol-metrics-config.yaml       # Metrics collector config (uses ${env:VAR} expansion)
     ├── script-exporter-config.yaml       # Script exporter configuration (port 9469)
     ├── install-otel-monitoring.sh        # Install OTel Collector (use --uninstall to remove)
     │
@@ -546,13 +547,33 @@ kubectl rollout restart deployment grafana -n monitoring
     ├── grafana/                          # Grafana dashboard definitions
     │   ├── devcontainer-overview.yaml       # Developer activity dashboard
     │   ├── devcontainer-resource-monitor.yaml # Resource monitoring dashboard
-    │   └── devcontainer-configuration-info.yaml # Component info dashboard
+    │   ├── devcontainer-configuration-info.yaml # Component info dashboard
+    │   └── host-platform-overview.yaml      # Host platform distribution dashboard
     │
     └── scripts/                          # Helper scripts
         ├── devcontainer-info.sh          # Generate component metrics
         ├── metrics-devcontainer.sh       # Generate cgroup metrics
         └── send-event-notification.sh    # Send lifecycle events
 ```
+
+### Environment Variable Expansion
+
+The OTEL collector configurations use **native OTEL environment variable expansion** with the `${env:VARIABLE_NAME}` syntax:
+
+**How it works**:
+1. Config files use `${env:DEVELOPER_ID}`, `${env:HOST_OS}`, etc.
+2. OTEL Collector reads environment variables directly at runtime
+3. No file generation needed - configs work as-is
+4. Variables sourced automatically by `service-otel-monitoring.sh` from:
+   - `~/.devcontainer-identity` (developer identity)
+   - `/workspace/topsecret/env-vars/.host-info` (host platform info)
+   - `~/.nginx-backend-config` (infrastructure settings)
+
+**Benefits**:
+1. Config files are committed to git (not templates)
+2. Each developer's values remain private (in environment files)
+3. No generated files to ignore
+4. Simpler, cleaner architecture
 
 ---
 
@@ -637,6 +658,36 @@ TS_HOSTNAME="your-hostname"
 ```
 
 These are used to tag all telemetry data for multi-tenant environments.
+
+### Host Platform Information
+
+The system automatically captures host machine information for platform visibility:
+
+**Automatically Detected**:
+- `HOST_OS`: macOS, Linux, or Windows
+- `HOST_USER`: Username from host environment
+- `HOST_CPU_ARCH`: arm64 (Apple Silicon/ARM) or amd64 (Intel/AMD)
+- `HOST_HOSTNAME`: Computer name (Windows only, "unknown" for Mac/Linux)
+- `HOST_DOMAIN`: Corporate domain (Windows only, "none" for others)
+
+**How it works**:
+1. Environment variables passed at container build time via `devcontainer.json`
+2. `config-host-info.sh` auto-runs on container rebuild to detect platform
+3. Info saved to `/workspace/topsecret/env-vars/.host-info`
+4. OTEL collectors source this file and include as resource attributes
+5. Grafana dashboards visualize platform distribution
+
+**View host info**:
+```bash
+cat /workspace/topsecret/env-vars/.host-info
+```
+
+**Re-detect host info**:
+```bash
+bash /workspace/.devcontainer/additions/config-host-info.sh
+```
+
+For complete documentation, see [Host Platform Monitoring Documentation](../../docs/host-platform-monitoring.md).
 
 ### Collector Configuration
 
@@ -827,7 +878,6 @@ grep -A5 "collection_interval" /workspace/.devcontainer/additions/otel/otelcol-m
 2. **Reduce hostmetrics scrapers**: Comment out unused scrapers (cpu, disk, memory, network, filesystem)
 3. **Adjust batch processor**: Increase `timeout` in processor configuration to batch more data
 
----
 
 ## Advanced Usage
 
