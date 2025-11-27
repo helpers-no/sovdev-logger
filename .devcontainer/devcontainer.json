@@ -33,7 +33,6 @@
             "extensions": [
                 "ms-vscode.azure-account",
                 "ms-vscode.azurecli",
-                "ms-vscode.powershell",
                 "yzhang.markdown-all-in-one",
                 "bierner.markdown-mermaid",
                 "redhat.vscode-yaml",
