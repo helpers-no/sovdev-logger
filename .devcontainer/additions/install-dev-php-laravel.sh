@@ -1,12 +1,7 @@
 #!/bin/bash
 # file: .devcontainer/additions/install-dev-php-laravel.sh
 #
-# Usage: ./install-dev-php-laravel.sh [options]
-#
-# Options:
-#   --debug     : Enable debug output for troubleshooting
-#   --uninstall : Remove installed components instead of installing them
-#   --force     : Force installation/uninstallation even if there are dependencies
+# For usage information, run: ./install-dev-php-laravel.sh --help
 #
 #------------------------------------------------------------------------------
 # CONFIGURATION - Modify this section for each new script
@@ -18,6 +13,11 @@ SCRIPT_NAME="PHP Laravel Development Tools"
 SCRIPT_DESCRIPTION="Installs PHP 8.4, Composer, Laravel installer, and sets up Laravel development environment"
 SCRIPT_CATEGORY="LANGUAGE_DEV"
 CHECK_INSTALLED_COMMAND="([ -f /usr/bin/php ] || command -v php >/dev/null 2>&1) && ([ -f /usr/local/bin/composer ] || command -v composer >/dev/null 2>&1) && ([ -f $HOME/.composer/vendor/bin/laravel ] || command -v laravel >/dev/null 2>&1)"
+
+# Custom usage text for --help
+SCRIPT_USAGE="  $(basename "$0")              # Install
+  $(basename "$0") --help       # Show this help
+  $(basename "$0") --uninstall  # Uninstall"
 
 #------------------------------------------------------------------------------
 

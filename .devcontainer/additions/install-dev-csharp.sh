@@ -1,12 +1,7 @@
 #!/bin/bash
 # file: .devcontainer/additions/install-dev-csharp.sh
 #
-# Usage: ./install-dev-csharp.sh [options]
-#
-# Options:
-#   --debug     : Enable debug output for troubleshooting
-#   --uninstall : Remove installed components instead of installing them
-#   --force     : Force installation/uninstallation even if there are dependencies
+# For usage information, run: ./install-dev-csharp.sh --help
 #
 #------------------------------------------------------------------------------
 # CONFIGURATION - Modify this section for each new script
@@ -18,6 +13,11 @@ SCRIPT_NAME="C# Development Tools"
 SCRIPT_DESCRIPTION="Complete .NET 8.0 development environment with Azure Functions, Bicep IaC, storage emulation, and VS Code extensions"
 SCRIPT_CATEGORY="LANGUAGE_DEV"
 CHECK_INSTALLED_COMMAND="[ -f $HOME/.dotnet/dotnet ] || [ -f /usr/bin/dotnet ] || command -v dotnet >/dev/null 2>&1"
+
+# Custom usage text for --help
+SCRIPT_USAGE="  $(basename "$0")              # Install
+  $(basename "$0") --help       # Show this help
+  $(basename "$0") --uninstall  # Uninstall"
 
 #------------------------------------------------------------------------------
 

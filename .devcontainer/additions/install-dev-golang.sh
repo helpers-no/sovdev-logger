@@ -1,19 +1,7 @@
 #!/bin/bash
 # file: .devcontainer/additions/install-dev-golang.sh
 #
-# Usage: ./install-dev-golang.sh [options] [--version <go_version>]
-#
-# Options:
-#   --debug     : Enable debug output for troubleshooting
-#   --uninstall : Remove installed components instead of installing them
-#   --force     : Force installation/uninstallation
-#   --version X.Y.Z : Install a specific Go version (e.g., 1.21.0)
-#                     Defaults to a predefined stable version if not specified.
-#
-# Examples:
-#   ./install-dev-golang.sh
-#   ./install-dev-golang.sh --version 1.21.0
-#   ./install-dev-golang.sh --version 1.20.0 --uninstall
+# For usage information, run: ./install-dev-golang.sh --help
 #
 #------------------------------------------------------------------------------
 # CONFIGURATION - Modify this section for the Go script

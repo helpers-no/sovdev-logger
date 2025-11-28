@@ -1,12 +1,7 @@
 #!/bin/bash
 # file: .devcontainer/additions/install-dev-typescript.sh
 #
-# Usage: ./install-dev-typescript.sh [options]
-#
-# Options:
-#   --debug     : Enable debug output for troubleshooting
-#   --uninstall : Remove installed components instead of installing them
-#   --force     : Force installation/uninstallation even if there are dependencies
+# For usage information, run: ./install-dev-typescript.sh --help
 #
 #------------------------------------------------------------------------------
 # CONFIGURATION - Modify this section for each new script
@@ -18,6 +13,11 @@ SCRIPT_NAME="TypeScript Development Tools"
 SCRIPT_DESCRIPTION="Installs Node.js LTS, npm, TypeScript, and essential development tools"
 SCRIPT_CATEGORY="LANGUAGE_DEV"
 CHECK_INSTALLED_COMMAND="command -v tsc >/dev/null 2>&1 || (test -f ~/.npm-global/bin/tsc || npm list -g --depth=0 2>/dev/null | grep -q typescript)"
+
+# Custom usage text for --help
+SCRIPT_USAGE="  $(basename "$0")              # Install
+  $(basename "$0") --help       # Show this help
+  $(basename "$0") --uninstall  # Uninstall"
 
 #------------------------------------------------------------------------------
 

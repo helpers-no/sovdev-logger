@@ -1,19 +1,7 @@
 #!/bin/bash
 # file: .devcontainer/additions/install-dev-java.sh
 #
-# Usage: ./install-dev-java.sh [options] [--version <java_version>]
-#
-# Options:
-#   --debug     : Enable debug output for troubleshooting
-#   --uninstall : Remove installed components instead of installing them
-#   --force     : Force installation/uninstallation
-#   --version X : Install a specific Java version (e.g., 11, 17, 21)
-#                 Defaults to a predefined stable version if not specified.
-#
-# Examples:
-#   ./install-dev-java.sh
-#   ./install-dev-java.sh --version 17
-#   ./install-dev-java.sh --version 11 --uninstall
+# For usage information, run: ./install-dev-java.sh --help
 #
 #------------------------------------------------------------------------------
 # CONFIGURATION - Modify this section for the Java script
