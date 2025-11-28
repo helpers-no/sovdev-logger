@@ -52,7 +52,9 @@
       "Bash(then echo \"✅ Git will ignore .devcontainer.secrets/\")",
       "Bash(else echo \"❌ FAIL: Git does NOT ignore .devcontainer.secrets/\")",
       "Bash(fi)",
-      "Bash(terchris/refactoring-plan/test-results/final-validation.txt)"
+      "Bash(terchris/refactoring-plan/test-results/final-validation.txt)",
+      "Bash(terchris/refactoring-plan/test-results/task3-execution.txt)",
+      "Bash(git mv:*)"
     ],
     "deny": [],
     "ask": []

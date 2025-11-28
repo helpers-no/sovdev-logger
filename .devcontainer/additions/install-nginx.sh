@@ -169,11 +169,11 @@ export UNINSTALL_MODE
 export FORCE_MODE
 
 # Source all core installation scripts
-source "$(dirname "$0")/core-install-apt.sh"
-source "$(dirname "$0")/core-install-node.sh"
-source "$(dirname "$0")/core-install-extensions.sh"
-source "$(dirname "$0")/core-install-pwsh.sh"
-source "$(dirname "$0")/core-install-python-packages.sh"
+source "${SCRIPT_DIR}/lib/core-install-apt.sh"
+source "${SCRIPT_DIR}/lib/core-install-node.sh"
+source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
+source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
+source "${SCRIPT_DIR}/lib/core-install-python-packages.sh"
 
 # Function to process installations
 process_installations() {
