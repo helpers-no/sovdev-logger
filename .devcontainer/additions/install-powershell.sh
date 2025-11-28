@@ -293,26 +293,8 @@ source "${SCRIPT_DIR}/lib/install-common.sh"
 
 # Function to process installations
 process_installations() {
-    # Process each type of package if array is not empty
-    if [ ${#SYSTEM_PACKAGES[@]} -gt 0 ]; then
-        process_system_packages "SYSTEM_PACKAGES"
-    fi
-
-    if [ ${#NODE_PACKAGES[@]} -gt 0 ]; then
-        process_node_packages "NODE_PACKAGES"
-    fi
-
-    if [ ${#PYTHON_PACKAGES[@]} -gt 0 ]; then
-        process_python_packages "PYTHON_PACKAGES"
-    fi
-
-    if [ ${#PWSH_MODULES[@]} -gt 0 ]; then
-        process_pwsh_modules "PWSH_MODULES"
-    fi
-
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        process_extensions "EXTENSIONS"
-    fi
+    # Use standard processing from lib/install-common.sh
+    process_standard_installations
 }
 
 # Function to verify installations
