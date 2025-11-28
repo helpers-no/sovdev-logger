@@ -258,17 +258,18 @@ PWSH_MODULES=(
     # No PowerShell modules needed for Laravel development
 )
 
-# Define VS Code extensions
-declare -A EXTENSIONS
-EXTENSIONS["bmewburn.vscode-intelephense-client"]="PHP Intelephense|Advanced PHP language support with IntelliSense"
-EXTENSIONS["xdebug.php-debug"]="PHP Debug|Debug PHP applications using Xdebug"
-EXTENSIONS["neilbrayfield.php-docblocker"]="PHP DocBlocker|Automatically generate PHPDoc comments"
-EXTENSIONS["ikappas.composer"]="Composer|Composer dependency manager integration"
-EXTENSIONS["mehedidracula.php-namespace-resolver"]="PHP Namespace Resolver|Auto-import and resolve PHP namespaces"
-EXTENSIONS["onecentlin.laravel-blade"]="Laravel Blade Snippets|Blade syntax highlighting and snippets"
-EXTENSIONS["ryannaddy.laravel-artisan"]="Laravel Artisan|Run Laravel Artisan commands from VS Code"
-EXTENSIONS["mtxr.sqltools"]="SQLTools|Database management and SQL query tool"
-EXTENSIONS["humao.rest-client"]="REST Client|Send HTTP requests and view responses directly in VS Code"
+# Define VS Code extensions (format: "Name (extension-id) - Description")
+EXTENSIONS=(
+    "PHP Intelephense (bmewburn.vscode-intelephense-client) - Advanced PHP language support with IntelliSense"
+    "PHP Debug (xdebug.php-debug) - Debug PHP applications using Xdebug"
+    "PHP DocBlocker (neilbrayfield.php-docblocker) - Automatically generate PHPDoc comments"
+    "Composer (ikappas.composer) - Composer dependency manager integration"
+    "PHP Namespace Resolver (mehedidracula.php-namespace-resolver) - Auto-import and resolve PHP namespaces"
+    "Laravel Blade Snippets (onecentlin.laravel-blade) - Blade syntax highlighting and snippets"
+    "Laravel Artisan (ryannaddy.laravel-artisan) - Run Laravel Artisan commands from VS Code"
+    "SQLTools (mtxr.sqltools) - Database management and SQL query tool"
+    "REST Client (humao.rest-client) - Send HTTP requests and view responses directly in VS Code"
+)
 
 # Define verification commands to run after installation
 VERIFY_COMMANDS=(
@@ -460,9 +461,16 @@ DEBUG_MODE=0
 UNINSTALL_MODE=0
 FORCE_MODE=0
 
+# Source common installation patterns library (needed for --help)
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --help)
+            show_script_help
+            exit 0
+            ;;
         --debug)
             DEBUG_MODE=1
             shift
@@ -477,7 +485,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "ERROR: Unknown option: $1" >&2
-            echo "Usage: $0 [--debug] [--uninstall] [--force]" >&2
+            echo "Usage: $0 [--help] [--debug] [--uninstall] [--force]" >&2
             echo "Description: $SCRIPT_DESCRIPTION"
             exit 1
             ;;

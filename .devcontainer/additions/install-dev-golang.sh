@@ -131,11 +131,12 @@ pre_installation_setup() {
     fi
 }
 
-# --- Define VS Code extensions for Go Development ---
-declare -A EXTENSIONS
-EXTENSIONS["golang.go"]="Go|Core Go language support"
-EXTENSIONS["premparihar.gotestexplorer"]="Go Test Explorer|Test runner and debugger"
-EXTENSIONS["zxh404.vscode-proto3"]="Protocol Buffers|Protocol Buffer support"
+# --- Define VS Code extensions for Go Development (format: "Name (extension-id) - Description") ---
+EXTENSIONS=(
+    "Go (golang.go) - Core Go language support"
+    "Go Test Explorer (premparihar.gotestexplorer) - Test runner and debugger"
+    "Protocol Buffers (zxh404.vscode-proto3) - Protocol Buffer support"
+)
 
 # --- Define verification commands ---
 VERIFY_COMMANDS=(
@@ -220,9 +221,16 @@ DEBUG_MODE=0
 UNINSTALL_MODE=0
 FORCE_MODE=0
 
+# Source common installation patterns library (needed for --help)
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --help)
+            show_script_help
+            exit 0
+            ;;
         --debug)
             DEBUG_MODE=1
             shift
@@ -246,7 +254,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Error: Unknown argument: $1" >&2
-            echo "Usage: $0 [--debug] [--uninstall] [--force] [--version X.Y.Z]"
+            echo "Usage: $0 [--help] [--debug] [--uninstall] [--force] [--version X.Y.Z]"
             exit 1
             ;;
     esac

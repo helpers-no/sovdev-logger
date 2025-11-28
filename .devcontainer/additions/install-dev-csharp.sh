@@ -214,11 +214,12 @@ NODE_PACKAGES=(
     "azurite"
 )
 
-# Define VS Code extensions
-declare -A EXTENSIONS
-EXTENSIONS["ms-dotnettools.csdevkit"]="C# Dev Kit|Complete C# development experience"
-EXTENSIONS["ms-dotnettools.csharp"]="C#|C# language support"
-EXTENSIONS["ms-dotnettools.vscode-dotnet-runtime"]="NET Runtime|.NET runtime support"
+# Define VS Code extensions (format: "Name (extension-id) - Description")
+EXTENSIONS=(
+    "C# Dev Kit (ms-dotnettools.csdevkit) - Complete C# development experience"
+    "C# (ms-dotnettools.csharp) - C# language support"
+    ".NET Runtime (ms-dotnettools.vscode-dotnet-runtime) - .NET runtime support"
+)
 
 # Define verification commands (using proper command substitution to avoid early evaluation)
 VERIFY_COMMANDS=(
@@ -361,9 +362,16 @@ DEBUG_MODE=0
 UNINSTALL_MODE=0
 FORCE_MODE=0
 
+# Source common installation patterns library (needed for --help)
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --help)
+            show_script_help
+            exit 0
+            ;;
         --debug)
             DEBUG_MODE=1
             shift
@@ -378,7 +386,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "ERROR: Unknown option: $1" >&2
-            echo "Usage: $0 [--debug] [--uninstall] [--force]" >&2
+            echo "Usage: $0 [--help] [--debug] [--uninstall] [--force]" >&2
             echo "Description: $SCRIPT_DESCRIPTION"
             exit 1
             ;;
@@ -397,8 +405,7 @@ source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
 source "${SCRIPT_DIR}/lib/core-install-python.sh"
 
-# Source common installation patterns library
-source "${SCRIPT_DIR}/lib/install-common.sh"
+# Note: lib/install-common.sh already sourced earlier (needed for --help)
 
 # Function to process installations
 process_installations() {

@@ -140,14 +140,15 @@ pre_installation_setup() {
     fi
 }
 
-# --- Define VS Code extensions for Java Development ---
-declare -A EXTENSIONS
-EXTENSIONS["redhat.java"]="Language Support for Java|Core Java language support"
-EXTENSIONS["vscjava.vscode-java-debug"]="Debugger for Java|Debugging support"
-EXTENSIONS["vscjava.vscode-java-test"]="Test Runner for Java|Test runner and debugger"
-EXTENSIONS["vscjava.vscode-maven"]="Maven for Java|Maven project support"
-EXTENSIONS["vscjava.vscode-java-dependency"]="Dependency Viewer|View and manage dependencies"
-EXTENSIONS["vscjava.vscode-java-pack"]="Extension Pack for Java|Collection of popular Java extensions"
+# --- Define VS Code extensions for Java Development (format: "Name (extension-id) - Description") ---
+EXTENSIONS=(
+    "Language Support for Java (redhat.java) - Core Java language support"
+    "Debugger for Java (vscjava.vscode-java-debug) - Debugging support"
+    "Test Runner for Java (vscjava.vscode-java-test) - Test runner and debugger"
+    "Maven for Java (vscjava.vscode-maven) - Maven project support"
+    "Dependency Viewer (vscjava.vscode-java-dependency) - View and manage dependencies"
+    "Extension Pack for Java (vscjava.vscode-java-pack) - Collection of popular Java extensions"
+)
 
 # --- Define verification commands ---
 VERIFY_COMMANDS=(
@@ -248,9 +249,16 @@ DEBUG_MODE=0
 UNINSTALL_MODE=0
 FORCE_MODE=0
 
+# Source common installation patterns library (needed for --help)
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --help)
+            show_script_help
+            exit 0
+            ;;
         --debug)
             DEBUG_MODE=1
             shift
@@ -274,7 +282,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Error: Unknown argument: $1" >&2
-            echo "Usage: $0 [--debug] [--uninstall] [--force] [--version X]"
+            echo "Usage: $0 [--help] [--debug] [--uninstall] [--force] [--version X]"
             exit 1
             ;;
     esac
