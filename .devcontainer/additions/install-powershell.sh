@@ -288,6 +288,9 @@ source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
 source "${SCRIPT_DIR}/lib/core-install-python-packages.sh"
 
+# Source common installation patterns library
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 # Function to process installations
 process_installations() {
     # Process each type of package if array is not empty
@@ -313,18 +316,8 @@ process_installations() {
 }
 
 # Function to verify installations
-verify_installations() {
-    if [ ${#VERIFY_COMMANDS[@]} -gt 0 ]; then
-        echo
-        echo "🔍 Verifying installations..."
-        for cmd in "${VERIFY_COMMANDS[@]}"; do
-            echo "Running: $cmd"
-            if ! eval "$cmd"; then
-                echo "❌ Verification failed for: $cmd"
-            fi
-        done
-    fi
-}
+# Note: Using common implementation from lib/install-common.sh (sourced above)
+# No local definition needed - library function is used directly
 
 # Main execution
 if [ "${UNINSTALL_MODE}" -eq 1 ]; then
