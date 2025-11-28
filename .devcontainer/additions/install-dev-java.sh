@@ -291,8 +291,8 @@ export FORCE_MODE
 
 # Source core installation scripts
 CORE_SCRIPT_DIR="$(dirname "$0")"
-source "${CORE_SCRIPT_DIR}/core-install-apt.sh"
-source "${CORE_SCRIPT_DIR}/core-install-extensions.sh"
+source "${CORE_SCRIPT_DIR}/lib/core-install-system.sh"
+source "${CORE_SCRIPT_DIR}/lib/core-install-extensions.sh"
 
 #------------------------------------------------------------------------------
 # HELPER FUNCTIONS

@@ -490,11 +490,11 @@ export UNINSTALL_MODE
 export FORCE_MODE
 
 # Source all core installation scripts
-source "${SCRIPT_DIR}/lib/core-install-apt.sh"
+source "${SCRIPT_DIR}/lib/core-install-system.sh"
 source "${SCRIPT_DIR}/lib/core-install-node.sh"
 source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
-source "${SCRIPT_DIR}/lib/core-install-python-packages.sh"
+source "${SCRIPT_DIR}/lib/core-install-python.sh"
 
 # Source common installation patterns library
 source "${SCRIPT_DIR}/lib/install-common.sh"
