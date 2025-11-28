@@ -1,7 +1,15 @@
 #!/bin/bash
 # File: .devcontainer/additions/lib/service-auto-enable.sh
 # Purpose: Shared library for service auto-enablement in supervisord
-# Usage: Source this file from start-*.sh scripts and call auto_enable_service()
+# Usage: Source this file from service-*.sh scripts
+#
+# Main API Functions (auto-detect SCRIPT_ID from metadata):
+#   auto_enable_service    - Enable service for auto-start (reads SCRIPT_ID)
+#   auto_disable_service   - Disable service from auto-start (reads SCRIPT_ID)
+#
+# Low-level Functions (manual ID passing):
+#   enable_service_autostart SERVICE_ID [NAME]
+#   disable_service_autostart SERVICE_ID [NAME]
 
 # Paths
 readonly AUTO_ENABLE_CONF="/workspace/.devcontainer.extend/enabled-services.conf"
@@ -54,13 +62,14 @@ enable_service_autostart() {
         cat > "$AUTO_ENABLE_CONF" << 'EOF'
 # Enabled Services for Auto-Start
 # Services listed here will automatically start when the container starts
-# Format: One service identifier per line (matches SERVICE_NAME in lowercase-with-dashes)
+# Format: One service identifier per line (matches SCRIPT_ID in service-*.sh)
 #
 # Management:
 #   dev-services enable <service>   - Enable a service
 #   dev-services disable <service>  - Disable a service
 #   dev-services list-enabled       - Show enabled services
 #
+# Each service script has SCRIPT_ID metadata (e.g., SCRIPT_ID="service-nginx")
 # Note: Services auto-enable themselves when first started successfully
 
 EOF
@@ -86,31 +95,54 @@ regenerate_supervisor_config() {
     fi
 }
 
-# Main auto-enable function - call this from start scripts
-# Args: $1 - service identifier (lowercase-with-dashes)
-#       $2 - service display name (optional, for logging)
-# Usage: auto_enable_service "otel-monitoring" "OTel Monitoring"
+#------------------------------------------------------------------------------
+# Main API Functions - Auto-detect SCRIPT_ID from caller
+#------------------------------------------------------------------------------
+
+# Enable service for auto-start (auto-detects SCRIPT_ID from metadata)
+# No parameters needed - reads SCRIPT_ID and SERVICE_SCRIPT_NAME from caller's environment
+# Usage: auto_enable_service
 auto_enable_service() {
-    local service_id="$1"
-    local service_name="${2:-$service_id}"
+    if [[ -z "$SCRIPT_ID" ]]; then
+        echo -e "${AUTO_ENABLE_YELLOW}⚠️  SCRIPT_ID not defined - cannot auto-enable service${AUTO_ENABLE_NC}"
+        return 1
+    fi
+
+    local service_name="${SERVICE_SCRIPT_NAME:-$SCRIPT_ID}"
 
     # Enable for auto-start
-    if enable_service_autostart "$service_id" "$service_name"; then
-        # Regenerate supervisor config if newly enabled
-        if ! is_auto_enabled "$service_id"; then
-            regenerate_supervisor_config
-        fi
+    if enable_service_autostart "$SCRIPT_ID" "$service_name"; then
+        # Regenerate supervisor config
+        regenerate_supervisor_config
     fi
 }
 
+# Disable service from auto-start (auto-detects SCRIPT_ID from metadata)
+# No parameters needed - reads SCRIPT_ID and SERVICE_SCRIPT_NAME from caller's environment
+# Usage: auto_disable_service
+auto_disable_service() {
+    if [[ -z "$SCRIPT_ID" ]]; then
+        echo -e "${AUTO_ENABLE_YELLOW}⚠️  SCRIPT_ID not defined - cannot auto-disable service${AUTO_ENABLE_NC}"
+        return 1
+    fi
+
+    disable_service_autostart "$SCRIPT_ID" "${SERVICE_SCRIPT_NAME:-$SCRIPT_ID}"
+}
+
 # Disable a service from auto-start
-# Args: $1 - service identifier (lowercase-with-dashes)
+# Args: $1 - service identifier (kebab-case)
+#       $2 - service display name (optional, for logging)
 disable_service_autostart() {
     local service_id="$1"
+    local service_name="${2:-$service_id}"
 
     if [[ ! -f "$AUTO_ENABLE_CONF" ]]; then
-        echo -e "${AUTO_ENABLE_YELLOW}⚠️  No enabled-services.conf found${AUTO_ENABLE_NC}"
-        return 1
+        return 0  # Nothing to disable
+    fi
+
+    # Check if not enabled
+    if ! is_auto_enabled "$service_id"; then
+        return 0  # Already disabled
     fi
 
     # Remove from config (preserve comments and other entries)
@@ -119,7 +151,7 @@ disable_service_autostart() {
     grep -v "^${service_id}$" "$AUTO_ENABLE_CONF" > "$temp_file"
     mv "$temp_file" "$AUTO_ENABLE_CONF"
 
-    echo -e "${AUTO_ENABLE_GREEN}✅ Disabled auto-start for '$service_id'${AUTO_ENABLE_NC}"
+    echo -e "${AUTO_ENABLE_GREEN}✅ Disabled auto-start for '$service_name'${AUTO_ENABLE_NC}"
 
     # Regenerate supervisor config
     regenerate_supervisor_config

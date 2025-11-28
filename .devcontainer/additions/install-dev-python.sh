@@ -1,12 +1,8 @@
 #!/bin/bash
 # file: .devcontainer/additions/install-dev-python.sh
 #
-# Usage: ./install-dev-python.sh [options]
-#
-# Options:
-#   --debug     : Enable debug output for troubleshooting
-#   --uninstall : Remove installed components instead of installing them
-#   --force     : Force installation/uninstallation even if there are dependencies
+# Installs Python development environment with pip, venv, and essential tools.
+# For usage information, run: ./install-dev-python.sh --help
 #
 #------------------------------------------------------------------------------
 # CONFIGURATION - Modify this section for each new script
@@ -14,9 +10,16 @@
 
 # Script metadata - must be at the very top of the configuration section
 SCRIPT_NAME="Python Development Tools"
+SCRIPT_ID="dev-python"
 SCRIPT_DESCRIPTION="Installs Python 3.11+, pip, venv, and essential development tools"
 SCRIPT_CATEGORY="LANGUAGE_DEV"
 CHECK_INSTALLED_COMMAND="[ -f /usr/local/bin/python3 ] || [ -f /usr/bin/python3 ] || command -v python3 >/dev/null 2>&1"
+
+# Optional: Custom usage text for --help
+SCRIPT_USAGE="  $(basename "$0")              # Install Python development environment
+  $(basename "$0") --help       # Show this help
+  $(basename "$0") --uninstall  # Uninstall Python packages (system Python remains)
+  $(basename "$0") --debug      # Install with debug output"
 
 #------------------------------------------------------------------------------
 
@@ -37,19 +40,13 @@ pre_installation_setup() {
         echo "🔧 Preparing for uninstallation..."
     else
         echo "🔧 Performing pre-installation setup..."
-        
-        # Check if Python is already installed
-        if command -v python3 >/dev/null 2>&1; then
-            echo "✅ Python is already installed (version: $(python3 --version))"
-        fi
-        
-        # Update package lists
-        sudo apt-get update -qq
+        # Note: Python likely pre-installed in devcontainer
+        echo "✅ Pre-installation setup complete"
     fi
 }
 
 # Define package arrays (remove any empty arrays that aren't needed)
-SYSTEM_PACKAGES=(
+PACKAGES_SYSTEM=(
     "python3"
     "python3-pip"
     "python3-venv"
@@ -61,11 +58,11 @@ SYSTEM_PACKAGES=(
     "libssl-dev"
 )
 
-NODE_PACKAGES=(
+PACKAGES_NODE=(
     # No Node.js packages needed for Python development
 )
 
-PYTHON_PACKAGES=(
+PACKAGES_PYTHON=(
     "pip"
     "setuptools"
     "wheel"
@@ -77,184 +74,54 @@ PYTHON_PACKAGES=(
     "mypy"
 )
 
-VSCODE_EXTENSIONS=(
-    "ms-python.python"
-    "ms-python.vscode-pylance"
-    "ms-python.black-formatter"
-    "ms-python.flake8"
-    "ms-python.mypy-type-checker"
+# Define VS Code extensions (format: "Name (extension-id) - Description")
+EXTENSIONS=(
+    "Python (ms-python.python) - Python language support"
+    "Pylance (ms-python.vscode-pylance) - Python language server"
+    "Black Formatter (ms-python.black-formatter) - Python code formatter"
+    "Flake8 (ms-python.flake8) - Python linter"
+    "Mypy (ms-python.mypy-type-checker) - Python type checker"
 )
 
 # Custom Python installation function
 install_python() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        echo "🗑️  Removing Python installation..."
-        
-        # Remove python alias if it exists
-        if grep -q "alias python=" ~/.bashrc; then
-            sed -i '/alias python=/d' ~/.bashrc
-            echo "✅ Python alias removed from ~/.bashrc"
-        fi
+        echo "⚠️  Note: Python uninstallation handled by SYSTEM_PACKAGES"
+        # Note: Aliases will remain in .bashrc (safe to leave)
         return
     fi
-    
-    # Check if Python is already installed
+
+    # Check if Python is already installed (likely in devcontainer)
     if command -v python3 >/dev/null 2>&1; then
-        local current_version=$(python3 --version | awk '{print $2}')
-        echo "✅ Python is already installed (version: ${current_version})"
-        
-        # Ensure python command points to python3
-        if ! command -v python >/dev/null 2>&1; then
-            if ! grep -q "alias python=" ~/.bashrc; then
-                echo "" >> ~/.bashrc
-                echo "# Python environment" >> ~/.bashrc
-                echo "alias python=python3" >> ~/.bashrc
-                echo "alias pip=pip3" >> ~/.bashrc
-                echo "✅ Python aliases added to ~/.bashrc"
-            fi
-        fi
-        return
-    fi
-    
-    echo "📦 Installing Python 3.11+ via apt..."
-    
-    # Try to install Python 3.11 or later
-    if command -v python3.11 >/dev/null 2>&1; then
-        echo "✅ Python 3.11 is already available"
-    elif command -v python3.12 >/dev/null 2>&1; then
-        echo "✅ Python 3.12 is already available"
+        echo "✅ Python is already installed - configuring environment"
     else
-        # Install default Python 3 (usually 3.11 on modern systems)
-        if sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip python3-venv; then
-            echo "✅ Python installed successfully"
-        else
-            echo "❌ Failed to install Python"
-            return 1
-        fi
+        echo "📦 Python will be installed via SYSTEM_PACKAGES"
     fi
-    
-    # Set up Python environment
-    if ! grep -q "alias python=" ~/.bashrc; then
-        echo "" >> ~/.bashrc
-        echo "# Python environment" >> ~/.bashrc
-        echo "alias python=python3" >> ~/.bashrc
-        echo "alias pip=pip3" >> ~/.bashrc
-        echo "✅ Python aliases added to ~/.bashrc"
+
+    # Set up Python aliases using library function
+    # Only add if 'python' command doesn't already exist
+    if ! command -v python >/dev/null 2>&1; then
+        add_to_bashrc "alias python=" "# Python environment" \
+            "alias python=python3" \
+            "alias pip=pip3"
+    else
+        echo "✅ Python command already available"
     fi
 }
 
-# Custom Python package installation function
-install_python_packages() {
-    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        echo "🗑️  Removing Python packages..."
-        for package in "${PYTHON_PACKAGES[@]}"; do
-            if python3 -m pip show "$package" >/dev/null 2>&1; then
-                python3 -m pip uninstall -y "$package" >/dev/null 2>&1 || true
-            fi
-        done
-        return
-    fi
-    
-    if [ ${#PYTHON_PACKAGES[@]} -eq 0 ]; then
-        return
-    fi
-    
-    echo "📦 Installing Python packages..."
-    
-    # Upgrade pip first
-    python3 -m pip install --upgrade pip --user
-    
-    # Install packages
-    for package in "${PYTHON_PACKAGES[@]}"; do
-        if ! python3 -m pip show "$package" >/dev/null 2>&1; then
-            if python3 -m pip install "$package" --user; then
-                echo "✅ $package installed"
-            else
-                echo "❌ Failed to install $package"
-            fi
-        else
-            echo "✅ $package already installed"
-        fi
-    done
-}
+# Note: Python packages handled by library's process_python_packages() via PYTHON_PACKAGES array
 
-# Custom verification function
-verify_installation() {
-    echo "🔍 Verifying installations..."
-    
-    # Check Python
-    if command -v python3 >/dev/null 2>&1; then
-        echo "✅ Python: $(python3 --version)"
-    else
-        echo "❌ Python not found"
-        return 1
-    fi
-    
-    # Check pip
-    if command -v pip3 >/dev/null 2>&1; then
-        echo "✅ pip: $(pip3 --version)"
-    else
-        echo "❌ pip not found"
-        return 1
-    fi
-    
-    # Check virtual environment
-    if python3 -c "import venv" >/dev/null 2>&1; then
-        echo "✅ venv module available"
-    else
-        echo "❌ venv module not available"
-        return 1
-    fi
-    
-    # Check if python alias works
-    if grep -q "alias python=" ~/.bashrc; then
-        echo "✅ Python aliases configured"
-    else
-        echo "⚠️  Python aliases not configured (run 'source ~/.bashrc')"
-    fi
-}
-
-# Custom post-installation function
-post_installation_setup() {
-    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        echo "🔧 Post-uninstallation cleanup..."
-        return
-    fi
-    
-    echo "🔧 Post-installation setup..."
-    
-    # Install Python packages
-    install_python_packages
-    
-    # Verify installation
-    verify_installation
-    
-    echo ""
-    echo "🎉 Installation process complete for: $SCRIPT_NAME!"
-    echo "Purpose: $SCRIPT_DESCRIPTION"
-    echo ""
-    echo "Important Notes:"
-    echo "1. Python 3.11+ has been installed"
-    echo "2. pip and venv are available for package management"
-    echo "3. Essential development tools are installed"
-    echo "4. Python aliases have been added to ~/.bashrc"
-    echo "5. Restart your shell or run 'source ~/.bashrc' to use aliases"
-    echo ""
-    echo "Quick Start:"
-    echo "- Check installation: python3 --version"
-    echo "- Install packages: pip3 install package_name"
-    echo "- Create virtual env: python3 -m venv myenv"
-    echo "- Activate virtual env: source myenv/bin/activate"
-    echo "- Run Python: python3 script.py"
-    echo ""
-    echo "Documentation Links:"
-    echo "- Python Documentation: https://docs.python.org/"
-    echo "- pip Documentation: https://pip.pypa.io/en/stable/"
-    echo "- Virtual Environments: https://docs.python.org/3/tutorial/venv.html"
-}
+# Define verification commands
+VERIFY_COMMANDS=(
+    "command -v python3 >/dev/null && python3 --version || echo '❌ Python not found'"
+    "command -v pip3 >/dev/null && pip3 --version || echo '❌ pip not found'"
+    "python3 -c 'import venv' 2>/dev/null && echo '✅ venv module available' || echo '❌ venv module not available'"
+    "grep -q 'alias python=' ~/.bashrc && echo '✅ Python aliases configured' || echo 'ℹ️  Python aliases not yet active (restart shell)'"
+)
 
 # Post-installation notes
 post_installation_message() {
+    
     echo
     echo "🎉 Installation process complete for: $SCRIPT_NAME!"
     echo "Purpose: $SCRIPT_DESCRIPTION"
@@ -263,19 +130,26 @@ post_installation_message() {
     echo "1. Python development environment is ready"
     echo "2. Essential Python packages are installed"
     echo "3. Virtual environment tools are available"
-    echo "4. VS Code Python extensions will provide rich language support"
+    echo "4. Python aliases configured (restart shell or: source ~/.bashrc)"
     echo
     echo "Quick Start:"
-    echo "- Check installation: python3 --version && pip --version"
+    echo "- Check installation: python3 --version && pip3 --version"
     echo "- Create virtual environment: python3 -m venv myenv"
     echo "- Activate environment: source myenv/bin/activate"
     echo "- Install packages: pip install requests"
     echo "- Run tests: pytest"
     echo
+    echo "Documentation Links:"
+    echo "- Python Documentation: https://docs.python.org/"
+    echo "- pip Documentation: https://pip.pypa.io/en/stable/"
+    echo "- Virtual Environments: https://docs.python.org/3/tutorial/venv.html"
 }
 
 # Post-uninstallation notes
 post_uninstallation_message() {
+
+    # Remove from auto-enable config
+    auto_disable_tool
     echo
     echo "🏁 Uninstallation process complete for: $SCRIPT_NAME!"
     echo
@@ -294,9 +168,16 @@ DEBUG_MODE=0
 UNINSTALL_MODE=0
 FORCE_MODE=0
 
+# Source common installation patterns library (needed for --help)
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --help)
+            show_script_help
+            exit 0
+            ;;
         --debug)
             DEBUG_MODE=1
             shift
@@ -311,7 +192,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "ERROR: Unknown option: $1" >&2
-            echo "Usage: $0 [--debug] [--uninstall] [--force]" >&2
+            echo "Usage: $0 [--help] [--debug] [--uninstall] [--force]" >&2
             echo "Description: $SCRIPT_DESCRIPTION"
             exit 1
             ;;
@@ -324,24 +205,24 @@ export UNINSTALL_MODE
 export FORCE_MODE
 
 # Source all core installation scripts
-source "${SCRIPT_DIR}/lib/core-install-apt.sh"
+source "${SCRIPT_DIR}/lib/core-install-system.sh"
 source "${SCRIPT_DIR}/lib/core-install-node.sh"
 source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
-source "${SCRIPT_DIR}/lib/core-install-python-packages.sh"
+source "${SCRIPT_DIR}/lib/core-install-python.sh"
 
-# Source common installation patterns library
-source "${SCRIPT_DIR}/lib/install-common.sh"
+# Note: lib/install-common.sh already sourced earlier (needed for --help)
 
 # Function to process installations
 process_installations() {
-    # Use standard processing from lib/install-common.sh
+    # Install/configure Python environment
+    install_python
+
+    # Process standard installations (packages and extensions)
     process_standard_installations
 }
 
-# Function to verify installations
-# Note: Using common implementation from lib/install-common.sh (sourced above)
-# No local definition needed - library function is used directly
+
 
 # Main execution
 if [ "${UNINSTALL_MODE}" -eq 1 ]; then
@@ -349,27 +230,18 @@ if [ "${UNINSTALL_MODE}" -eq 1 ]; then
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        for ext_id in "${!EXTENSIONS[@]}"; do
-            IFS='|' read -r name description _ <<< "${EXTENSIONS[$ext_id]}"
-            check_extension_state "$ext_id" "uninstall" "$name"
-        done
-    fi
     post_uninstallation_message
+
+    # Remove from auto-enable config
+    auto_disable_tool
 else
     echo "🔄 Starting installation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
     verify_installations
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        for ext_id in "${!EXTENSIONS[@]}"; do
-            IFS='|' read -r name description _ <<< "${EXTENSIONS[$ext_id]}"
-            check_extension_state "$ext_id" "install" "$name"
-        done
-    fi
     post_installation_message
 
     # Auto-enable for container rebuild
-    auto_enable_tool "python-development-tools" "Python Development Tools"
+    auto_enable_tool
 fi

@@ -44,7 +44,7 @@ Addition scripts are bash scripts that automate the installation of tools, confi
 **Examples:**
 - `install-dev-python.sh` - Python runtime and development tools
 - `install-kubectl.sh` - Kubernetes CLI
-- `install-otel-monitoring.sh` - OpenTelemetry monitoring stack
+- `install-srv-otel-monitoring.sh` - OpenTelemetry monitoring stack
 
 **Characteristics:**
 - Installs binaries, packages, or tools
@@ -1101,7 +1101,7 @@ verify_myapp_config() {
 - **Prerequisite Check Library:** `/workspace/.devcontainer/additions/lib/prerequisite-check.sh`
 - **Auto-Enable Library:** `/workspace/.devcontainer/additions/lib/tool-auto-enable.sh`
 - **Working Examples:**
-  - `install-otel-monitoring.sh` - Complex install with prerequisites
+  - `install-srv-otel-monitoring.sh` - Complex install with prerequisites
   - `config-devcontainer-identity.sh` - Config with --verify support
   - `install-dev-python.sh` - Standard development tools installation
 

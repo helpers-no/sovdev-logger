@@ -300,7 +300,7 @@ rm /tmp/enabled-tools.conf.backup
 echo "=== Testing Metadata Extraction Accuracy ==="
 
 # Test OTel script
-SCRIPT="/workspace/.devcontainer/additions/install-otel-monitoring.sh"
+SCRIPT="/workspace/.devcontainer/additions/install-srv-otel-monitoring.sh"
 
 source /workspace/.devcontainer/additions/lib/component-scanner.sh
 
@@ -310,7 +310,7 @@ EXPECTED_PREREQ="config-devcontainer-identity.sh"
 
 # Extract via scanner
 while IFS=$'\t' read -r basename name desc cat check prereqs; do
-    if [ "$basename" = "install-otel-monitoring.sh" ]; then
+    if [ "$basename" = "install-srv-otel-monitoring.sh" ]; then
         echo "Found: $name"
         echo "Prerequisites: $prereqs"
 

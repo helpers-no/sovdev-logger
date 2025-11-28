@@ -6,8 +6,8 @@
 # - Direct Node.js binary installation (most reliable, no external repos)
 # - Added GitHub CLI (gh) for enhanced Git workflow
 # - Added Supervisord for multi-process management in devcontainers
-# - PowerShell moved to optional install script (install-powershell.sh)
-# - Azure CLI moved to optional install script (install-az-cli.sh)
+# - PowerShell moved to optional install script (install-dev-powershell.sh)
+# - Azure CLI moved to optional install script (install-tool-azure.sh)
 
 # Use the official Python devcontainer image as the base
 # Note: Using bookworm (Debian 12) as trixie images are not yet available from Microsoft
@@ -151,9 +151,9 @@ RUN sudo apt-get update && \
 # =============================================================================
 # OPTIONAL TOOLS - Install via scripts in .devcontainer/additions/
 # =============================================================================
-# Cloud tools: Run install-az-cli.sh, install-powershell.sh
+# Cloud tools: Run install-tool-azure.sh, install-dev-powershell.sh
 # Language runtimes: Use install-dev-*.sh scripts for Rust, Go, Java, etc.
-# Infrastructure tools: Use install-kubectl.sh, install-otel-monitoring.sh, etc.
+# Infrastructure tools: Use install-kubectl.sh, install-srv-otel-monitoring.sh, etc.
 # Services: Use install-tailscale.sh, install-web-proxy.sh, etc.
 #
 # These tools are now optional and managed via the enabled-tools.conf system.
@@ -199,10 +199,10 @@ ENV DEBIAN_FRONTEND=
 # - Commands: supervisord, supervisorctl
 #
 # Optional tools (install via scripts):
-# - Azure CLI: bash .devcontainer/additions/install-az-cli.sh
-# - PowerShell: bash .devcontainer/additions/install-powershell.sh
+# - Azure CLI: bash .devcontainer/additions/install-tool-azure.sh
+# - PowerShell: bash .devcontainer/additions/install-dev-powershell.sh
 # - Rust, Go, Java, etc.: Use corresponding install-dev-*.sh scripts
-# - OTel monitoring: bash .devcontainer/additions/install-otel-monitoring.sh
+# - OTel monitoring: bash .devcontainer/additions/install-srv-otel-monitoring.sh
 # - Web proxy: bash .devcontainer/additions/install-web-proxy.sh
 # - Tailscale VPN: bash .devcontainer/additions/install-tailscale.sh
 # - Run 'dev-setup' for interactive tool management

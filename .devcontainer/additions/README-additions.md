@@ -74,7 +74,7 @@ Install components, tools, or dependencies.
 - `install-dev-python.sh` - Python development tools
 - `install-dev-golang.sh` - Go development environment
 - `install-kubectl.sh` - Kubernetes CLI tools
-- `install-otel-monitoring.sh` - OpenTelemetry monitoring
+- `install-srv-otel-monitoring.sh` - OpenTelemetry monitoring
 
 **Key Features**:
 - Idempotent (safe to run multiple times)
@@ -519,7 +519,7 @@ echo "✓ Project dependencies installed"
 │   ├── install-dev-python.sh
 │   ├── install-dev-golang.sh
 │   ├── install-kubectl.sh
-│   └── install-otel-monitoring.sh
+│   └── install-srv-otel-monitoring.sh
 │
 ├── config-*.sh                      # Configuration scripts
 │   └── config-devcontainer-identity.sh

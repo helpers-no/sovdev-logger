@@ -25,6 +25,7 @@
 # SERVICE METADATA - For supervisord and dev-setup integration
 #------------------------------------------------------------------------------
 
+SCRIPT_ID="service-otel"
 SERVICE_SCRIPT_NAME="OTel Monitoring"
 SERVICE_SCRIPT_DESCRIPTION="OpenTelemetry monitoring stack (lifecycle, metrics, script exporter)"
 SERVICE_SCRIPT_CATEGORY="INFRA_CONFIG"
@@ -67,6 +68,8 @@ set -euo pipefail
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/logging.sh"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/service-auto-enable.sh"
 
 # Paths
 OTEL_BINARY="otelcol-contrib"
@@ -115,14 +118,14 @@ check_prerequisites() {
     # Check if OTel binary is installed
     if ! command -v otelcol-contrib >/dev/null 2>&1; then
         log_error "OTel Collector binary not found"
-        log_info "Run: bash ${SCRIPT_DIR}/install-otel-monitoring.sh"
+        log_info "Run: bash ${SCRIPT_DIR}/install-srv-otel-monitoring.sh"
         ((missing++))
     fi
 
     # Check if script_exporter is installed
     if ! command -v script_exporter >/dev/null 2>&1; then
         log_error "script_exporter binary not found"
-        log_info "Run: bash ${SCRIPT_DIR}/install-otel-monitoring.sh"
+        log_info "Run: bash ${SCRIPT_DIR}/install-srv-otel-monitoring.sh"
         ((missing++))
     fi
 
@@ -473,6 +476,9 @@ service_start() {
 
     log_info "Starting lifecycle collector in foreground mode..."
 
+    # Auto-enable for container restart (BEFORE exec)
+    auto_enable_service
+
     # CRITICAL: Use exec for supervisord integration
     exec "$OTEL_BINARY" --config="$CONFIG_FILE_LIFECYCLE"
 
@@ -504,6 +510,7 @@ service_stop() {
     echo ""
     if [ $failed -eq 0 ]; then
         log_success "All OTel services stopped successfully"
+        auto_disable_service
     else
         log_warning "$failed service(s) failed to stop"
     fi

@@ -124,13 +124,13 @@ check_component_installed() {
 #   additions_dir - Directory containing install-*.sh scripts
 #
 # Output format (tab-separated, one line per component):
-#   script_basename<TAB>SCRIPT_NAME<TAB>SCRIPT_DESCRIPTION<TAB>SCRIPT_CATEGORY<TAB>CHECK_INSTALLED_COMMAND<TAB>PREREQUISITE_CONFIGS
+#   script_basename<TAB>SCRIPT_ID<TAB>SCRIPT_NAME<TAB>SCRIPT_DESCRIPTION<TAB>SCRIPT_CATEGORY<TAB>CHECK_INSTALLED_COMMAND<TAB>PREREQUISITE_CONFIGS
 #
 # Exit code: 0 on success, 1 if directory not found
 #
 # Example:
-#   while IFS=$'\t' read -r basename name desc cat check prereqs; do
-#       echo "Component: $name (category: $cat, prerequisites: $prereqs)"
+#   while IFS=$'\t' read -r basename script_id name desc cat check prereqs; do
+#       echo "Component: $name (ID: $script_id, category: $cat, prerequisites: $prereqs)"
 #   done < <(scan_install_scripts "/workspace/.devcontainer/additions")
 #
 scan_install_scripts() {
@@ -158,14 +158,15 @@ scan_install_scripts() {
 
         # Extract metadata
         local script_basename=$(basename "$script")
+        local script_id=$(extract_script_metadata "$script" "SCRIPT_ID")
         local script_name=$(extract_script_metadata "$script" "SCRIPT_NAME")
         local script_description=$(extract_script_metadata "$script" "SCRIPT_DESCRIPTION")
         local script_category=$(extract_script_metadata "$script" "SCRIPT_CATEGORY")
         local check_command=$(extract_script_metadata "$script" "CHECK_INSTALLED_COMMAND")
         local prerequisite_configs=$(extract_script_metadata "$script" "PREREQUISITE_CONFIGS")
 
-        # Skip if no SCRIPT_NAME found (invalid component)
-        if [[ -z "$script_name" ]]; then
+        # Skip if no SCRIPT_ID or SCRIPT_NAME found (invalid component)
+        if [[ -z "$script_id" || -z "$script_name" ]]; then
             continue
         fi
 
@@ -180,8 +181,9 @@ scan_install_scripts() {
         fi
 
         # Output tab-separated values (prerequisite_configs may be empty)
-        printf "%s\t%s\t%s\t%s\t%s\t%s\n" \
+        printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
             "$script_basename" \
+            "$script_id" \
             "$script_name" \
             "$script_description" \
             "$script_category" \

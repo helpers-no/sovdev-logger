@@ -253,7 +253,7 @@ test_1_8() {
     local found=0
 
     while IFS=$'\t' read -r basename name desc cat check prereqs; do
-        if [ "$basename" = "install-otel-monitoring.sh" ]; then
+        if [ "$basename" = "install-srv-otel-monitoring.sh" ]; then
             found=1
 
             if [ "$name" != "$EXPECTED_NAME" ]; then

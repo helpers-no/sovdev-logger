@@ -1,7 +1,15 @@
 #!/bin/bash
 # File: .devcontainer/additions/lib/tool-auto-enable.sh
 # Purpose: Shared library for tool auto-enablement in project-installs.sh
-# Usage: Source this file from install-*.sh scripts and call auto_enable_tool()
+# Usage: Source this file from install-*.sh scripts
+#
+# Main API Functions (auto-detect SCRIPT_ID from metadata):
+#   auto_enable_tool    - Enable tool for auto-install (reads SCRIPT_ID)
+#   auto_disable_tool   - Disable tool from auto-install (reads SCRIPT_ID)
+#
+# Low-level Functions (manual ID passing):
+#   enable_tool_autoinstall TOOL_ID [NAME]
+#   disable_tool_autoinstall TOOL_ID [NAME]
 
 # Paths
 readonly AUTO_ENABLE_TOOLS_CONF="/workspace/.devcontainer.extend/enabled-tools.conf"
@@ -53,14 +61,14 @@ enable_tool_autoinstall() {
         cat > "$AUTO_ENABLE_TOOLS_CONF" << 'EOF'
 # Enabled Tools for Auto-Install
 # Tools listed here will automatically install when the container is created/rebuilt
-# Format: One tool identifier per line (matches SCRIPT_NAME in lowercase-with-dashes)
+# Format: One tool identifier per line (matches SCRIPT_ID in install-*.sh)
 #
 # Management:
-#   Add tool name to enable auto-install
+#   Add SCRIPT_ID to enable auto-install
 #   Remove or comment out to disable
 #
 # Available tools are auto-discovered from .devcontainer/additions/install-*.sh
-# Each install script has SCRIPT_NAME metadata that maps to the identifier
+# Each install script has SCRIPT_ID metadata (e.g., SCRIPT_ID="dev-python")
 #
 # Note: Tools auto-enable themselves when first installed successfully
 
@@ -75,26 +83,48 @@ EOF
     return 0
 }
 
-# Main auto-enable function - call this from install scripts
-# Args: $1 - tool identifier (lowercase-with-dashes)
-#       $2 - tool display name (optional, for logging)
-# Usage: auto_enable_tool "otel-collector" "OTel Collector"
-auto_enable_tool() {
-    local tool_id="$1"
-    local tool_name="${2:-$tool_id}"
+#------------------------------------------------------------------------------
+# Main API Functions - Auto-detect SCRIPT_ID from caller
+#------------------------------------------------------------------------------
 
-    # Enable for auto-install on container rebuild
-    enable_tool_autoinstall "$tool_id" "$tool_name"
+# Enable tool for auto-install (auto-detects SCRIPT_ID from metadata)
+# No parameters needed - reads SCRIPT_ID and SCRIPT_NAME from caller's environment
+# Usage: auto_enable_tool
+auto_enable_tool() {
+    if [[ -z "$SCRIPT_ID" ]]; then
+        echo -e "${TOOL_AUTO_ENABLE_YELLOW}⚠️  SCRIPT_ID not defined - cannot auto-enable${TOOL_AUTO_ENABLE_NC}"
+        return 1
+    fi
+
+    enable_tool_autoinstall "$SCRIPT_ID" "${SCRIPT_NAME:-$SCRIPT_ID}"
+}
+
+# Disable tool from auto-install (auto-detects SCRIPT_ID from metadata)
+# No parameters needed - reads SCRIPT_ID and SCRIPT_NAME from caller's environment
+# Usage: auto_disable_tool
+auto_disable_tool() {
+    if [[ -z "$SCRIPT_ID" ]]; then
+        echo -e "${TOOL_AUTO_ENABLE_YELLOW}⚠️  SCRIPT_ID not defined - cannot auto-disable${TOOL_AUTO_ENABLE_NC}"
+        return 1
+    fi
+
+    disable_tool_autoinstall "$SCRIPT_ID" "${SCRIPT_NAME:-$SCRIPT_ID}"
 }
 
 # Disable a tool from auto-install
-# Args: $1 - tool identifier (lowercase-with-dashes)
+# Args: $1 - tool identifier (kebab-case)
+#       $2 - tool display name (optional, for logging)
 disable_tool_autoinstall() {
     local tool_id="$1"
+    local tool_name="${2:-$tool_id}"
 
     if [[ ! -f "$AUTO_ENABLE_TOOLS_CONF" ]]; then
-        echo -e "${TOOL_AUTO_ENABLE_YELLOW}⚠️  No enabled-tools.conf found${TOOL_AUTO_ENABLE_NC}"
-        return 1
+        return 0  # Nothing to disable
+    fi
+
+    # Check if not enabled
+    if ! is_tool_auto_enabled "$tool_id"; then
+        return 0  # Already disabled
     fi
 
     # Remove from config (preserve comments and other entries)
@@ -103,7 +133,7 @@ disable_tool_autoinstall() {
     grep -v "^${tool_id}$" "$AUTO_ENABLE_TOOLS_CONF" > "$temp_file"
     mv "$temp_file" "$AUTO_ENABLE_TOOLS_CONF"
 
-    echo -e "${TOOL_AUTO_ENABLE_GREEN}✅ Disabled auto-install for '$tool_id'${TOOL_AUTO_ENABLE_NC}"
+    echo -e "${TOOL_AUTO_ENABLE_GREEN}✅ Disabled auto-install for '$tool_name'${TOOL_AUTO_ENABLE_NC}"
 
     return 0
 }

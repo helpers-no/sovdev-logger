@@ -1,5 +1,5 @@
 #!/bin/bash
-# file: .devcontainer/additions/core-install-apt.sh
+# file: .devcontainer/additions/lib/core-install-system.sh
 #
 # Core functionality for managing system packages via apt
 # To be sourced by installation scripts, not executed directly.

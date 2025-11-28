@@ -539,7 +539,7 @@ kubectl rollout restart deployment grafana -n monitoring
     ├── otelcol-lifecycle-config.yaml     # Lifecycle collector config (uses ${env:VAR} expansion)
     ├── otelcol-metrics-config.yaml       # Metrics collector config (uses ${env:VAR} expansion)
     ├── script-exporter-config.yaml       # Script exporter configuration (port 9469)
-    ├── install-otel-monitoring.sh        # Install OTel Collector (use --uninstall to remove)
+    ├── install-srv-otel-monitoring.sh    # Install OTel Collector (use --uninstall to remove)
     │
     ├── adm/                              # Admin tools
     │   └── generate-devcontainer-identity.sh # Generate identity string (Step 1 of onboarding)

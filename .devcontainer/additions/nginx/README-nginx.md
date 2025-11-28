@@ -358,7 +358,7 @@ Nginx is automatically configured and started during container creation:
 2. Calls `config-nginx.sh --verify` (silent mode)
 3. Restores backend URL from .devcontainer.secrets if exists
 4. Generates proxy configurations
-5. `install-nginx.sh` auto-installs nginx if needed
+5. `install-srv-nginx.sh` auto-installs nginx if needed
 6. `start-nginx.sh` starts nginx with generated config
 
 **Status Check**:
@@ -565,7 +565,7 @@ proxy_request_buffering off;
 
 ## Related Documentation
 
-- **Nginx Installation**: [install-nginx.sh](../install-nginx.sh)
+- **Nginx Installation**: [install-srv-nginx.sh](../install-srv-nginx.sh)
 - **Nginx Configuration**: [config-nginx.sh](../config-nginx.sh)
 - **Nginx Startup**: [start-nginx.sh](../start-nginx.sh) and [stop-nginx.sh](../stop-nginx.sh)
 - **OTEL Monitoring**: [otel/README-otel.md](../otel/README-otel.md)

@@ -1,5 +1,5 @@
 #!/bin/bash
-# file: .devcontainer/additions/core-install-python-packages.sh
+# file: .devcontainer/additions/lib/core-install-python.sh
 #
 # Core functionality for managing Python packages via pip
 # To be sourced by installation scripts, not executed directly.

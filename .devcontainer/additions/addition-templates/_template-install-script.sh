@@ -5,12 +5,8 @@
 # Rename to: install-[your-name].sh
 # Example: install-dev-python.sh
 #
-# Usage: ./install-[name].sh [options]
-#
-# Options:
-#   --debug     : Enable debug output for troubleshooting
-#   --uninstall : Remove installed components instead of installing them
-#   --force     : Force installation/uninstallation even if there are dependencies
+# [Brief description of what this script installs]
+# For usage information and available options, run: ./install-[name].sh --help
 #
 #------------------------------------------------------------------------------
 # METADATA PATTERN - Required for automatic script discovery
@@ -27,8 +23,17 @@
 #   Example: "Install Python 3.11, pip, and essential Python development packages"
 #
 # SCRIPT_CATEGORY - Category for menu organization
-#   Common options: DEV_TOOLS, INFRA_CONFIG, AI_TOOLS, MONITORING, DATABASE, CLOUD
-#   Example: "DEV_TOOLS"
+#   IMPORTANT: Use one of the valid categories defined in lib/categories.sh
+#   Valid categories:
+#     LANGUAGE_DEV    - Development Tools (Python, TypeScript, Go, Rust, etc.)
+#     AI_TOOLS        - AI & Machine Learning Tools (Claude Code, etc.)
+#     CLOUD_TOOLS     - Cloud & Infrastructure Tools (Azure, AWS, etc.)
+#     DATA_ANALYTICS  - Data & Analytics Tools (Jupyter, pandas, DBT, etc.)
+#     INFRA_CONFIG    - Infrastructure & Configuration (Ansible, Kubernetes, etc.)
+#   Example: "LANGUAGE_DEV"
+#
+#   For full category descriptions, see: .devcontainer/additions/lib/categories.sh
+#   Or run: source lib/categories.sh && show_all_categories
 #
 # CHECK_INSTALLED_COMMAND - Shell command to check if already installed
 #   - Must return exit code 0 if installed, 1 if not installed
@@ -94,10 +99,16 @@
 
 # Script metadata - Required for dev-setup.sh menu discovery
 # These fields must be defined at the top of the configuration section
+SCRIPT_ID="[category-name]"  # Unique identifier (e.g., dev-python, tool-azure, srv-nginx)
 SCRIPT_NAME="[Name]"
 SCRIPT_DESCRIPTION="[Brief description of what this script installs and its purpose]"
 SCRIPT_CATEGORY="DEV_TOOLS"  # Options: DEV_TOOLS, INFRA_CONFIG, AI_TOOLS, MONITORING, DATABASE, CLOUD
 CHECK_INSTALLED_COMMAND="command -v [tool-name] >/dev/null 2>&1"  # Command to check if already installed
+
+# Optional: Custom usage text for --help (uses default if not provided)
+# SCRIPT_USAGE="  $(basename "$0")              # Install
+#   $(basename "$0") --help       # Show this help
+#   $(basename "$0") --version    # Show version"
 
 # Optional: Prerequisite configurations required before installation
 # Uncomment and modify if your tool requires specific configurations
@@ -120,36 +131,54 @@ source "${SCRIPT_DIR}/lib/logging.sh"
 #------------------------------------------------------------------------------
 
 # Before running installation, we need to add any required repositories or setup
+# NOTE: This function is for SCRIPT-SPECIFIC setup only
+# Common setup (like .devcontainer.secrets folder) is handled automatically by process_standard_installations()
 pre_installation_setup() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         echo "🔧 Preparing for uninstallation..."
     else
         echo "🔧 Performing pre-installation setup..."
-        # Add repository configurations, keys, or other setup steps here
-        # Example:
+
+        # Add SCRIPT-SPECIFIC setup here (repositories, GPG keys, etc.)
+        # DO NOT add common setup like:
+        #   - ensure_secrets_folder_gitignored() (handled automatically)
+        #   - ensure_secrets_folder_structure() (handled automatically)
+        #   - mkdir -p /workspace/.devcontainer.secrets (handled automatically)
+
+        # Example script-specific setup:
         # curl -fsSL https://example.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/example-archive-keyring.gpg
     fi
 }
 
 # Define package arrays (remove any empty arrays that aren't needed)
-SYSTEM_PACKAGES=(
+PACKAGES_SYSTEM=(
     # "package1"
     # "package2"
 )
 
-NODE_PACKAGES=(
+PACKAGES_NODE=(
     # "package1"
     # "package2"
 )
 
-PYTHON_PACKAGES=(
+PACKAGES_PYTHON=(
     # "package1"
     # "package2"
 )
 
-PWSH_MODULES=(
+PACKAGES_PWSH=(
     # "module1"
     # "module2"
+)
+
+PACKAGES_GO=(
+    # "golang.org/x/tools/gopls@latest"
+    # "github.com/go-delve/delve/cmd/dlv@latest"
+)
+
+PACKAGES_CARGO=(
+    # "cargo-edit"
+    # "cargo-watch"
 )
 
 # Define VS Code extensions
@@ -211,9 +240,16 @@ DEBUG_MODE=0
 UNINSTALL_MODE=0
 FORCE_MODE=0
 
+# Source common installation patterns library (needed for --help)
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --help)
+            show_script_help
+            exit 0
+            ;;
         --debug)
             DEBUG_MODE=1
             shift
@@ -228,7 +264,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "ERROR: Unknown option: $1" >&2
-            echo "Usage: $0 [--debug] [--uninstall] [--force]" >&2
+            echo "Usage: $0 [--help] [--debug] [--uninstall] [--force]" >&2
             echo "Description: $SCRIPT_DESCRIPTION"
             exit 1
             ;;
@@ -241,14 +277,13 @@ export UNINSTALL_MODE
 export FORCE_MODE
 
 # Source all core installation scripts
-source "${SCRIPT_DIR}/lib/core-install-apt.sh"
+source "${SCRIPT_DIR}/lib/core-install-system.sh"
 source "${SCRIPT_DIR}/lib/core-install-node.sh"
 source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
-source "${SCRIPT_DIR}/lib/core-install-python-packages.sh"
+source "${SCRIPT_DIR}/lib/core-install-python.sh"
 
-# Source common installation patterns library
-source "${SCRIPT_DIR}/lib/install-common.sh"
+# Note: lib/install-common.sh already sourced earlier (needed for --help)
 
 # Function to process installations
 #

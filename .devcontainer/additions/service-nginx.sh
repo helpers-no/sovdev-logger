@@ -24,6 +24,7 @@
 # SERVICE METADATA - For supervisord and dev-setup integration
 #------------------------------------------------------------------------------
 
+SCRIPT_ID="service-nginx"
 SERVICE_SCRIPT_NAME="Nginx Reverse Proxy"
 SERVICE_SCRIPT_DESCRIPTION="Nginx reverse proxy for LiteLLM (adds Host header)"
 SERVICE_SCRIPT_CATEGORY="INFRA_CONFIG"
@@ -62,6 +63,8 @@ set -euo pipefail
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/logging.sh"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/service-auto-enable.sh"
 
 # Config file locations
 # Try multiple locations for config file (handle different environments)
@@ -96,7 +99,7 @@ check_prerequisites() {
     # Check if nginx is installed
     if ! command -v nginx >/dev/null 2>&1; then
         log_error "Nginx is not installed"
-        log_info "Run: bash ${SCRIPT_DIR}/install-nginx.sh"
+        log_info "Run: bash ${SCRIPT_DIR}/install-srv-nginx.sh"
         ((missing++))
     fi
 
@@ -258,6 +261,9 @@ service_start() {
     sudo nginx -s quit 2>/dev/null || sudo pkill -9 nginx 2>/dev/null || true
     sleep 1
 
+    # Auto-enable for container restart (BEFORE exec)
+    auto_enable_service
+
     # Start nginx in foreground mode (CRITICAL: Use exec for supervisord)
     log_info "Starting nginx in foreground mode..."
     exec sudo nginx -g "daemon off;"
@@ -276,6 +282,8 @@ service_stop() {
     # Check if not running
     if ! is_service_running; then
         log_info "Nginx is not running"
+        # Still disable from auto-start
+        auto_disable_service
         return 0
     fi
 
@@ -291,6 +299,7 @@ service_stop() {
         while [ $waited -lt 10 ]; do
             if ! is_service_running; then
                 log_success "Nginx stopped gracefully"
+                auto_disable_service
                 return 0
             fi
             sleep 1
@@ -303,6 +312,7 @@ service_stop() {
     if sudo pkill -9 nginx 2>/dev/null; then
         sleep 1
         log_success "Nginx stopped (forced)"
+        auto_disable_service
         return 0
     fi
 

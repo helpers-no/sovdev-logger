@@ -2,7 +2,7 @@
 # File: .devcontainer/additions/tailscale-install.sh
 #
 # Purpose: Installs Tailscale and sets up required directories in a devcontainer
-# Usage: sudo .devcontainer/additions/tailscale-install.sh
+# For usage information, run: ./install-tailscale.sh --help
 #
 # Author: Terje Christensen
 # Created: November 2024

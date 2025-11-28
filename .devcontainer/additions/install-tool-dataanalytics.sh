@@ -1,12 +1,8 @@
 #!/bin/bash
-# file: .devcontainer/additions/install-data-analytics.sh
+# file: .devcontainer/additions/install-tool-dataanalytics.sh
 #
-# Usage: ./install-data-analytics.sh [options]
-# 
-# Options:
-#   --debug     : Enable debug output for troubleshooting
-#   --uninstall : Remove installed components instead of installing them
-#   --force     : Force installation/uninstallation even if there are dependencies
+# Installs Python data analysis libraries, Jupyter notebooks, and related VS Code extensions.
+# For usage information, run: ./install-tool-dataanalytics.sh --help
 #
 #------------------------------------------------------------------------------
 # CONFIGURATION - Modify this section for each new script
@@ -14,9 +10,16 @@
 
 # Script metadata - must be at the very top of the configuration section
 SCRIPT_NAME="Data & Analytics Tools"
+SCRIPT_ID="tool-dataanalytics"
 SCRIPT_DESCRIPTION="Installs Python data analysis libraries, Jupyter notebooks, and related VS Code extensions"
 SCRIPT_CATEGORY="DATA_ANALYTICS"
 CHECK_INSTALLED_COMMAND="[ -f /usr/local/bin/jupyter ] || [ -f $HOME/.local/bin/jupyter ] || command -v jupyter >/dev/null 2>&1"
+
+# Optional: Custom usage text for --help
+SCRIPT_USAGE="  $(basename "$0")              # Install data analytics tools
+  $(basename "$0") --help       # Show this help
+  $(basename "$0") --uninstall  # Uninstall analytics tools
+  $(basename "$0") --debug      # Install with debug output"
 
 #------------------------------------------------------------------------------
 
@@ -31,39 +34,33 @@ source "${SCRIPT_DIR}/lib/logging.sh"
 
 #------------------------------------------------------------------------------
 
-# Before running installation, we need to add any required repositories
+# Before running installation, we need to add any required repositories or setup
 pre_installation_setup() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        echo "🔧 Preparing for uninstallation..."
+        echo "=' Preparing for uninstallation..."
     else
-        echo "🔧 Performing pre-installation setup..."
-        
-        # Verify Python is installed
+        echo "=' Performing pre-installation setup..."
+
+        # Verify Python is installed (prerequisite check)
         if ! command -v python >/dev/null 2>&1; then
-            echo "⚠️  Warning: Python not found. It should have been installed in the Dockerfile."
+            echo "L Error: Python not found. It should have been installed in the Dockerfile."
             echo "Please verify the container was built correctly."
             exit 1
         fi
-        
-        # Check pip is installed and working
+
+        # Verify pip is installed (prerequisite check)
         if ! command -v pip >/dev/null 2>&1; then
-            echo "⚠️  Warning: pip not found. Installing pip..."
+            echo "�  Warning: pip not found. Installing pip..."
             python -m ensurepip --default-pip
         fi
-        
-        # Display Python and pip versions
-        echo "Python configuration:"
-        python --version
-        pip --version
-        
-        # Upgrade pip to latest version
-        echo "Upgrading pip to latest version..."
-        python -m pip install --upgrade pip
+
+        # Note: Version verification handled by verify_installations() using VERIFY_COMMANDS
+        echo " Pre-installation setup complete"
     fi
 }
 
 # Define Python packages
-PYTHON_PACKAGES=(
+PACKAGES_PYTHON=(
     "pandas"
     "numpy"
     "matplotlib"
@@ -87,43 +84,26 @@ EXTENSIONS["databricks.databricks"]="Databricks|Databricks integration"
 
 # Define verification commands
 VERIFY_COMMANDS=(
-    "python --version || echo '❌ Python not found'"
-    "pip --version || echo '❌ pip not found'"
-    "python -c 'import pandas' 2>/dev/null && echo '✅ pandas is installed' || echo '❌ pandas not found'"
-    "python -c 'import numpy' 2>/dev/null && echo '✅ numpy is installed' || echo '❌ numpy not found'"
-    "python -c 'import matplotlib' 2>/dev/null && echo '✅ matplotlib is installed' || echo '❌ matplotlib not found'"
-    "python -c 'import seaborn' 2>/dev/null && echo '✅ seaborn is installed' || echo '❌ seaborn not found'"
-    "python -c 'import sklearn' 2>/dev/null && echo '✅ scikit-learn is installed' || echo '❌ scikit-learn not found'"
-    "jupyter --version >/dev/null 2>&1 && echo '✅ jupyter is installed' || echo '❌ jupyter not found'"
-    "dbt --version >/dev/null 2>&1 && echo '✅ dbt is installed' || echo '❌ dbt not found'"
+    "python --version || echo 'L Python not found'"
+    "pip --version || echo 'L pip not found'"
+    "python -c 'import pandas' 2>/dev/null && echo ' pandas is installed' || echo 'L pandas not found'"
+    "python -c 'import numpy' 2>/dev/null && echo ' numpy is installed' || echo 'L numpy not found'"
+    "python -c 'import matplotlib' 2>/dev/null && echo ' matplotlib is installed' || echo 'L matplotlib not found'"
+    "python -c 'import seaborn' 2>/dev/null && echo ' seaborn is installed' || echo 'L seaborn not found'"
+    "python -c 'import sklearn' 2>/dev/null && echo ' scikit-learn is installed' || echo 'L scikit-learn not found'"
+    "jupyter --version >/dev/null 2>&1 && echo ' jupyter is installed' || echo 'L jupyter not found'"
+    "dbt --version >/dev/null 2>&1 && echo ' dbt is installed' || echo 'L dbt not found'"
 )
 
 # Post-installation notes
 post_installation_message() {
-    local python_version
-    local jupyter_version
-    local dbt_version
-    
-    if command -v python >/dev/null 2>&1; then
-        python_version=$(python --version 2>&1)
-    else
-        python_version="not installed"
-    fi
-
-    if command -v jupyter >/dev/null 2>&1; then
-        jupyter_version=$(jupyter --version | head -n1)
-    else
-        jupyter_version="not installed"
-    fi
-
-    if command -v dbt >/dev/null 2>&1; then
-        dbt_version=$(dbt --version | head -n1)
-    else
-        dbt_version="not installed"
-    fi
+    # Note: Installation and verification already completed via verify_installations()
+    local python_version=$(python --version 2>&1 || echo "unknown")
+    local jupyter_version=$(jupyter --version 2>/dev/null | head -n1 || echo "unknown")
+    local dbt_version=$(dbt --version 2>/dev/null | head -n1 || echo "unknown")
 
     echo
-    echo "🎉 Installation process complete for: $SCRIPT_NAME!"
+    echo "<� Installation process complete for: $SCRIPT_NAME!"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     echo
     echo "Important Notes:"
@@ -148,59 +128,21 @@ post_installation_message() {
     echo "- scikit-learn: https://scikit-learn.org/stable/"
     echo "- Jupyter: https://jupyter.org/documentation"
     echo "- DBT: https://docs.getdbt.com/"
-    
-    # Show installed package versions
-    echo
-    echo "Installation Status:"
-    echo "Installed Python Packages:"
-    pip list | grep -E "pandas|numpy|matplotlib|seaborn|scikit-learn|jupyter|dbt"
 }
 
 # Post-uninstallation notes
 post_uninstallation_message() {
+
+    # Remove from auto-enable config
+    auto_disable_tool
     echo
-    echo "🏁 Uninstallation process complete for: $SCRIPT_NAME!"
+    echo "<� Uninstallation process complete for: $SCRIPT_NAME!"
     echo
     echo "Additional Notes:"
     echo "1. Python remains installed as it's part of the base container"
     echo "2. Some configuration files may remain in ~/.jupyter/"
     echo "3. DBT project files and configurations remain unchanged"
-    echo "4. See the local guide for additional cleanup steps:"
-    echo "   .devcontainer/howto/howto-data-analytics.md"
-    
-    # Check for remaining components
-    echo
-    echo "Checking for remaining components..."
-    
-    local remaining=0
-    for package in pandas numpy matplotlib seaborn sklearn jupyter dbt; do
-        if python -c "import $package" 2>/dev/null; then
-            if [ $remaining -eq 0 ]; then
-                echo "⚠️  Warning: Some Python packages may still be installed:"
-                remaining=1
-            fi
-            echo "- $package"
-        fi
-    done
-    
-    if [ $remaining -eq 1 ]; then
-        echo
-        echo "To completely remove remaining packages, run:"
-        echo "pip uninstall -y pandas numpy matplotlib seaborn scikit-learn jupyter dbt-core dbt-postgres"
-    fi
-    
-    # Check for remaining VS Code extensions
-    if code --list-extensions | grep -qE "ms-python|ms-toolsai|bastienboutonnet|innoverio|databricks"; then
-        echo
-        echo "⚠️  Note: Some VS Code extensions are still installed"
-        echo "To remove them, run:"
-        echo "code --uninstall-extension ms-python.python"
-        echo "code --uninstall-extension ms-toolsai.jupyter"
-        echo "code --uninstall-extension ms-python.vscode-pylance"
-        echo "code --uninstall-extension bastienboutonnet.vscode-dbt"
-        echo "code --uninstall-extension innoverio.vscode-dbt-power-user"
-        echo "code --uninstall-extension databricks.databricks"
-    fi
+
 }
 
 #------------------------------------------------------------------------------
@@ -212,9 +154,16 @@ DEBUG_MODE=0
 UNINSTALL_MODE=0
 FORCE_MODE=0
 
+# Source common installation patterns library (needed for --help)
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --help)
+            show_script_help
+            exit 0
+            ;;
         --debug)
             DEBUG_MODE=1
             shift
@@ -229,7 +178,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "ERROR: Unknown option: $1" >&2
-            echo "Usage: $0 [--debug] [--uninstall] [--force]" >&2
+            echo "Usage: $0 [--help] [--debug] [--uninstall] [--force]" >&2
             echo "Description: $SCRIPT_DESCRIPTION"
             exit 1
             ;;
@@ -242,11 +191,11 @@ export UNINSTALL_MODE
 export FORCE_MODE
 
 # Source all core installation scripts
-source "${SCRIPT_DIR}/lib/core-install-apt.sh"
+source "${SCRIPT_DIR}/lib/core-install-system.sh"
 source "${SCRIPT_DIR}/lib/core-install-node.sh"
 source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
-source "${SCRIPT_DIR}/lib/core-install-python-packages.sh"
+source "${SCRIPT_DIR}/lib/core-install-python.sh"
 
 # Source common installation patterns library
 source "${SCRIPT_DIR}/lib/install-common.sh"
@@ -263,7 +212,7 @@ process_installations() {
 
 # Main execution
 if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-    echo "🔄 Starting uninstallation process for: $SCRIPT_NAME"
+    echo "= Starting uninstallation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
@@ -274,8 +223,11 @@ if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         done
     fi
     post_uninstallation_message
+
+    # Remove from auto-enable config
+    auto_disable_tool
 else
-    echo "🔄 Starting installation process for: $SCRIPT_NAME"
+    echo "= Starting installation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
@@ -289,5 +241,5 @@ else
     post_installation_message
 
     # Auto-enable for container rebuild
-    auto_enable_tool "data-&-analytics-tools" "Data & Analytics Tools"
+    auto_enable_tool
 fi

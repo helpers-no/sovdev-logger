@@ -77,13 +77,11 @@ EOF
 }
 
 is_service_enabled() {
-    local service_name="$1"
-    # Convert service name to program name (lowercase, no spaces)
-    local program_name=$(echo "$service_name" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+    local script_id="$1"
 
-    # Check if in enabled list
+    # Check if SCRIPT_ID is in enabled list (direct match, no conversion)
     for enabled in "${ENABLED_SERVICES[@]}"; do
-        if [[ "$enabled" == "$program_name" ]]; then
+        if [[ "$enabled" == "$script_id" ]]; then
             return 0
         fi
     done
@@ -101,13 +99,15 @@ discover_services() {
     # Find all service-*.sh scripts (extensible pattern)
     while IFS= read -r -d '' service_script; do
         # Extract metadata from service-*.sh files
+        local script_id
         local service_name
         local service_command
         local service_priority
         local service_depends
         local service_auto_restart
 
-        # Service scripts use SERVICE_SCRIPT_NAME instead of SERVICE_NAME
+        # Extract SCRIPT_ID and SERVICE_SCRIPT_NAME
+        script_id=$(grep '^SCRIPT_ID=' "$service_script" 2>/dev/null | cut -d'"' -f2 || echo "")
         service_name=$(grep '^SERVICE_SCRIPT_NAME=' "$service_script" 2>/dev/null | cut -d'"' -f2 || echo "")
         # Command is the script path with --start flag
         service_command="bash $service_script --start"
@@ -115,9 +115,9 @@ discover_services() {
         service_depends=$(grep '^SERVICE_DEPENDS=' "$service_script" 2>/dev/null | cut -d'"' -f2 || echo "")
         service_auto_restart=$(grep '^SERVICE_AUTO_RESTART=' "$service_script" 2>/dev/null | cut -d'"' -f2 || echo "true")
 
-        # Only include if has SERVICE_SCRIPT_NAME and is enabled
-        if [[ -n "$service_name" ]]; then
-            if is_service_enabled "$service_name"; then
+        # Only include if has SCRIPT_ID and is enabled
+        if [[ -n "$script_id" && -n "$service_name" ]]; then
+            if is_service_enabled "$script_id"; then
                 SERVICE_NAMES+=("$service_name")
                 SERVICE_COMMANDS+=("$service_command")
                 SERVICE_PRIORITIES+=("$service_priority")

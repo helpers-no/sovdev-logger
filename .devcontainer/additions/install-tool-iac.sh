@@ -1,12 +1,8 @@
 #!/bin/bash
-# file: .devcontainer/additions/install-conf-script.sh
+# file: .devcontainer/additions/install-tool-iac.sh
 #
-# Usage: ./install-conf-script.sh [options]
-# 
-# Options:
-#   --debug     : Enable debug output for troubleshooting
-#   --uninstall : Remove installed components instead of installing them
-#   --force     : Force installation/uninstallation even if there are dependencies
+# Installs tools and extensions for Infrastructure as Code (IaC) and configuration management (Ansible).
+# For usage information, run: ./install-tool-iac.sh --help
 #
 #------------------------------------------------------------------------------
 # CONFIGURATION - Modify this section for each new script
@@ -14,9 +10,16 @@
 
 # Script metadata - must be at the very top of the configuration section
 SCRIPT_NAME="Configuration Tools"
-SCRIPT_DESCRIPTION="Installs tools and extensions for Infrastructure as Code (Bicep) and configuration management (Ansible)"
+SCRIPT_ID="tool-iac"
+SCRIPT_DESCRIPTION="Installs tools and extensions for Infrastructure as Code (IaC) and configuration management (Ansible)"
 SCRIPT_CATEGORY="INFRA_CONFIG"
 CHECK_INSTALLED_COMMAND="[ -f /usr/local/bin/ansible ] || [ -f /usr/bin/ansible ] || command -v ansible >/dev/null 2>&1"
+
+# Optional: Custom usage text for --help
+SCRIPT_USAGE="  $(basename "$0")              # Install IaC tools
+  $(basename "$0") --help       # Show this help
+  $(basename "$0") --uninstall  # Uninstall IaC tools
+  $(basename "$0") --debug      # Install with debug output"
 
 #------------------------------------------------------------------------------
 
@@ -31,24 +34,26 @@ source "${SCRIPT_DIR}/lib/logging.sh"
 
 #------------------------------------------------------------------------------
 
-# Before running installation, we need to add any required repositories
+# Before running installation, we need to add any required repositories or setup
 pre_installation_setup() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        echo "🔧 Preparing for uninstallation..."
+        echo "=' Preparing for uninstallation..."
     else
-        echo "🔧 Performing pre-installation setup..."
-        echo "No additional setup required for this script"
+        echo "=' Performing pre-installation setup..."
+        # Here you add any required pre-installation steps
+        # none needed for this script
+        echo " Pre-installation setup complete"
     fi
 }
 
 # Define system packages
-SYSTEM_PACKAGES=(
+PACKAGES_SYSTEM=(
     "ansible"
     "ansible-lint"
 )
 
 # Define Python packages for pip installation
-PYTHON_PACKAGES=()
+PACKAGES_PYTHON=()
 
 # Define VS Code extensions
 declare -A EXTENSIONS
@@ -56,30 +61,19 @@ EXTENSIONS["redhat.ansible"]="Ansible|Ansible language support and tools"
 
 # Define verification commands to run after installation
 VERIFY_COMMANDS=(
-    "command -v ansible >/dev/null && ansible --version | head -n1 || echo '❌ ansible not found'"
-    "command -v ansible-lint >/dev/null && ansible-lint --version || echo '❌ ansible-lint not found'"
-    "code --list-extensions | grep -q redhat.ansible && echo '✅ Ansible extension is installed' || echo '❌ Ansible extension is not installed'"
+    "command -v ansible >/dev/null && ansible --version | head -n1 || echo 'L ansible not found'"
+    "command -v ansible-lint >/dev/null && ansible-lint --version || echo 'L ansible-lint not found'"
+    "code --list-extensions | grep -q redhat.ansible && echo ' Ansible extension is installed' || echo 'L Ansible extension is not installed'"
 )
 
 # Post-installation notes
 post_installation_message() {
-    local ansible_version
-    local lint_version
-    
-    if command -v ansible >/dev/null 2>&1; then
-        ansible_version=$(ansible --version | head -n1)
-    else
-        ansible_version="not installed"
-    fi
-
-    if command -v ansible-lint >/dev/null 2>&1; then
-        lint_version=$(ansible-lint --version 2>/dev/null)
-    else
-        lint_version="not installed"
-    fi
+    # Note: Installation and verification already completed via verify_installations()
+    local ansible_version=$(ansible --version 2>/dev/null | head -n1 || echo "unknown")
+    local lint_version=$(ansible-lint --version 2>/dev/null || echo "unknown")
 
     echo
-    echo "🎉 Installation process complete for: $SCRIPT_NAME!"
+    echo "<� Installation process complete for: $SCRIPT_NAME!"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     echo
     echo "Important Notes:"
@@ -97,19 +91,22 @@ post_installation_message() {
 
 # Post-uninstallation notes
 post_uninstallation_message() {
+
+    # Remove from auto-enable config
+    auto_disable_tool
     echo
-    echo "🏁 Uninstallation process complete for: $SCRIPT_NAME!"
+    echo "<� Uninstallation process complete for: $SCRIPT_NAME!"
     echo
     echo "Additional Notes:"
     echo "1. Configuration files (.bicep, .yaml, etc.) remain unchanged"
     echo "2. Any custom Ansible configurations in ~/.ansible remain in place"
     echo "3. See the local guide for additional cleanup steps if needed:"
     echo "   .devcontainer/howto/howto-conf-script.md"
-    
+
     # Verify uninstallation
     if command -v ansible >/dev/null || command -v ansible-lint >/dev/null; then
         echo
-        echo "⚠️  Warning: Some components may still be installed:"
+        echo "�  Warning: Some components may still be installed:"
         command -v ansible >/dev/null && echo "- ansible is still present"
         command -v ansible-lint >/dev/null && echo "- ansible-lint is still present"
         echo "You may need to run with sudo or check package manager settings."
@@ -126,9 +123,16 @@ DEBUG_MODE=0
 UNINSTALL_MODE=0
 FORCE_MODE=0
 
+# Source common installation patterns library (needed for --help)
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --help)
+            show_script_help
+            exit 0
+            ;;
         --debug)
             DEBUG_MODE=1
             shift
@@ -143,7 +147,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "ERROR: Unknown option: $1" >&2
-            echo "Usage: $0 [--debug] [--uninstall] [--force]" >&2
+            echo "Usage: $0 [--help] [--debug] [--uninstall] [--force]" >&2
             echo "Description: $SCRIPT_DESCRIPTION"
             exit 1
             ;;
@@ -156,11 +160,11 @@ export UNINSTALL_MODE
 export FORCE_MODE
 
 # Source all core installation scripts
-source "${SCRIPT_DIR}/lib/core-install-apt.sh"
+source "${SCRIPT_DIR}/lib/core-install-system.sh"
 source "${SCRIPT_DIR}/lib/core-install-node.sh"
 source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
-source "${SCRIPT_DIR}/lib/core-install-python-packages.sh"
+source "${SCRIPT_DIR}/lib/core-install-python.sh"
 
 # Source common installation patterns library
 source "${SCRIPT_DIR}/lib/install-common.sh"
@@ -177,8 +181,9 @@ process_installations() {
 
 # Main execution
 if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-    echo "🔄 Starting uninstallation process for: $SCRIPT_NAME"
+    echo "= Starting uninstallation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
+    pre_installation_setup
     process_installations
     if [ ${#EXTENSIONS[@]} -gt 0 ]; then
         for ext_id in "${!EXTENSIONS[@]}"; do
@@ -187,8 +192,11 @@ if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         done
     fi
     post_uninstallation_message
+
+    # Remove from auto-enable config
+    auto_disable_tool
 else
-    echo "🔄 Starting installation process for: $SCRIPT_NAME"
+    echo "= Starting installation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
@@ -202,5 +210,5 @@ else
     post_installation_message
 
     # Auto-enable for container rebuild
-    auto_enable_tool "configuration-tools" "Configuration Tools"
+    auto_enable_tool
 fi

@@ -58,6 +58,6 @@
     "shutdownAction": "stopContainer",
     "updateRemoteUserUID": true,
     "init": true,
-    // in this file you add project spessific installs.
-    "postCreateCommand": "if [ -f .devcontainer.extend/project-installs.sh ]; then bash .devcontainer.extend/project-installs.sh; fi"
+    // main orchestration script that calls project-installs.sh for custom installations
+    "postCreateCommand": "bash .devcontainer/manage/postCreateCommand.sh"
 }
