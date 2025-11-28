@@ -173,51 +173,57 @@ check_extension_state() {
 }
 
 # Function to install VS Code extensions
+# Supports regular array format: "Name (extension-id) - Description"
 process_extensions() {
     debug "=== Starting process_extensions ==="
-    
+
     # Get array reference
     declare -n arr=$1
-    
+
     debug "Array contents:"
     debug "Array size: ${#arr[@]}"
-    debug "Array keys: '${!arr[@]}'"
-    
+
     # Check if we can install extensions
     if ! can_install_extensions; then
         log "Skipping VS Code extensions installation"
-        
+
         # Provide informative message based on environment
         if is_ci_environment; then
             echo "ℹ️  CI environment detected - VS Code extensions are not needed"
         elif is_headless_environment; then
             echo "ℹ️  Headless environment detected - VS Code extensions are not needed"
         fi
-        
+
         echo "📋 Extensions that would be installed in VS Code environments:"
-        for ext_id in ${!arr[@]}; do
-            IFS='|' read -r name description _ <<< "${arr[$ext_id]}"
+        for ext_entry in "${arr[@]}"; do
+            # Parse "Name (extension-id) - Description" format
+            local name="${ext_entry%% (*}"
+            local ext_id=$(echo "$ext_entry" | sed -n 's/.*(\([^)]*\)).*/\1/p')
+            local description="${ext_entry##*) - }"
             printf "  • %s - %s\n" "$name" "$description"
         done
         echo
         return 0
     fi
-    
+
     # Find VS Code server
     local CODE_SERVER
     if ! CODE_SERVER=$(find_vscode_server); then
         log "VS Code server not found - skipping extension installation"
         echo "ℹ️  VS Code server not available - extensions will be skipped"
         echo "📋 Extensions that would be installed in VS Code environments:"
-        for ext_id in ${!arr[@]}; do
-            IFS='|' read -r name description _ <<< "${arr[$ext_id]}"
+        for ext_entry in "${arr[@]}"; do
+            # Parse "Name (extension-id) - Description" format
+            local name="${ext_entry%% (*}"
+            local ext_id=$(echo "$ext_entry" | sed -n 's/.*(\([^)]*\)).*/\1/p')
+            local description="${ext_entry##*) - }"
             printf "  • %s - %s\n" "$name" "$description"
         done
         echo
         return 0
     fi
     export CODE_SERVER
-    
+
     # Print header based on mode
     if [ "${UNINSTALL_MODE:-0}" -eq 1 ]; then
         if [ "${FORCE_MODE:-0}" -eq 1 ]; then
@@ -228,36 +234,38 @@ process_extensions() {
     else
         log "Installing ${#arr[@]} extensions..."
     fi
-    
+
     echo
     printf "%-25s %-35s %-30s %s\n" "Extension" "Description" "ID" "Status"
     printf "%s\n" "----------------------------------------------------------------------------------------------------"
-    
+
     # Track results
     local installed=0
     local uninstalled=0
     local failed=0
     local skipped=0
-    
-    # Array to store successful operations for summary
-    declare -A successful_ops
-    
+
+    # Array to store successful operations for summary (using regular array)
+    declare -a successful_ops_names=()
+    declare -a successful_ops_versions=()
+
     # Process each extension
-    for ext_id in ${!arr[@]}; do
+    for ext_entry in "${arr[@]}"; do
         debug "=== Processing extension ==="
-        debug "ext_id: '$ext_id'"
-        debug "Raw value: '${arr[$ext_id]}'"
-        
-        # Split name and description
-        IFS='|' read -r name description _ <<< "${arr[$ext_id]}"
-        
-        debug "After splitting:"
+        debug "Raw entry: '$ext_entry'"
+
+        # Parse "Name (extension-id) - Description" format
+        local name="${ext_entry%% (*}"
+        local ext_id=$(echo "$ext_entry" | sed -n 's/.*(\([^)]*\)).*/\1/p')
+        local description="${ext_entry##*) - }"
+
+        debug "After parsing:"
         debug "  name: '$name'"
         debug "  description: '$description'"
         debug "  ext_id: '$ext_id'"
         
         printf "%-25s %-35s %-30s " "$name" "$description" "$ext_id"
-        
+
         if [ "${UNINSTALL_MODE:-0}" -eq 1 ]; then
             if is_extension_installed "$ext_id" "$CODE_SERVER"; then
                 version=$(get_extension_version "$ext_id" "$CODE_SERVER")
@@ -269,7 +277,8 @@ process_extensions() {
                 if "$CODE_SERVER" --accept-server-license-terms $cmd_options --uninstall-extension "$ext_id" >/dev/null 2>&1; then
                     printf "Uninstalled (was v%s)\n" "$version"
                     uninstalled=$((uninstalled + 1))
-                    successful_ops["$name"]=$version
+                    successful_ops_names+=("$name")
+                    successful_ops_versions+=("$version")
                 else
                     printf "Failed to uninstall v%s\n" "$version"
                     failed=$((failed + 1))
@@ -283,13 +292,15 @@ process_extensions() {
                 version=$(get_extension_version "$ext_id" "$CODE_SERVER")
                 printf "v%s\n" "$version"
                 skipped=$((skipped + 1))
-                successful_ops["$name"]=$version
+                successful_ops_names+=("$name")
+                successful_ops_versions+=("$version")
             else
                 if "$CODE_SERVER" --accept-server-license-terms --install-extension "$ext_id" >/dev/null 2>&1; then
                     version=$(get_extension_version "$ext_id" "$CODE_SERVER")
                     printf "Installed v%s\n" "$version"
                     installed=$((installed + 1))
-                    successful_ops["$name"]=$version
+                    successful_ops_names+=("$name")
+                    successful_ops_versions+=("$version")
                 else
                     printf "Installation failed\n"
                     failed=$((failed + 1))
@@ -297,18 +308,18 @@ process_extensions() {
             fi
         fi
     done
-    
+
     echo
     echo "Current Status:"
     # Only show successful operations if there are any
-    if [ ${#successful_ops[@]} -gt 0 ]; then
-        while IFS= read -r name; do
+    if [ ${#successful_ops_names[@]} -gt 0 ]; then
+        for i in "${!successful_ops_names[@]}"; do
             if [ "${UNINSTALL_MODE:-0}" -eq 1 ]; then
-                printf "* 🗑️  %s (was v%s)\n" "$name" "${successful_ops[$name]}"
+                printf "* 🗑️  %s (was v%s)\n" "${successful_ops_names[$i]}" "${successful_ops_versions[$i]}"
             else
-                printf "* ✅ %s (v%s)\n" "$name" "${successful_ops[$name]}"
+                printf "* ✅ %s (v%s)\n" "${successful_ops_names[$i]}" "${successful_ops_versions[$i]}"
             fi
-        done < <(printf '%s\n' "${!successful_ops[@]}" | sort)
+        done
     else
         echo "No operations completed successfully"
     fi

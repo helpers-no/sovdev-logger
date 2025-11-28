@@ -161,11 +161,12 @@ PWSH_MODULES=(
     # No PowerShell modules needed for Rust development
 )
 
-# Define VS Code extensions
-declare -A EXTENSIONS
-EXTENSIONS["rust-lang.rust-analyzer"]="Rust Analyzer|Rust language support with rust-analyzer"
-EXTENSIONS["vadimcn.vscode-lldb"]="CodeLLDB|Native debugger for Rust"
-EXTENSIONS["serayuzgur.crates"]="Crates|Helps manage Rust dependencies"
+# Define VS Code extensions (format: "Name (extension-id) - Description")
+EXTENSIONS=(
+    "Rust Analyzer (rust-lang.rust-analyzer) - Rust language support with rust-analyzer"
+    "CodeLLDB (vadimcn.vscode-lldb) - Native debugger for Rust"
+    "Crates (serayuzgur.crates) - Helps manage Rust dependencies"
+)
 
 # Define verification commands to run after installation
 VERIFY_COMMANDS=(
@@ -232,9 +233,16 @@ DEBUG_MODE=0
 UNINSTALL_MODE=0
 FORCE_MODE=0
 
+# Source common installation patterns library (needed for --help)
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --help)
+            show_script_help
+            exit 0
+            ;;
         --debug)
             DEBUG_MODE=1
             shift
@@ -249,7 +257,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "ERROR: Unknown option: $1" >&2
-            echo "Usage: $0 [--debug] [--uninstall] [--force]" >&2
+            echo "Usage: $0 [--help] [--debug] [--uninstall] [--force]" >&2
             echo "Description: $SCRIPT_DESCRIPTION"
             exit 1
             ;;
@@ -268,8 +276,7 @@ source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
 source "${SCRIPT_DIR}/lib/core-install-python.sh"
 
-# Source common installation patterns library
-source "${SCRIPT_DIR}/lib/install-common.sh"
+# Note: lib/install-common.sh already sourced earlier (needed for --help)
 
 # Function to process installations
 process_installations() {

@@ -97,7 +97,8 @@
       "Bash(./install-dev-python.sh:*)",
       "Bash(./install-srv-nginx.sh:*)",
       "Bash(./install-srv-otel-monitoring.sh:*)",
-      "Bash(./install-tool-azure.sh:*)"
+      "Bash(./install-tool-azure.sh:*)",
+      "Bash(./install-dev-rust.sh:*)"
     ],
     "deny": [],
     "ask": []
