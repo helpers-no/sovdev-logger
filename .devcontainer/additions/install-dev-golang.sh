@@ -26,6 +26,12 @@ SCRIPT_DESCRIPTION="Installs Go runtime, common tools, and VS Code extensions fo
 SCRIPT_CATEGORY="LANGUAGE_DEV"
 CHECK_INSTALLED_COMMAND="[ -f /usr/local/go/bin/go ] || [ -f /usr/bin/go ] || command -v go >/dev/null 2>&1"
 
+# Custom usage text for --help
+SCRIPT_USAGE="  $(basename "$0")                    # Install (default version)
+  $(basename "$0") --version X.Y.Z    # Install specific Go version (e.g., 1.21.0)
+  $(basename "$0") --help             # Show this help
+  $(basename "$0") --uninstall        # Uninstall"
+
 #------------------------------------------------------------------------------
 
 # Source auto-enable library
