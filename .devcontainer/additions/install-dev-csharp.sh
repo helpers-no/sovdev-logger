@@ -397,6 +397,9 @@ source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
 source "${SCRIPT_DIR}/lib/core-install-python-packages.sh"
 
+# Source common installation patterns library
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 # Function to process installations
 process_installations() {
     # Install .NET SDK first (custom function with fallback)
@@ -429,16 +432,18 @@ process_installations() {
 
 # Function to verify installations
 verify_installations() {
+    # Ensure .NET is in PATH for verification
+    export DOTNET_ROOT=$HOME/.dotnet
+    export PATH=$PATH:$HOME/.dotnet:$HOME/.dotnet/tools
+
+    # Use common verification from lib/install-common.sh
+    # (imported above via source)
     if [ ${#VERIFY_COMMANDS[@]} -gt 0 ]; then
-        # Ensure .NET is in PATH for verification
-        export DOTNET_ROOT=$HOME/.dotnet
-        export PATH=$PATH:$HOME/.dotnet:$HOME/.dotnet/tools
-        
         echo
         echo "🔍 Verifying installations..."
         for cmd in "${VERIFY_COMMANDS[@]}"; do
-            if ! eval "$cmd"; then
-                echo "❌ Verification failed"
+            if ! eval "$cmd" 2>/dev/null; then
+                echo "  ❌ Verification failed for: $cmd"
             fi
         done
     fi

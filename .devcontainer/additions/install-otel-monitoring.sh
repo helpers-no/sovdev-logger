@@ -33,6 +33,10 @@ source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/logging.sh"
 
+# Source common installation patterns library
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 #------------------------------------------------------------------------------
 # INSTALLATION CONFIGURATION
 #------------------------------------------------------------------------------
@@ -680,15 +684,8 @@ export UNINSTALL_MODE
 export FORCE_MODE
 
 # Function to verify installations
-verify_installations() {
-    if [ ${#VERIFY_COMMANDS[@]} -gt 0 ]; then
-        echo
-        echo "🔍 Verifying installations..."
-        for cmd in "${VERIFY_COMMANDS[@]}"; do
-            eval "$cmd"
-        done
-    fi
-}
+# Note: Using common implementation from lib/install-common.sh (sourced above)
+# No local definition needed - library function is used directly
 
 # Main execution
 if [ "${UNINSTALL_MODE}" -eq 1 ]; then

@@ -36,6 +36,10 @@ source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/logging.sh"
 
+# Source common installation patterns library
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 #------------------------------------------------------------------------------
 
 # --- Default Configuration ---
@@ -395,13 +399,17 @@ process_installations() {
 
 # Function to verify installations
 verify_installations() {
+    # Ensure Go is in PATH for verification
+    export PATH="/usr/local/go/bin:$PATH"
+
+    # Use library function (from lib/install-common.sh)
     if [ ${#VERIFY_COMMANDS[@]} -gt 0 ]; then
         echo ""
         echo "🔍 Verifying installations..."
-        # Source PATH updates to verify
-        export PATH="/usr/local/go/bin:$PATH"
         for cmd in "${VERIFY_COMMANDS[@]}"; do
-            eval "$cmd" || true
+            if ! eval "$cmd" 2>/dev/null; then
+                echo "  ❌ Verification failed for: $cmd"
+            fi
         done
     fi
 }

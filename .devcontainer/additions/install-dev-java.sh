@@ -36,6 +36,10 @@ source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/logging.sh"
 
+# Source common installation patterns library
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 #------------------------------------------------------------------------------
 
 # --- Default Configuration ---
@@ -369,15 +373,8 @@ process_installations() {
 }
 
 # Function to verify installations
-verify_installations() {
-    if [ ${#VERIFY_COMMANDS[@]} -gt 0 ]; then
-        echo ""
-        echo "🔍 Verifying installations..."
-        for cmd in "${VERIFY_COMMANDS[@]}"; do
-            eval "$cmd" || true
-        done
-    fi
-}
+# Note: Using common implementation from lib/install-common.sh (sourced above)
+# No local definition needed - library function is used directly
 
 #------------------------------------------------------------------------------
 # MAIN EXECUTION
