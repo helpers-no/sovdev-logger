@@ -247,41 +247,43 @@ source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
 source "${SCRIPT_DIR}/lib/core-install-python-packages.sh"
 
+# Source common installation patterns library
+source "${SCRIPT_DIR}/lib/install-common.sh"
+
 # Function to process installations
+#
+# For most scripts: Use the standard library function (shown below)
+# For custom installations: Add custom logic before calling library function
+#
+# PATTERN 1: Pure simple (most common) - Just use library
 process_installations() {
-    # Process each type of package if array is not empty
-    if [ ${#SYSTEM_PACKAGES[@]} -gt 0 ]; then
-        process_system_packages "SYSTEM_PACKAGES"
-    fi
-
-    if [ ${#NODE_PACKAGES[@]} -gt 0 ]; then
-        process_node_packages "NODE_PACKAGES"
-    fi
-
-    if [ ${#PYTHON_PACKAGES[@]} -gt 0 ]; then
-        process_python_packages "PYTHON_PACKAGES"
-    fi
-
-    if [ ${#PWSH_MODULES[@]} -gt 0 ]; then
-        process_pwsh_modules "PWSH_MODULES"
-    fi
-
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        process_extensions "EXTENSIONS"
-    fi
+    # Use standard processing from lib/install-common.sh
+    process_standard_installations
 }
+
+# PATTERN 2: Custom prefix - Custom logic first, then library
+# Uncomment and modify if you need custom installation logic:
+# process_installations() {
+#     # Custom installation first
+#     install_custom_tool
+#
+#     # Then use standard processing from lib/install-common.sh
+#     process_standard_installations
+# }
+
+# PATTERN 3: Completely custom (rare) - Skip library if needed
+# Only use this for very unique installation requirements
+# process_installations() {
+#     # Your completely custom installation logic
+#     install_custom_tool_completely_different_way
+#
+#     # Note: If you skip process_standard_installations, you must
+#     # manually call process_*_packages for each package type you use
+# }
 
 # Function to verify installations
-verify_installations() {
-    if [ ${#VERIFY_COMMANDS[@]} -gt 0 ]; then
-        echo
-        echo "🔍 Verifying installations..."
-        for cmd in "${VERIFY_COMMANDS[@]}"; do
-            # Run command silently - commands output their own status messages
-            eval "$cmd" || true
-        done
-    fi
-}
+# Note: Using common implementation from lib/install-common.sh (sourced above)
+# No local definition needed - library function is used directly
 
 # Main execution
 if [ "${UNINSTALL_MODE}" -eq 1 ]; then
