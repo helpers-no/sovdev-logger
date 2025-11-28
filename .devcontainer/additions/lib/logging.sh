@@ -12,9 +12,13 @@ LOG_DIR="${DEVCONTAINER_LOG_DIR:-/tmp/devcontainer-install}"
 mkdir -p "$LOG_DIR"
 
 # Create tool-specific log with timestamp
-SCRIPT_NAME=$(basename "$0" .sh)  # e.g., "install-dev-golang"
+# Use script filename for log (not SCRIPT_NAME which may have spaces/special chars)
+LOG_SCRIPT_NAME=$(basename "$0" .sh)  # e.g., "install-dev-golang"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-LOG_FILE="$LOG_DIR/${SCRIPT_NAME}-${TIMESTAMP}.log"
+LOG_FILE="$LOG_DIR/${LOG_SCRIPT_NAME}-${TIMESTAMP}.log"
+
+# Set SCRIPT_NAME only if not already defined (preserve display name from script)
+SCRIPT_NAME=${SCRIPT_NAME:-$LOG_SCRIPT_NAME}
 
 # Export for subprocesses
 export CURRENT_LOG_FILE="$LOG_FILE"

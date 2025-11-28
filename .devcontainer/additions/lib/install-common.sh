@@ -33,6 +33,10 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     exit 1
 fi
 
+# Source categories library for category display names
+COMMON_LIB_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+source "${COMMON_LIB_DIR}/categories.sh"
+
 # ============================================================================
 # Function: show_script_help
 # Description: Display comprehensive help information for install scripts
@@ -77,7 +81,10 @@ show_script_help() {
     # Script Information
     [[ -n "$SCRIPT_ID" ]] && echo "ID:           $SCRIPT_ID"
     [[ -n "$SCRIPT_NAME" ]] && echo "Name:         $SCRIPT_NAME"
-    [[ -n "$SCRIPT_CATEGORY" ]] && echo "Category:     $SCRIPT_CATEGORY"
+    if [[ -n "$SCRIPT_CATEGORY" ]]; then
+        local category_display=$(get_category_display_name "$SCRIPT_CATEGORY")
+        echo "Category:     $SCRIPT_CATEGORY, $category_display"
+    fi
     [[ -n "$SCRIPT_DESCRIPTION" ]] && echo "Description:  $SCRIPT_DESCRIPTION"
     echo ""
 
