@@ -20,6 +20,7 @@
 #------------------------------------------------------------------------------
 
 # --- Script Metadata ---
+SCRIPT_ID="dev-golang"
 SCRIPT_NAME="Go Runtime & Development Tools"
 SCRIPT_DESCRIPTION="Installs Go runtime, common tools, and VS Code extensions for Go development."
 SCRIPT_CATEGORY="LANGUAGE_DEV"

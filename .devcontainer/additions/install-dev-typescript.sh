@@ -13,6 +13,7 @@
 #------------------------------------------------------------------------------
 
 # Script metadata - must be at the very top of the configuration section
+SCRIPT_ID="dev-typescript"
 SCRIPT_NAME="TypeScript Development Tools"
 SCRIPT_DESCRIPTION="Installs Node.js LTS, npm, TypeScript, and essential development tools"
 SCRIPT_CATEGORY="LANGUAGE_DEV"

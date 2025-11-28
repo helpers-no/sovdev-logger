@@ -20,6 +20,7 @@
 #------------------------------------------------------------------------------
 
 # --- Script Metadata ---
+SCRIPT_ID="dev-java"
 SCRIPT_NAME="Java Runtime & Development Tools"
 SCRIPT_DESCRIPTION="Installs Java JDK, Maven, Gradle, and VS Code extensions for Java development."
 SCRIPT_CATEGORY="LANGUAGE_DEV"

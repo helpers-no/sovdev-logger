@@ -13,6 +13,7 @@
 #------------------------------------------------------------------------------
 
 # Script metadata - must be at the very top of the configuration section
+SCRIPT_ID="dev-rust"
 SCRIPT_NAME="Rust Development Tools"
 SCRIPT_DESCRIPTION="Installs Rust (latest stable via rustup), cargo, and sets up Rust development environment"
 SCRIPT_CATEGORY="LANGUAGE_DEV"

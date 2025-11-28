@@ -13,6 +13,7 @@
 #------------------------------------------------------------------------------
 
 # Script metadata - must be at the very top of the configuration section
+SCRIPT_ID="dev-csharp"
 SCRIPT_NAME="C# Development Tools"
 SCRIPT_DESCRIPTION="Complete .NET 8.0 development environment with Azure Functions, Bicep IaC, storage emulation, and VS Code extensions"
 SCRIPT_CATEGORY="LANGUAGE_DEV"
