@@ -20,6 +20,28 @@ SCRIPT_USAGE="  $(basename "$0")                    # Install (default version)
   $(basename "$0") --help             # Show this help
   $(basename "$0") --uninstall        # Uninstall"
 
+# System packages
+PACKAGES_SYSTEM=(
+    "curl"
+    "gnupg"
+    "apt-transport-https"
+    "ca-certificates"
+)
+
+# Go packages
+PACKAGES_GO=(
+    "golang.org/x/tools/gopls@latest"
+    "github.com/go-delve/delve/cmd/dlv@latest"
+    "honnef.co/go/tools/cmd/staticcheck@latest"
+)
+
+# VS Code extensions
+EXTENSIONS=(
+    "Go (golang.go) - Core Go language support"
+    "Go Test Explorer (premparihar.gotestexplorer) - Test runner and debugger"
+    "Protocol Buffers (zxh404.vscode-proto3) - Protocol Buffer support"
+)
+
 #------------------------------------------------------------------------------
 
 # Source auto-enable library
@@ -31,33 +53,18 @@ source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/logging.sh"
 
-# Source common installation patterns library
-# shellcheck source=/dev/null
-source "${SCRIPT_DIR}/lib/install-common.sh"
-
 #------------------------------------------------------------------------------
 
 # --- Default Configuration ---
 DEFAULT_GO_VERSION="1.21.0" # Specify the default Go version to install
 TARGET_GO_VERSION=""        # Will be set based on --version flag or default
 
-# --- Utility Functions ---
-detect_architecture() {
-    if command -v dpkg > /dev/null 2>&1; then
-        ARCH=$(dpkg --print-architecture)
-    elif command -v uname > /dev/null 2>&1; then
-        local unamem=$(uname -m)
-        case "$unamem" in
-            aarch64|arm64) ARCH="arm64" ;;
-            x86_64) ARCH="amd64" ;;
-            *) ARCH="$unamem" ;;
-        esac
-    else
-        ARCH="unknown"
-    fi
-    echo "$ARCH"
-}
 
+# Set up Go installation directories (needed for both install and uninstall)
+GO_INSTALL_DIR="/usr/local/go"
+GO_BIN_DIR="/usr/local/go/bin"
+
+# --- Utility Functions ---
 get_installed_go_version() {
     if command -v go > /dev/null; then
         go version | grep -oP 'go\K[0-9.]+'
@@ -68,32 +75,18 @@ get_installed_go_version() {
 
 # --- Pre-installation/Uninstallation Setup ---
 pre_installation_setup() {
-    echo "🔧 Preparing environment..."
-    
-    # Ensure essential tools are present
-    if ! command -v sudo > /dev/null || ! command -v apt-get > /dev/null || ! command -v curl > /dev/null || ! command -v gpg > /dev/null; then
-         echo "⏳ Installing prerequisites (sudo, curl, apt-transport-https, gpg)..."
-         apt-get update -y > /dev/null
-         apt-get install -y --no-install-recommends sudo curl apt-transport-https ca-certificates gnupg > /dev/null
-    fi
-
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         echo "🔧 Preparing for Go uninstallation..."
         if [ -z "$TARGET_GO_VERSION" ]; then
             TARGET_GO_VERSION=$(get_installed_go_version)
             if [ -z "$TARGET_GO_VERSION" ]; then
-                echo "⚠️ Could not detect installed Go version. Please specify with --version X.Y.Z to uninstall."
-                exit 1
+                echo "ℹ️ Could not detect Go version from PATH, will remove installation from $GO_INSTALL_DIR if present."
             else
                 echo "ℹ️ Detected Go version $TARGET_GO_VERSION for uninstallation."
             fi
+        else
+            echo "ℹ️ Uninstalling Go version $TARGET_GO_VERSION as specified."
         fi
-
-        declare -g GO_PACKAGES=(
-            "golang-go"
-            "golang-go.tools"
-            "golang-golang-x-tools"
-        )
     else
         echo "🔧 Performing pre-installation setup for Go..."
         SYSTEM_ARCH=$(detect_architecture)
@@ -113,98 +106,40 @@ pre_installation_setup() {
             echo "⚠️ Go version $current_version is installed. This script will install $TARGET_GO_VERSION alongside it."
             echo "   You may need to update your PATH to use the new version."
         fi
-
-        # Set up Go installation directory
-        GO_INSTALL_DIR="/usr/local/go"
-        GO_BIN_DIR="/usr/local/go/bin"
-        
-        # Add Go binary directory to PATH if not already present
-        if ! grep -q "$GO_BIN_DIR" ~/.bashrc; then
-            echo "export PATH=\$PATH:$GO_BIN_DIR" >> ~/.bashrc
-            source ~/.bashrc
-        fi
     fi
 }
-
-# --- Define VS Code extensions for Go Development (format: "Name (extension-id) - Description") ---
-EXTENSIONS=(
-    "Go (golang.go) - Core Go language support"
-    "Go Test Explorer (premparihar.gotestexplorer) - Test runner and debugger"
-    "Protocol Buffers (zxh404.vscode-proto3) - Protocol Buffer support"
-)
-
-# --- Define verification commands ---
-VERIFY_COMMANDS=(
-    "command -v go >/dev/null && go version || echo '❌ Go not found'"
-    "go env || echo '❌ Failed to get Go environment'"
-    "[ -f go.mod ] && (go list -m all || echo '❌ Failed to list Go modules') || echo 'ℹ️  No go.mod found - skipping module list'"
-)
 
 # --- Post-installation/Uninstallation Messages ---
 post_installation_message() {
     local go_version
-    go_version=$(go version 2>/dev/null || echo "not found")
+    go_version=$(get_installed_go_version)
+
+    if [ -z "$go_version" ]; then
+        go_version="not found"
+    fi
 
     echo
-    echo "🎉 Installation process complete for: $SCRIPT_NAME!"
-    echo "Purpose: $SCRIPT_DESCRIPTION"
+    echo "🎉 Installation complete!"
+    echo "   Go: $go_version"
+    echo "   Workspace: $GOPATH"
     echo
-    echo "Important Notes:"
-    echo "1. Go: $go_version"
-    echo "2. Go workspace: $GOPATH"
-    echo "3. VS Code extensions for Go development suggested/installed."
+    echo "Quick start: go mod init example.com/hello"
+    echo "Docs: https://golang.org/doc/"
     echo
-    echo "Quick Start Commands:"
-    echo "- Check Go version: go version"
-    echo "- Check Go environment: go env"
-    echo "- Create new module: go mod init example.com/hello"
-    echo "- Build program: go build"
-    echo "- Run program: go run main.go"
-    echo "- Test program: go test ./..."
-    echo "- Install dependencies: go get ./..."
-    echo
-    echo "Documentation Links:"
-    echo "- Go Documentation: https://golang.org/doc/"
-    echo "- Go Modules: https://golang.org/ref/mod"
-    echo "- Go Standard Library: https://pkg.go.dev/std"
-    echo "- VS Code Go Extension: https://marketplace.visualstudio.com/items?itemName=golang.go"
-    echo
-    echo "Installation Status:"
-    verify_installations
 }
 
 post_uninstallation_message() {
-    echo
-    echo "🏁 Uninstallation process complete for specified Go components."
-    echo
-    echo "Additional Notes:"
-    echo "1. If other Go versions remain, they were not touched unless specified."
-    echo "2. Go workspace and modules might remain in $GOPATH"
-    echo "3. Check VS Code extensions if they need manual removal."
+    local go_version
+    go_version=$(get_installed_go_version)
 
     echo
-    echo "Checking for remaining components..."
-    if command -v go >/dev/null; then
-        echo "⚠️ Go $(go version) is still installed."
+    echo "🏁 Uninstallation complete!"
+    if [ -n "$go_version" ]; then
+        echo "   ⚠️  Go $go_version still found in PATH"
     else
-        echo "✅ Go appears to be removed."
+        echo "   ✅ Go removed"
     fi
-
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        local remaining_ext=0
-        for ext_id in "${!EXTENSIONS[@]}"; do
-            if code --list-extensions 2>/dev/null | grep -qi "^${ext_id}$"; then
-                if [ $remaining_ext -eq 0 ]; then
-                    echo "⚠️ Some VS Code extensions might remain:"
-                fi
-                echo "   - ${EXTENSIONS[$ext_id]%%|*}"
-                ((remaining_ext++))
-            fi
-        done
-        if [ $remaining_ext -eq 0 ]; then
-            echo "✅ No VS Code extensions remain."
-        fi
-    fi
+    echo
 }
 
 #------------------------------------------------------------------------------
@@ -266,7 +201,9 @@ export FORCE_MODE
 
 # Source core installation scripts
 CORE_SCRIPT_DIR="$(dirname "$0")"
+source "${CORE_SCRIPT_DIR}/lib/core-install-system.sh"
 source "${CORE_SCRIPT_DIR}/lib/core-install-extensions.sh"
+source "${CORE_SCRIPT_DIR}/lib/core-install-go.sh"
 
 #------------------------------------------------------------------------------
 # HELPER FUNCTIONS
@@ -314,12 +251,7 @@ setup_go_environment() {
     local go_bin_dir="$1"
 
     # Add Go to PATH in .bashrc if not already present
-    if ! grep -q "$go_bin_dir" ~/.bashrc; then
-        echo "" >> ~/.bashrc
-        echo "# Go environment" >> ~/.bashrc
-        echo "export PATH=\"$go_bin_dir:\$PATH\"" >> ~/.bashrc
-        echo "✅ Added Go to PATH in ~/.bashrc"
-    fi
+    add_to_bashrc "$go_bin_dir" "# Go environment" "export PATH=\"$go_bin_dir:\$PATH\""
 
     # Setup GOPATH
     local gopath="$HOME/go"
@@ -328,37 +260,14 @@ setup_go_environment() {
         echo "✅ Created GOPATH directory structure at $gopath"
     fi
 
-    if ! grep -q "GOPATH" ~/.bashrc; then
-        echo "export GOPATH=\"$gopath\"" >> ~/.bashrc
-        echo "export PATH=\"\$GOPATH/bin:\$PATH\"" >> ~/.bashrc
-        echo "✅ Added GOPATH to ~/.bashrc"
-    fi
-}
-
-# Function to install Go tools
-install_go_tools() {
-    echo "📦 Installing common Go development tools..."
-
-    local tools=(
-        "golang.org/x/tools/gopls@latest"
-        "github.com/go-delve/delve/cmd/dlv@latest"
-        "honnef.co/go/tools/cmd/staticcheck@latest"
-    )
-
-    for tool in "${tools[@]}"; do
-        echo "  Installing $tool..."
-        if go install "$tool" 2>/dev/null; then
-            echo "  ✅ Installed $(basename $tool)"
-        else
-            echo "  ⚠️  Failed to install $tool (non-critical)"
-        fi
-    done
+    add_to_bashrc "GOPATH" "# Go workspace" "export GOPATH=\"$gopath\"" "export PATH=\"\$GOPATH/bin:\$PATH\""
 }
 
 # Function to process installations
 process_installations() {
+    # Custom Go binary installation/uninstallation first
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        # Uninstall Go
+        # Uninstall Go binary
         if [ -d "$GO_INSTALL_DIR" ]; then
             echo "🗑️  Removing Go installation from $GO_INSTALL_DIR..."
             sudo rm -rf "$GO_INSTALL_DIR"
@@ -369,8 +278,18 @@ process_installations() {
 
         # Note: We don't remove .bashrc entries to avoid breaking user's shell config
         echo "ℹ️  Note: PATH entries in ~/.bashrc were not removed"
+
+        # Uninstall only Go-specific items (NOT system packages)
+        # System packages (curl, gnupg, etc.) are prerequisites that other tools use
+        if [ ${#PACKAGES_GO[@]} -gt 0 ]; then
+            process_go_packages "PACKAGES_GO"
+        fi
+
+        if [ ${#EXTENSIONS[@]} -gt 0 ]; then
+            process_extensions "EXTENSIONS"
+        fi
     else
-        # Install Go
+        # Install Go binary
         SYSTEM_ARCH=$(detect_architecture)
 
         # Map architecture names
@@ -390,30 +309,9 @@ process_installations() {
         export PATH="$GO_BIN_DIR:$PATH"
         export GOPATH="$HOME/go"
 
-        # Install Go tools
-        install_go_tools
-    fi
-
-    # Process VS Code extensions
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        process_extensions "EXTENSIONS"
-    fi
-}
-
-# Function to verify installations
-verify_installations() {
-    # Ensure Go is in PATH for verification
-    export PATH="/usr/local/go/bin:$PATH"
-
-    # Use library function (from lib/install-common.sh)
-    if [ ${#VERIFY_COMMANDS[@]} -gt 0 ]; then
-        echo ""
-        echo "🔍 Verifying installations..."
-        for cmd in "${VERIFY_COMMANDS[@]}"; do
-            if ! eval "$cmd" 2>/dev/null; then
-                echo "  ❌ Verification failed for: $cmd"
-            fi
-        done
+        # Then use standard processing from lib/install-common.sh
+        # This handles: PACKAGES_SYSTEM, PACKAGES_GO, EXTENSIONS
+        process_standard_installations
     fi
 }
 
@@ -432,11 +330,13 @@ else
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
-    verify_installations
+
+    # Ensure Go is in PATH for post-installation message
+    export PATH="$GO_BIN_DIR:$PATH"
     post_installation_message
 
     # Auto-enable for container rebuild
-    auto_enable_tool "go-runtime-&-development-tools" "Go Runtime & Development Tools"
+    auto_enable_tool "$SCRIPT_ID" "$SCRIPT_NAME"
 fi
 
 echo "✅ Script execution finished."

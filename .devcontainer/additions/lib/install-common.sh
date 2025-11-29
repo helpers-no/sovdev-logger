@@ -88,12 +88,6 @@ show_script_help() {
     [[ -n "$SCRIPT_DESCRIPTION" ]] && echo "Description:  $SCRIPT_DESCRIPTION"
     echo ""
 
-    # Installation Check
-    if [[ -n "$CHECK_INSTALLED_COMMAND" ]]; then
-        echo "Check Command: $CHECK_INSTALLED_COMMAND"
-        echo ""
-    fi
-
     # Prerequisites
     if [[ -n "$PREREQUISITE_CONFIGS" ]]; then
         echo "Prerequisites:"
@@ -120,57 +114,94 @@ show_script_help() {
     # Packages to Install
     local has_packages=false
 
-    if [ ${#PACKAGES_SYSTEM[@]} -gt 0 ]; then
+    # Check for both naming conventions: SYSTEM_PACKAGES and PACKAGES_SYSTEM
+    if [ ${#SYSTEM_PACKAGES[@]} -gt 0 ] || [ ${#PACKAGES_SYSTEM[@]} -gt 0 ]; then
         has_packages=true
         echo "System Packages (APT):"
-        for pkg in "${PACKAGES_SYSTEM[@]}"; do
-            echo "  - $pkg"
-        done
+        if [ ${#SYSTEM_PACKAGES[@]} -gt 0 ]; then
+            for pkg in "${SYSTEM_PACKAGES[@]}"; do
+                echo "  - $pkg"
+            done
+        else
+            for pkg in "${PACKAGES_SYSTEM[@]}"; do
+                echo "  - $pkg"
+            done
+        fi
         echo ""
     fi
 
-    if [ ${#PACKAGES_NODE[@]} -gt 0 ]; then
+    if [ ${#NODE_PACKAGES[@]} -gt 0 ] || [ ${#PACKAGES_NODE[@]} -gt 0 ]; then
         has_packages=true
         echo "Node.js Packages (NPM):"
-        for pkg in "${PACKAGES_NODE[@]}"; do
-            echo "  - $pkg"
-        done
+        if [ ${#NODE_PACKAGES[@]} -gt 0 ]; then
+            for pkg in "${NODE_PACKAGES[@]}"; do
+                echo "  - $pkg"
+            done
+        else
+            for pkg in "${PACKAGES_NODE[@]}"; do
+                echo "  - $pkg"
+            done
+        fi
         echo ""
     fi
 
-    if [ ${#PACKAGES_PYTHON[@]} -gt 0 ]; then
+    if [ ${#PYTHON_PACKAGES[@]} -gt 0 ] || [ ${#PACKAGES_PYTHON[@]} -gt 0 ]; then
         has_packages=true
         echo "Python Packages (pip):"
-        for pkg in "${PACKAGES_PYTHON[@]}"; do
-            echo "  - $pkg"
-        done
+        if [ ${#PYTHON_PACKAGES[@]} -gt 0 ]; then
+            for pkg in "${PYTHON_PACKAGES[@]}"; do
+                echo "  - $pkg"
+            done
+        else
+            for pkg in "${PACKAGES_PYTHON[@]}"; do
+                echo "  - $pkg"
+            done
+        fi
         echo ""
     fi
 
-    if [ ${#PACKAGES_PWSH[@]} -gt 0 ]; then
+    if [ ${#PWSH_PACKAGES[@]} -gt 0 ] || [ ${#PACKAGES_PWSH[@]} -gt 0 ]; then
         has_packages=true
         echo "PowerShell Modules:"
-        for pkg in "${PACKAGES_PWSH[@]}"; do
-            echo "  - $pkg"
-        done
+        if [ ${#PWSH_PACKAGES[@]} -gt 0 ]; then
+            for pkg in "${PWSH_PACKAGES[@]}"; do
+                echo "  - $pkg"
+            done
+        else
+            for pkg in "${PACKAGES_PWSH[@]}"; do
+                echo "  - $pkg"
+            done
+        fi
         echo ""
     fi
 
-    if [ ${#PACKAGES_GO[@]} -gt 0 ]; then
+    if [ ${#GO_PACKAGES[@]} -gt 0 ] || [ ${#PACKAGES_GO[@]} -gt 0 ]; then
         has_packages=true
         echo "Go Packages (go install):"
-        for pkg in "${PACKAGES_GO[@]}"; do
-            echo "  - $pkg"
-        done
+        if [ ${#GO_PACKAGES[@]} -gt 0 ]; then
+            for pkg in "${GO_PACKAGES[@]}"; do
+                echo "  - $pkg"
+            done
+        else
+            for pkg in "${PACKAGES_GO[@]}"; do
+                echo "  - $pkg"
+            done
+        fi
         echo ""
     fi
 
-    if [ ${#PACKAGES_CARGO[@]} -gt 0 ]; then
+    if [ ${#CARGO_PACKAGES[@]} -gt 0 ] || [ ${#PACKAGES_CARGO[@]} -gt 0 ]; then
         has_packages=true
         echo "Rust Packages (cargo install):"
-        for pkg in "${PACKAGES_CARGO[@]}"; do
-            echo "  - $pkg"
-        done
+        if [ ${#CARGO_PACKAGES[@]} -gt 0 ]; then
+            for pkg in "${CARGO_PACKAGES[@]}"; do
+                echo "  - $pkg"
+            done
+        else
+            for pkg in "${PACKAGES_CARGO[@]}"; do
+                echo "  - $pkg"
+            done
+        fi
         echo ""
     fi
 
@@ -185,15 +216,6 @@ show_script_help() {
 
     if [ "$has_packages" = false ]; then
         echo "Packages: Custom installation (see script for details)"
-        echo ""
-    fi
-
-    # Verification Commands
-    if [ ${#VERIFY_COMMANDS[@]} -gt 0 ]; then
-        echo "Verification Commands:"
-        for cmd in "${VERIFY_COMMANDS[@]}"; do
-            echo "  - $cmd"
-        done
         echo ""
     fi
 
@@ -301,6 +323,14 @@ process_standard_installations() {
 
     if [ ${#PACKAGES_PWSH[@]} -gt 0 ]; then
         process_pwsh_modules "PACKAGES_PWSH"
+    fi
+
+    if [ ${#PACKAGES_GO[@]} -gt 0 ]; then
+        process_go_packages "PACKAGES_GO"
+    fi
+
+    if [ ${#PACKAGES_CARGO[@]} -gt 0 ]; then
+        process_cargo_packages "PACKAGES_CARGO"
     fi
 
     if [ ${#EXTENSIONS[@]} -gt 0 ]; then

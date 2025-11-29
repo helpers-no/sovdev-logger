@@ -51,7 +51,7 @@ can_install_extensions() {
     fi
     
     # Skip in headless environments unless explicitly in devcontainer
-    if is_headless_environment && [ -z "${DEVCONTAINER:-}" ] && [ -z "${CODESPACES:-}" ]; then
+    if is_headless_environment && [ -z "${DEVCONTAINER:-}" ] && [ -z "${CODESPACES:-}" ] && [ -z "${REMOTE_CONTAINERS:-}" ]; then
         debug "Headless environment detected - extensions not needed"
         return 1
     fi

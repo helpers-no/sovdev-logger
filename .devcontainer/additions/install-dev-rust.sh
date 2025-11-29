@@ -19,6 +19,27 @@ SCRIPT_USAGE="  $(basename "$0")              # Install
   $(basename "$0") --help       # Show this help
   $(basename "$0") --uninstall  # Uninstall"
 
+# System packages
+PACKAGES_SYSTEM=(
+    "build-essential"
+    "pkg-config"
+    "libssl-dev"
+)
+
+# Rust packages
+PACKAGES_CARGO=(
+    "cargo-edit"
+    "cargo-watch"
+    "cargo-outdated"
+)
+
+# VS Code extensions
+EXTENSIONS=(
+    "Rust Analyzer (rust-lang.rust-analyzer) - Rust language support with rust-analyzer"
+    "CodeLLDB (vadimcn.vscode-lldb) - Native debugger for Rust"
+    "Crates (serayuzgur.crates) - Helps manage Rust dependencies"
+)
+
 #------------------------------------------------------------------------------
 
 # Source auto-enable library
@@ -91,12 +112,7 @@ install_rust() {
         
         # Ensure PATH is set
         if [ -d "$HOME/.cargo/bin" ] && [[ ":$PATH:" != *":$HOME/.cargo/bin:"* ]]; then
-            if ! grep -q "export PATH.*\.cargo/bin" ~/.bashrc; then
-                echo "" >> ~/.bashrc
-                echo "# Rust environment" >> ~/.bashrc
-                echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> ~/.bashrc
-                echo "✅ Rust PATH added to ~/.bashrc"
-            fi
+            add_to_bashrc ".cargo/bin" "# Rust environment" "export PATH=\"\$HOME/.cargo/bin:\$PATH\""
         fi
         return
     fi
@@ -108,14 +124,9 @@ install_rust() {
     
     # Source the cargo environment
     source $HOME/.cargo/env
-    
+
     # Add to PATH in bashrc if not already there
-    if ! grep -q "export PATH.*\.cargo/bin" ~/.bashrc; then
-        echo "" >> ~/.bashrc
-        echo "# Rust environment" >> ~/.bashrc
-        echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> ~/.bashrc
-        echo "✅ Rust environment added to ~/.bashrc"
-    fi
+    add_to_bashrc ".cargo/bin" "# Rust environment" "export PATH=\"\$HOME/.cargo/bin:\$PATH\""
     
     # Verify installation
     if command -v rustc >/dev/null 2>&1 && command -v cargo >/dev/null 2>&1; then
@@ -125,57 +136,9 @@ install_rust() {
         echo "❌ Rust installation failed - not found in PATH"
         return 1
     fi
-    
-    # Install useful cargo tools
-    echo "📦 Installing useful cargo tools..."
-    
-    # Install cargo tools one by one with proper output handling
-    local tools=("cargo-edit" "cargo-watch" "cargo-outdated")
-    for tool in "${tools[@]}"; do
-        echo "  Installing $tool..."
-        if cargo install "$tool" >/dev/null 2>&1; then
-            echo "  ✅ $tool installed successfully"
-        else
-            echo "  ⚠️  $tool installation failed (continuing...)"
-        fi
-    done
-    
-    echo "✅ Cargo tools installation completed"
+
+    echo "✅ Rust installation completed"
 }
-
-# Define package arrays (remove any empty arrays that aren't needed)
-SYSTEM_PACKAGES=(
-    "build-essential"
-    "pkg-config"
-    "libssl-dev"
-)
-
-NODE_PACKAGES=(
-    # No Node.js packages needed for Rust development
-)
-
-PYTHON_PACKAGES=(
-    # No Python packages needed for Rust development  
-)
-
-PWSH_MODULES=(
-    # No PowerShell modules needed for Rust development
-)
-
-# Define VS Code extensions (format: "Name (extension-id) - Description")
-EXTENSIONS=(
-    "Rust Analyzer (rust-lang.rust-analyzer) - Rust language support with rust-analyzer"
-    "CodeLLDB (vadimcn.vscode-lldb) - Native debugger for Rust"
-    "Crates (serayuzgur.crates) - Helps manage Rust dependencies"
-)
-
-# Define verification commands to run after installation
-VERIFY_COMMANDS=(
-    "command -v rustc >/dev/null && echo '✅ Rust compiler is available' || echo '❌ Rust compiler not found'"
-    "command -v cargo >/dev/null && echo '✅ Cargo is available' || echo '❌ Cargo not found'"
-    "command -v rustup >/dev/null && echo '✅ Rustup is available' || echo '❌ Rustup not found'"
-    "test -d \$HOME/.cargo && echo '✅ Cargo directory exists' || echo '❌ Cargo directory not found'"
-)
 
 # Post-installation notes
 post_installation_message() {
@@ -276,6 +239,7 @@ source "${SCRIPT_DIR}/lib/core-install-node.sh"
 source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
 source "${SCRIPT_DIR}/lib/core-install-python.sh"
+source "${SCRIPT_DIR}/lib/core-install-cargo.sh"
 
 # Note: lib/install-common.sh already sourced earlier (needed for --help)
 
