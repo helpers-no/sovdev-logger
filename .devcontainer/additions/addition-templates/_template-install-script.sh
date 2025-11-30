@@ -186,13 +186,24 @@ declare -A EXTENSIONS
 # Format: "extension-id"="Display Name|Description"
 # Example: EXTENSIONS["ms-python.python"]="Python|Python language support"
 
-# Define verification commands to run after installation
-VERIFY_COMMANDS=(
-    # Add commands to verify successful installation
-    # Examples:
-    # "command -v tool >/dev/null && tool --version || echo '❌ tool not found'"
-    # "test -f /path/to/file && echo '✅ File exists' || echo '❌ File not found'"
-)
+# ============================================================================
+# DEPRECATED: VERIFY_COMMANDS - DO NOT USE IN NEW SCRIPTS
+# ============================================================================
+# VERIFY_COMMANDS has been deprecated in favor of CHECK_INSTALLED_COMMAND
+# as the single source of truth for installation verification.
+#
+# DECISION: We are in the process of removing VERIFY_COMMANDS from all scripts.
+# - CHECK_INSTALLED_COMMAND is used by the menu system (dev-setup.sh)
+# - VERIFY_COMMANDS was optional post-installation verification
+# - Maintaining both creates duplication and confusion
+# - Refactored scripts (golang, java) do not use VERIFY_COMMANDS
+#
+# If you need detailed verification, include it in post_installation_message()
+# instead of using a separate VERIFY_COMMANDS array.
+#
+# DO NOT DEFINE VERIFY_COMMANDS IN NEW SCRIPTS
+# DO NOT CALL verify_installations() IN NEW SCRIPTS
+# ============================================================================
 
 # Post-installation notes
 post_installation_message() {
@@ -338,7 +349,7 @@ else
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
-    verify_installations
+    # Note: verify_installations() call removed - see VERIFY_COMMANDS deprecation above
     if [ ${#EXTENSIONS[@]} -gt 0 ]; then
         for ext_id in "${!EXTENSIONS[@]}"; do
             IFS='|' read -r name description _ <<< "${EXTENSIONS[$ext_id]}"
@@ -348,8 +359,6 @@ else
     post_installation_message
 
     # Auto-enable this tool for container rebuild
-    # Convert SCRIPT_NAME to identifier (lowercase-with-dashes)
-    # Example: "Python Development Tools" -> "python-development-tools"
-    TOOL_ID=$(echo "$SCRIPT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
-    auto_enable_tool "$TOOL_ID" "$SCRIPT_NAME"
+    # Use SCRIPT_ID instead of converting SCRIPT_NAME
+    auto_enable_tool "$SCRIPT_ID" "$SCRIPT_NAME"
 fi
