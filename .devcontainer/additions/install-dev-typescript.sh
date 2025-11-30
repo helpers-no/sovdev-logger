@@ -28,9 +28,8 @@ PACKAGES_NODE=(
     "ts-node"
 )
 
-# VS Code extensions
+# VS Code extensions (TypeScript support is built into VS Code)
 EXTENSIONS=(
-    "TypeScript Nightly (ms-vscode.vscode-typescript-next) - Latest TypeScript language features and tooling"
     "Prettier (esbenp.prettier-vscode) - Code formatter for consistent code style"
     "ESLint (dbaeumer.vscode-eslint) - JavaScript and TypeScript linting"
 )
@@ -141,7 +140,7 @@ export FORCE_MODE
 source "${SCRIPT_DIR}/lib/core-install-node.sh"
 source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 
-# Note: lib/install-common.sh already sourced earlier (needed for --help)
+
 
 #------------------------------------------------------------------------------
 # HELPER FUNCTIONS
@@ -153,9 +152,7 @@ process_installations() {
     process_standard_installations
 }
 
-# Function to verify installations
-# Note: Using common implementation from lib/install-common.sh (sourced above)
-# No local definition needed - library function is used directly
+
 
 #------------------------------------------------------------------------------
 # MAIN EXECUTION

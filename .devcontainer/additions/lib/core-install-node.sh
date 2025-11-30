@@ -36,8 +36,14 @@ get_npm_package_version() {
     npm list -g "$package" 2>/dev/null | grep "$package" | cut -d'@' -f2
 }
 
-# Function to install npm packages
+# Function to install/uninstall npm packages
 process_node_packages() {
+    # Check if we're in uninstall mode
+    if [ "${UNINSTALL_MODE:-0}" -eq 1 ]; then
+        process_node_packages_uninstall "$1"
+        return $?
+    fi
+
     debug "=== Starting Node.js package installation ==="
 
     # Get array reference
@@ -163,8 +169,3 @@ process_node_packages_uninstall() {
     echo "  Skipped/Not installed: $skipped"
     echo "  Failed: $failed"
 }
-
-# Handle install or uninstall based on mode
-if [ "${UNINSTALL_MODE:-0}" -eq 1 ]; then
-    process_node_packages=process_node_packages_uninstall
-fi
