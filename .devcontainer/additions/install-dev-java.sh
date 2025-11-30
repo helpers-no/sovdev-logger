@@ -20,13 +20,8 @@ SCRIPT_USAGE="  $(basename "$0")                # Install (default version)
   $(basename "$0") --help         # Show this help
   $(basename "$0") --uninstall    # Uninstall"
 
-# System packages
-PACKAGES_SYSTEM=(
-    "gnupg"
-    "apt-transport-https"
-    "ca-certificates"
-    "wget"
-)
+# System packages (all packages already in base devcontainer - see Dockerfile.base)
+PACKAGES_SYSTEM=()
 
 # Java packages (non-version-dependent)
 PACKAGES_JAVA=(

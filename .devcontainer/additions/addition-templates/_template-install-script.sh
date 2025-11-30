@@ -114,10 +114,32 @@ SCRIPT_USAGE="  $(basename "$0")              # Install
 # PREREQUISITE_CONFIGS="config-devcontainer-identity.sh"
 # Multiple prerequisites: PREREQUISITE_CONFIGS="config-identity.sh config-aws-credentials.sh"
 
-# System packages
+# --- IMPORTANT: Base Devcontainer Packages ---
+# The following packages are PRE-INSTALLED in the base devcontainer image
+# (.devcontainer/Dockerfile.base) and DO NOT need to be listed in PACKAGES_SYSTEM:
+#
+# Common utilities:
+#   - git, curl, wget, zip, unzip, xz-utils
+#   - ca-certificates, gnupg, lsb-release
+#   - supervisor (process manager)
+#   - jc, xdg-utils, traceroute, iproute2, iputils-ping, libcap2-bin
+#
+# Pre-installed runtimes:
+#   - Python 3.12 (from base image mcr.microsoft.com/devcontainers/python:1-3.12-bookworm)
+#   - Node.js 22.12.0 (installed via direct binary)
+#   - GitHub CLI (gh)
+#
+# BEST PRACTICE:
+# - Only add packages to PACKAGES_SYSTEM if they are truly required AND not in the base image
+# - Check Dockerfile.base before adding system packages
+# - For language development (Python, TypeScript, etc.), you likely DON'T need PACKAGES_SYSTEM
+# - For tools needing repositories (Java, .NET, etc.), you may need a few packages for the repository setup
+
+# System packages (usually empty for most scripts)
 PACKAGES_SYSTEM=(
-    # "package1"
-    # "package2"
+    # IMPORTANT: Check .devcontainer/Dockerfile.base before adding packages here
+    # Most common packages (git, curl, wget, gnupg, ca-certificates, etc.) are already installed
+    # "package1"  # Only add if truly needed AND not in base image
 )
 
 # Language-specific packages (choose one that matches your script)
