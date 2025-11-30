@@ -21,13 +21,16 @@
 # 4. Keep SHORT_DESCRIPTION under 60 characters (for help text)
 # 5. LONG_DESCRIPTION can be more detailed (for documentation)
 
-readonly CATEGORY_TABLE="
+# Only declare if not already set (prevents errors when sourced multiple times)
+if [[ -z "${CATEGORY_TABLE+x}" ]]; then
+    readonly CATEGORY_TABLE="
 1|LANGUAGE_DEV|Development Tools|Development tools (Python, TypeScript, Go, etc.)|Programming language development environments and tools (Python, TypeScript, Go, Rust, C#, Java, PHP)
 2|AI_TOOLS|AI & Machine Learning Tools|AI and ML tools (Claude Code, etc.)|AI and machine learning development tools (Claude Code, etc.)
 3|CLOUD_TOOLS|Cloud & Infrastructure Tools|Cloud infrastructure (Azure, etc.)|Cloud platform tools and SDKs (Azure, AWS, GCP)
 4|DATA_ANALYTICS|Data & Analytics Tools|Data analysis tools|Data analysis, visualization, and data engineering tools (Jupyter, pandas, DBT)
 5|INFRA_CONFIG|Infrastructure & Configuration|Infrastructure and configuration tools|Infrastructure as Code, configuration management, and DevOps tools (Ansible, Kubernetes, Terraform)
 "
+fi
 
 #------------------------------------------------------------------------------
 # Helper Functions
@@ -138,11 +141,14 @@ show_categories_table() {
 #------------------------------------------------------------------------------
 # These are generated from the table and can be used in scripts for validation
 
-readonly CATEGORY_LANGUAGE_DEV="LANGUAGE_DEV"
-readonly CATEGORY_AI_TOOLS="AI_TOOLS"
-readonly CATEGORY_CLOUD_TOOLS="CLOUD_TOOLS"
-readonly CATEGORY_DATA_ANALYTICS="DATA_ANALYTICS"
-readonly CATEGORY_INFRA_CONFIG="INFRA_CONFIG"
+# Only declare if not already set (prevents errors when sourced multiple times)
+if [[ -z "${CATEGORY_LANGUAGE_DEV+x}" ]]; then
+    readonly CATEGORY_LANGUAGE_DEV="LANGUAGE_DEV"
+    readonly CATEGORY_AI_TOOLS="AI_TOOLS"
+    readonly CATEGORY_CLOUD_TOOLS="CLOUD_TOOLS"
+    readonly CATEGORY_DATA_ANALYTICS="DATA_ANALYTICS"
+    readonly CATEGORY_INFRA_CONFIG="INFRA_CONFIG"
+fi
 
 # Array of all category IDs in sort order (for iteration)
 # Populated dynamically from the table
