@@ -127,6 +127,35 @@ source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
 source "${SCRIPT_DIR}/lib/logging.sh"
 
 #------------------------------------------------------------------------------
+# VERSION CONFIGURATION (Optional - for scripts with --version flag)
+#------------------------------------------------------------------------------
+# If your script supports installing specific versions via --version flag,
+# define these standard variables:
+#
+# DEFAULT_VERSION="X.Y.Z"  # Default version if --version not specified
+# TARGET_VERSION=""        # Actual version to install (set by arg parser)
+#
+# Benefits of using these standard names:
+# - Help system auto-detects DEFAULT_VERSION and displays it
+# - Consistent across all language scripts (Go, Java, Python, etc.)
+# - Shows as "Default: Version X.Y.Z" in --help output
+#
+# Example:
+#   DEFAULT_VERSION="1.21.0"
+#   TARGET_VERSION=""
+#
+# In argument parser:
+#   --version)
+#       TARGET_VERSION="$2"
+#       ;;
+#
+# In pre_installation_setup():
+#   if [ -z "$TARGET_VERSION" ]; then
+#       TARGET_VERSION="$DEFAULT_VERSION"
+#   fi
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
 # INSTALLATION FUNCTIONS
 #------------------------------------------------------------------------------
 
