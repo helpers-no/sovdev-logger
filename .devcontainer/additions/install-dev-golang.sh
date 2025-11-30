@@ -56,8 +56,9 @@ source "${SCRIPT_DIR}/lib/logging.sh"
 #------------------------------------------------------------------------------
 
 # --- Default Configuration ---
-DEFAULT_GO_VERSION="1.21.0" # Specify the default Go version to install
-TARGET_GO_VERSION=""        # Will be set based on --version flag or default
+# Standard version variables (for scripts that support --version flag)
+DEFAULT_VERSION="1.21.0"  # Default version to install if --version not specified
+TARGET_VERSION=""         # Actual version to install (set by --version flag or defaults to DEFAULT_VERSION)
 
 
 # Set up Go installation directories (needed for both install and uninstall)
@@ -77,33 +78,33 @@ get_installed_go_version() {
 pre_installation_setup() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         echo "🔧 Preparing for Go uninstallation..."
-        if [ -z "$TARGET_GO_VERSION" ]; then
-            TARGET_GO_VERSION=$(get_installed_go_version)
-            if [ -z "$TARGET_GO_VERSION" ]; then
+        if [ -z "$TARGET_VERSION" ]; then
+            TARGET_VERSION=$(get_installed_go_version)
+            if [ -z "$TARGET_VERSION" ]; then
                 echo "ℹ️ Could not detect Go version from PATH, will remove installation from $GO_INSTALL_DIR if present."
             else
-                echo "ℹ️ Detected Go version $TARGET_GO_VERSION for uninstallation."
+                echo "ℹ️ Detected Go version $TARGET_VERSION for uninstallation."
             fi
         else
-            echo "ℹ️ Uninstalling Go version $TARGET_GO_VERSION as specified."
+            echo "ℹ️ Uninstalling Go version $TARGET_VERSION as specified."
         fi
     else
         echo "🔧 Performing pre-installation setup for Go..."
         SYSTEM_ARCH=$(detect_architecture)
         echo "🖥️ Detected system architecture: $SYSTEM_ARCH"
 
-        if [ -z "$TARGET_GO_VERSION" ]; then
-            TARGET_GO_VERSION="$DEFAULT_GO_VERSION"
-            echo "ℹ️ No --version specified, using default: $TARGET_GO_VERSION"
+        if [ -z "$TARGET_VERSION" ]; then
+            TARGET_VERSION="$DEFAULT_VERSION"
+            echo "ℹ️ No --version specified, using default: $TARGET_VERSION"
         else
-            echo "ℹ️ Target Go version specified: $TARGET_GO_VERSION"
+            echo "ℹ️ Target Go version specified: $TARGET_VERSION"
         fi
 
         local current_version=$(get_installed_go_version)
-        if [[ "$current_version" == "$TARGET_GO_VERSION" ]]; then
-            echo "✅ Go $TARGET_GO_VERSION seems to be already installed."
+        if [[ "$current_version" == "$TARGET_VERSION" ]]; then
+            echo "✅ Go $TARGET_VERSION seems to be already installed."
         elif [ -n "$current_version" ]; then
-            echo "⚠️ Go version $current_version is installed. This script will install $TARGET_GO_VERSION alongside it."
+            echo "⚠️ Go version $current_version is installed. This script will install $TARGET_VERSION alongside it."
             echo "   You may need to update your PATH to use the new version."
         fi
     fi
@@ -175,7 +176,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --version)
             if [[ -n "$2" && "$2" != --* ]]; then
-                TARGET_GO_VERSION="$2"
+                TARGET_VERSION="$2"
                 shift 2
             else
                 echo "Error: --version requires a value (e.g., 1.21.0)" >&2
@@ -298,7 +299,7 @@ process_installations() {
             arm64|aarch64) SYSTEM_ARCH="arm64" ;;
         esac
 
-        if ! install_go_binary "$TARGET_GO_VERSION" "$SYSTEM_ARCH" "$GO_INSTALL_DIR"; then
+        if ! install_go_binary "$TARGET_VERSION" "$SYSTEM_ARCH" "$GO_INSTALL_DIR"; then
             echo "❌ Go installation failed"
             exit 1
         fi
