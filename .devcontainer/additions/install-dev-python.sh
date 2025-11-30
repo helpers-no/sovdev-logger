@@ -8,10 +8,10 @@
 # CONFIGURATION - Modify this section for each new script
 #------------------------------------------------------------------------------
 
-# Script metadata - must be at the very top of the configuration section
-SCRIPT_NAME="Python Development Tools"
+# --- Script Metadata ---
 SCRIPT_ID="dev-python"
-SCRIPT_DESCRIPTION="Installs Python 3.11+, pip, venv, and essential development tools"
+SCRIPT_NAME="Python Development Tools"
+SCRIPT_DESCRIPTION="Adds pytest and VS Code extensions for Python development (Python already in devcontainer)"
 SCRIPT_CATEGORY="LANGUAGE_DEV"
 CHECK_INSTALLED_COMMAND="[ -f /usr/local/bin/python3 ] || [ -f /usr/bin/python3 ] || command -v python3 >/dev/null 2>&1"
 
@@ -20,6 +20,20 @@ SCRIPT_USAGE="  $(basename "$0")              # Install Python development envir
   $(basename "$0") --help       # Show this help
   $(basename "$0") --uninstall  # Uninstall Python packages (system Python remains)
   $(basename "$0") --debug      # Install with debug output"
+
+# Python packages
+PACKAGES_PYTHON=(
+    "pytest"  # Testing framework
+)
+
+# VS Code extensions
+EXTENSIONS=(
+    "Python (ms-python.python) - Python language support"
+    "Pylance (ms-python.vscode-pylance) - Python language server"
+    "Black Formatter (ms-python.black-formatter) - Python code formatter"
+    "Flake8 (ms-python.flake8) - Python linter"
+    "Mypy (ms-python.mypy-type-checker) - Python type checker"
+)
 
 #------------------------------------------------------------------------------
 
@@ -34,7 +48,7 @@ source "${SCRIPT_DIR}/lib/logging.sh"
 
 #------------------------------------------------------------------------------
 
-# Before running installation, we need to add any required repositories or setup
+# --- Pre-installation/Uninstallation Setup ---
 pre_installation_setup() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         echo "🔧 Preparing for uninstallation..."
@@ -45,57 +59,16 @@ pre_installation_setup() {
     fi
 }
 
-# Define package arrays (remove any empty arrays that aren't needed)
-PACKAGES_SYSTEM=(
-    "python3"
-    "python3-pip"
-    "python3-venv"
-    "python3-dev"
-    "python3-setuptools"
-    "python3-wheel"
-    "build-essential"
-    "libffi-dev"
-    "libssl-dev"
-)
-
-PACKAGES_NODE=(
-    # No Node.js packages needed for Python development
-)
-
-PACKAGES_PYTHON=(
-    "pip"
-    "setuptools"
-    "wheel"
-    "virtualenv"
-    "requests"
-    "pytest"
-    "black"
-    "flake8"
-    "mypy"
-)
-
-# Define VS Code extensions (format: "Name (extension-id) - Description")
-EXTENSIONS=(
-    "Python (ms-python.python) - Python language support"
-    "Pylance (ms-python.vscode-pylance) - Python language server"
-    "Black Formatter (ms-python.black-formatter) - Python code formatter"
-    "Flake8 (ms-python.flake8) - Python linter"
-    "Mypy (ms-python.mypy-type-checker) - Python type checker"
-)
-
-# Custom Python installation function
+# --- Custom Python Installation ---
 install_python() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        echo "⚠️  Note: Python uninstallation handled by SYSTEM_PACKAGES"
         # Note: Aliases will remain in .bashrc (safe to leave)
         return
     fi
 
-    # Check if Python is already installed (likely in devcontainer)
+    # Check if Python is already installed (already in devcontainer)
     if command -v python3 >/dev/null 2>&1; then
         echo "✅ Python is already installed - configuring environment"
-    else
-        echo "📦 Python will be installed via SYSTEM_PACKAGES"
     fi
 
     # Set up Python aliases using library function
@@ -109,54 +82,33 @@ install_python() {
     fi
 }
 
-# Note: Python packages handled by library's process_python_packages() via PYTHON_PACKAGES array
-
-# Define verification commands
-VERIFY_COMMANDS=(
-    "command -v python3 >/dev/null && python3 --version || echo '❌ Python not found'"
-    "command -v pip3 >/dev/null && pip3 --version || echo '❌ pip not found'"
-    "python3 -c 'import venv' 2>/dev/null && echo '✅ venv module available' || echo '❌ venv module not available'"
-    "grep -q 'alias python=' ~/.bashrc && echo '✅ Python aliases configured' || echo 'ℹ️  Python aliases not yet active (restart shell)'"
-)
-
-# Post-installation notes
+# --- Post-installation/Uninstallation Messages ---
 post_installation_message() {
-    
+    local python_version
+    python_version=$(python3 --version 2>/dev/null || echo "not found")
+
+    local pip_version
+    pip_version=$(pip3 --version 2>/dev/null | head -n 1 || echo "not found")
+
     echo
-    echo "🎉 Installation process complete for: $SCRIPT_NAME!"
-    echo "Purpose: $SCRIPT_DESCRIPTION"
+    echo "🎉 Installation complete!"
+    echo "   Python: $python_version"
+    echo "   pip: $pip_version"
     echo
-    echo "Important Notes:"
-    echo "1. Python development environment is ready"
-    echo "2. Essential Python packages are installed"
-    echo "3. Virtual environment tools are available"
-    echo "4. Python aliases configured (restart shell or: source ~/.bashrc)"
+    echo "Quick start: python3 -m venv myenv && source myenv/bin/activate"
+    echo "Docs: https://docs.python.org/"
     echo
-    echo "Quick Start:"
-    echo "- Check installation: python3 --version && pip3 --version"
-    echo "- Create virtual environment: python3 -m venv myenv"
-    echo "- Activate environment: source myenv/bin/activate"
-    echo "- Install packages: pip install requests"
-    echo "- Run tests: pytest"
-    echo
-    echo "Documentation Links:"
-    echo "- Python Documentation: https://docs.python.org/"
-    echo "- pip Documentation: https://pip.pypa.io/en/stable/"
-    echo "- Virtual Environments: https://docs.python.org/3/tutorial/venv.html"
 }
 
-# Post-uninstallation notes
 post_uninstallation_message() {
-
-    # Remove from auto-enable config
-    auto_disable_tool
     echo
-    echo "🏁 Uninstallation process complete for: $SCRIPT_NAME!"
+    echo "🏁 Uninstallation complete!"
+    if command -v python3 >/dev/null; then
+        echo "   ⚠️  Python still found in PATH"
+    else
+        echo "   ✅ Python packages removed"
+    fi
     echo
-    echo "Additional Notes:"
-    echo "1. Python packages have been removed"
-    echo "2. Virtual environments may still exist"
-    echo "3. You may need to restart your shell for changes to take effect"
 }
 
 #------------------------------------------------------------------------------
@@ -224,24 +176,26 @@ process_installations() {
 
 
 
-# Main execution
+#------------------------------------------------------------------------------
+# MAIN EXECUTION
+#------------------------------------------------------------------------------
+
 if [ "${UNINSTALL_MODE}" -eq 1 ]; then
     echo "🔄 Starting uninstallation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
     post_uninstallation_message
-
-    # Remove from auto-enable config
-    auto_disable_tool
 else
     echo "🔄 Starting installation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
-    verify_installations
     post_installation_message
 
     # Auto-enable for container rebuild
-    auto_enable_tool
+    auto_enable_tool "$SCRIPT_ID" "$SCRIPT_NAME"
 fi
+
+echo "✅ Script execution finished."
+exit 0
