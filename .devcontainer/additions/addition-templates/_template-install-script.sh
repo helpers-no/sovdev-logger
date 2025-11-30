@@ -97,23 +97,58 @@
 # CONFIGURATION - Modify this section for each new script
 #------------------------------------------------------------------------------
 
-# Script metadata - Required for dev-setup.sh menu discovery
-# These fields must be defined at the top of the configuration section
+# --- Script Metadata ---
 SCRIPT_ID="[category-name]"  # Unique identifier (e.g., dev-python, tool-azure, srv-nginx)
 SCRIPT_NAME="[Name]"
 SCRIPT_DESCRIPTION="[Brief description of what this script installs and its purpose]"
 SCRIPT_CATEGORY="DEV_TOOLS"  # Options: DEV_TOOLS, INFRA_CONFIG, AI_TOOLS, MONITORING, DATABASE, CLOUD
 CHECK_INSTALLED_COMMAND="command -v [tool-name] >/dev/null 2>&1"  # Command to check if already installed
 
-# Optional: Custom usage text for --help (uses default if not provided)
-# SCRIPT_USAGE="  $(basename "$0")              # Install
-#   $(basename "$0") --help       # Show this help
-#   $(basename "$0") --version    # Show version"
+# Custom usage text for --help
+SCRIPT_USAGE="  $(basename "$0")              # Install
+  $(basename "$0") --help       # Show this help
+  $(basename "$0") --uninstall  # Uninstall"
 
 # Optional: Prerequisite configurations required before installation
 # Uncomment and modify if your tool requires specific configurations
 # PREREQUISITE_CONFIGS="config-devcontainer-identity.sh"
 # Multiple prerequisites: PREREQUISITE_CONFIGS="config-identity.sh config-aws-credentials.sh"
+
+# System packages
+PACKAGES_SYSTEM=(
+    # "package1"
+    # "package2"
+)
+
+# Language-specific packages (choose one that matches your script)
+# PACKAGES_GO=(
+#     # "golang.org/x/tools/gopls@latest"
+# )
+#
+# PACKAGES_JAVA=(
+#     # "maven"
+# )
+#
+# PACKAGES_PYTHON=(
+#     # "pytest"
+# )
+#
+# PACKAGES_CARGO=(
+#     # "cargo-edit"
+# )
+#
+# PACKAGES_NODE=(
+#     # "typescript"
+# )
+#
+# PACKAGES_PWSH=(
+#     # "Az"
+# )
+
+# VS Code extensions
+EXTENSIONS=(
+    # "Extension Name (extension-id) - Description"
+)
 
 #------------------------------------------------------------------------------
 
@@ -155,13 +190,7 @@ source "${SCRIPT_DIR}/lib/logging.sh"
 #   fi
 #------------------------------------------------------------------------------
 
-#------------------------------------------------------------------------------
-# INSTALLATION FUNCTIONS
-#------------------------------------------------------------------------------
-
-# Before running installation, we need to add any required repositories or setup
-# NOTE: This function is for SCRIPT-SPECIFIC setup only
-# Common setup (like .devcontainer.secrets folder) is handled automatically by process_standard_installations()
+# --- Pre-installation/Uninstallation Setup ---
 pre_installation_setup() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         echo "🔧 Preparing for uninstallation..."
@@ -178,42 +207,6 @@ pre_installation_setup() {
         # curl -fsSL https://example.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/example-archive-keyring.gpg
     fi
 }
-
-# Define package arrays (remove any empty arrays that aren't needed)
-PACKAGES_SYSTEM=(
-    # "package1"
-    # "package2"
-)
-
-PACKAGES_NODE=(
-    # "package1"
-    # "package2"
-)
-
-PACKAGES_PYTHON=(
-    # "package1"
-    # "package2"
-)
-
-PACKAGES_PWSH=(
-    # "module1"
-    # "module2"
-)
-
-PACKAGES_GO=(
-    # "golang.org/x/tools/gopls@latest"
-    # "github.com/go-delve/delve/cmd/dlv@latest"
-)
-
-PACKAGES_CARGO=(
-    # "cargo-edit"
-    # "cargo-watch"
-)
-
-# Define VS Code extensions
-declare -A EXTENSIONS
-# Format: "extension-id"="Display Name|Description"
-# Example: EXTENSIONS["ms-python.python"]="Python|Python language support"
 
 # ============================================================================
 # DEPRECATED: VERIFY_COMMANDS - DO NOT USE IN NEW SCRIPTS
@@ -234,45 +227,33 @@ declare -A EXTENSIONS
 # DO NOT CALL verify_installations() IN NEW SCRIPTS
 # ============================================================================
 
-# Post-installation notes
+# --- Post-installation/Uninstallation Messages ---
 post_installation_message() {
+    local tool_version
+    tool_version=$([tool-command] --version 2>/dev/null || echo "not found")
+
     echo
-    echo "🎉 Installation process complete for: $SCRIPT_NAME!"
-    echo "Purpose: $SCRIPT_DESCRIPTION"
+    echo "🎉 Installation complete!"
+    echo "   Tool: $tool_version"
     echo
-    echo "Important Notes:"
-    echo "1. [Important note 1]"
-    echo "2. [Important note 2]"
-    echo "3. [Important note 3]"
+    echo "Quick start: [quick start command]"
+    echo "Docs: [documentation URL]"
     echo
-    echo "Documentation Links:"
-    echo "- Local Guide: .devcontainer/howto/howto-[name].md"
-    echo "- [Link description]: [URL]"
-    echo "- [Link description]: [URL]"
 }
 
-# Post-uninstallation notes
 post_uninstallation_message() {
     echo
-    echo "🏁 Uninstallation process complete for: $SCRIPT_NAME!"
+    echo "🏁 Uninstallation complete!"
+    if command -v [tool-name] >/dev/null; then
+        echo "   ⚠️  [Tool] still found in PATH"
+    else
+        echo "   ✅ [Tool] removed"
+    fi
     echo
-    echo "Additional Notes:"
-    echo "1. [Cleanup note 1]"
-    echo "2. [Cleanup note 2]"
-    echo "3. See the local guide for additional cleanup steps if needed:"
-    echo "   .devcontainer/howto/howto-[name].md"
-    
-    # Add any verification of uninstallation if needed
-    # Example:
-    # if command -v tool >/dev/null; then
-    #     echo
-    #     echo "⚠️  Warning: Some components may still be installed:"
-    #     echo "- tool is still present"
-    # fi
 }
 
 #------------------------------------------------------------------------------
-# STANDARD SCRIPT LOGIC - Do not modify anything below this line
+# ARGUMENT PARSING
 #------------------------------------------------------------------------------
 
 # Initialize mode flags
@@ -311,12 +292,16 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Export mode flags for core scripts
+# Export mode flags
 export DEBUG_MODE
 export UNINSTALL_MODE
 export FORCE_MODE
 
-# Source all core installation scripts
+#------------------------------------------------------------------------------
+# SOURCE CORE SCRIPTS
+#------------------------------------------------------------------------------
+
+# Source core installation scripts
 source "${SCRIPT_DIR}/lib/core-install-system.sh"
 source "${SCRIPT_DIR}/lib/core-install-node.sh"
 source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
@@ -324,6 +309,10 @@ source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
 source "${SCRIPT_DIR}/lib/core-install-python.sh"
 
 # Note: lib/install-common.sh already sourced earlier (needed for --help)
+
+#------------------------------------------------------------------------------
+# HELPER FUNCTIONS
+#------------------------------------------------------------------------------
 
 # Function to process installations
 #
@@ -360,34 +349,26 @@ process_installations() {
 # Note: Using common implementation from lib/install-common.sh (sourced above)
 # No local definition needed - library function is used directly
 
-# Main execution
+#------------------------------------------------------------------------------
+# MAIN EXECUTION
+#------------------------------------------------------------------------------
+
 if [ "${UNINSTALL_MODE}" -eq 1 ]; then
     echo "🔄 Starting uninstallation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        for ext_id in "${!EXTENSIONS[@]}"; do
-            IFS='|' read -r name description _ <<< "${EXTENSIONS[$ext_id]}"
-            check_extension_state "$ext_id" "uninstall" "$name"
-        done
-    fi
     post_uninstallation_message
 else
     echo "🔄 Starting installation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
-    # Note: verify_installations() call removed - see VERIFY_COMMANDS deprecation above
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        for ext_id in "${!EXTENSIONS[@]}"; do
-            IFS='|' read -r name description _ <<< "${EXTENSIONS[$ext_id]}"
-            check_extension_state "$ext_id" "install" "$name"
-        done
-    fi
     post_installation_message
 
-    # Auto-enable this tool for container rebuild
-    # Use SCRIPT_ID instead of converting SCRIPT_NAME
+    # Auto-enable for container rebuild
     auto_enable_tool "$SCRIPT_ID" "$SCRIPT_NAME"
 fi
+
+echo "✅ Script execution finished."
+exit 0
