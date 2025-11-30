@@ -58,8 +58,9 @@ source "${SCRIPT_DIR}/lib/logging.sh"
 #------------------------------------------------------------------------------
 
 # --- Default Configuration ---
-DEFAULT_JAVA_VERSION="17" # Specify the default Java version to install
-TARGET_JAVA_VERSION=""    # Will be set based on --version flag or default
+# Standard version variables (for scripts that support --version flag)
+DEFAULT_VERSION="17"  # Default version to install if --version not specified
+TARGET_VERSION=""     # Actual version to install (set by --version flag or defaults to DEFAULT_VERSION)
 
 # --- Utility Functions ---
 get_installed_java_version() {
@@ -74,33 +75,33 @@ get_installed_java_version() {
 pre_installation_setup() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         echo "🔧 Preparing for Java uninstallation..."
-        if [ -z "$TARGET_JAVA_VERSION" ]; then
-            TARGET_JAVA_VERSION=$(get_installed_java_version)
-            if [ -z "$TARGET_JAVA_VERSION" ]; then
+        if [ -z "$TARGET_VERSION" ]; then
+            TARGET_VERSION=$(get_installed_java_version)
+            if [ -z "$TARGET_VERSION" ]; then
                 echo "ℹ️ Could not detect Java version from PATH, will attempt to remove common versions."
             else
-                echo "ℹ️ Detected Java version $TARGET_JAVA_VERSION for uninstallation."
+                echo "ℹ️ Detected Java version $TARGET_VERSION for uninstallation."
             fi
         else
-            echo "ℹ️ Uninstalling Java version $TARGET_JAVA_VERSION as specified."
+            echo "ℹ️ Uninstalling Java version $TARGET_VERSION as specified."
         fi
     else
         echo "🔧 Performing pre-installation setup for Java..."
         SYSTEM_ARCH=$(detect_architecture)
         echo "🖥️ Detected system architecture: $SYSTEM_ARCH"
 
-        if [ -z "$TARGET_JAVA_VERSION" ]; then
-            TARGET_JAVA_VERSION="$DEFAULT_JAVA_VERSION"
-            echo "ℹ️ No --version specified, using default: $TARGET_JAVA_VERSION"
+        if [ -z "$TARGET_VERSION" ]; then
+            TARGET_VERSION="$DEFAULT_VERSION"
+            echo "ℹ️ No --version specified, using default: $TARGET_VERSION"
         else
-            echo "ℹ️ Target Java version specified: $TARGET_JAVA_VERSION"
+            echo "ℹ️ Target Java version specified: $TARGET_VERSION"
         fi
 
         local current_version=$(get_installed_java_version)
-        if [[ "$current_version" == "$TARGET_JAVA_VERSION" ]]; then
-            echo "✅ Java $TARGET_JAVA_VERSION seems to be already installed."
+        if [[ "$current_version" == "$TARGET_VERSION" ]]; then
+            echo "✅ Java $TARGET_VERSION seems to be already installed."
         elif [ -n "$current_version" ]; then
-            echo "⚠️ Java version $current_version is installed. This script will install $TARGET_JAVA_VERSION alongside it."
+            echo "⚠️ Java version $current_version is installed. This script will install $TARGET_VERSION alongside it."
             echo "   You may need to use 'update-alternatives' to switch between them."
         fi
 
@@ -178,7 +179,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --version)
             if [[ -n "$2" && "$2" != --* ]]; then
-                TARGET_JAVA_VERSION="$2"
+                TARGET_VERSION="$2"
                 shift 2
             else
                 echo "Error: --version requires a value (e.g., 17, 21)" >&2
@@ -213,7 +214,7 @@ source "${CORE_SCRIPT_DIR}/lib/core-install-extensions.sh"
 
 # Function to install/uninstall Java JDK and build tools
 install_java() {
-    local jdk_package="temurin-${TARGET_JAVA_VERSION}-jdk"
+    local jdk_package="temurin-${TARGET_VERSION}-jdk"
 
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         echo "🗑️ Removing Java installation..."
@@ -236,7 +237,7 @@ install_java() {
         sudo apt-get autoremove -y > /dev/null 2>&1 || true
         echo "✅ Java removed"
     else
-        echo "📦 Installing Java $TARGET_JAVA_VERSION..."
+        echo "📦 Installing Java $TARGET_VERSION..."
 
         # Install JDK
         if sudo apt-get install -y "$jdk_package" > /dev/null 2>&1; then

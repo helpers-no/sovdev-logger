@@ -85,6 +85,7 @@ show_script_help() {
         echo "Category:     $SCRIPT_CATEGORY, $category_display"
     fi
     [[ -n "$SCRIPT_DESCRIPTION" ]] && echo "Description:  $SCRIPT_DESCRIPTION"
+    [[ -n "$DEFAULT_VERSION" ]] && echo "Default:      Version $DEFAULT_VERSION"
     echo ""
 
     # Prerequisites
