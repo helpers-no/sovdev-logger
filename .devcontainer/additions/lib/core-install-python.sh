@@ -36,13 +36,19 @@ get_package_version() {
     pip show "$package" 2>/dev/null | grep "Version" | cut -d " " -f 2
 }
 
-# Function to install Python packages
+# Function to install/uninstall Python packages
 process_python_packages() {
+    # Check if we're in uninstall mode
+    if [ "${UNINSTALL_MODE:-0}" -eq 1 ]; then
+        process_python_packages_uninstall "$1"
+        return $?
+    fi
+
     debug "=== Starting Python package installation ==="
-    
+
     # Get array reference
     declare -n arr=$1
-    
+
     log "Installing ${#arr[@]} Python packages..."
     echo
     printf "%-25s %-20s %s\n" "Package" "Status" "Version"
@@ -160,8 +166,3 @@ process_python_packages_uninstall() {
     echo "  Skipped/Not installed: $skipped"
     echo "  Failed: $failed"
 }
-
-# Handle install or uninstall based on mode
-if [ "${UNINSTALL_MODE:-0}" -eq 1 ]; then
-    process_python_packages=process_python_packages_uninstall
-fi

@@ -103,11 +103,7 @@ post_installation_message() {
 post_uninstallation_message() {
     echo
     echo "🏁 Uninstallation complete!"
-    if command -v python3 >/dev/null; then
-        echo "   ⚠️  Python still found in PATH"
-    else
-        echo "   ✅ Python packages removed"
-    fi
+    echo "   ✅ Python packages removed (Python runtime remains in devcontainer)"
     echo
 }
 
