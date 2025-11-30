@@ -110,15 +110,27 @@ pre_installation_setup() {
 # Function to add Adoptium repository
 add_adoptium_repository() {
     echo "➕ Adding Adoptium repository..."
+
+    local keyring_dir="/etc/apt/keyrings"
+    local keyring_file="$keyring_dir/adoptium-archive-keyring.gpg"
+
     if ! grep -q "adoptium" /etc/apt/sources.list.d/adoptium.list 2>/dev/null; then
-        wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo apt-key add -
-        echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | sudo tee /etc/apt/sources.list.d/adoptium.list
+        # Create keyrings directory if it doesn't exist
+        sudo mkdir -p "$keyring_dir"
+
+        # Download and install GPG key using modern approach
+        wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | \
+            sudo gpg --dearmor -o "$keyring_file"
+
+        # Add repository with signed-by option
+        echo "deb [signed-by=$keyring_file] https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | \
+            sudo tee /etc/apt/sources.list.d/adoptium.list
     else
         echo "ℹ️ Adoptium repository already added."
     fi
 
     echo "🔄 Updating package lists after adding repository..."
-    sudo apt-get update -y > /dev/null
+    sudo apt-get update -y > /dev/null 2>&1
 }
 
 # --- Post-installation/Uninstallation Messages ---
