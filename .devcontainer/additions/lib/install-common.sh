@@ -21,8 +21,7 @@
 #
 # Dependencies:
 #   - core-install-*.sh (for package processing functions)
-#   - VERIFY_COMMANDS array (defined in calling script)
-#   - Package arrays: PACKAGES_SYSTEM, PACKAGES_NODE, etc.
+#   - Package arrays: PACKAGES_SYSTEM, PACKAGES_NODE, PACKAGES_JAVA, etc.
 #
 # ============================================================================
 
@@ -52,8 +51,8 @@ source "${COMMON_LIB_DIR}/categories.sh"
 #   - CHECK_INSTALLED_COMMAND, PREREQUISITE_CONFIGS
 #   - SCRIPT_USAGE (optional) - Custom usage text, uses default if not provided
 #   - PACKAGES_SYSTEM, PACKAGES_NODE, PACKAGES_PYTHON, PACKAGES_PWSH
-#   - PACKAGES_GO, PACKAGES_CARGO
-#   - EXTENSIONS, VERIFY_COMMANDS
+#   - PACKAGES_GO, PACKAGES_CARGO, PACKAGES_JAVA
+#   - EXTENSIONS
 #
 # Output:
 #   Formatted help text showing:
@@ -202,6 +201,15 @@ show_script_help() {
                 echo "  - $pkg"
             done
         fi
+        echo ""
+    fi
+
+    if [ ${#PACKAGES_JAVA[@]} -gt 0 ]; then
+        has_packages=true
+        echo "Java Build Tools (APT):"
+        for pkg in "${PACKAGES_JAVA[@]}"; do
+            echo "  - $pkg"
+        done
         echo ""
     fi
 
