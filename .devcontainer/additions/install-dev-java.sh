@@ -104,19 +104,21 @@ pre_installation_setup() {
             echo "⚠️ Java version $current_version is installed. This script will install $TARGET_VERSION alongside it."
             echo "   You may need to use 'update-alternatives' to switch between them."
         fi
-
-        # Add Adoptium repository for Java
-        echo "➕ Adding Adoptium repository..."
-        if ! grep -q "adoptium" /etc/apt/sources.list.d/adoptium.list 2>/dev/null; then
-            wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo apt-key add -
-            echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | sudo tee /etc/apt/sources.list.d/adoptium.list
-        else
-            echo "ℹ️ Adoptium repository already added."
-        fi
-
-        echo "🔄 Updating package lists after adding repository..."
-        sudo apt-get update -y > /dev/null
     fi
+}
+
+# Function to add Adoptium repository
+add_adoptium_repository() {
+    echo "➕ Adding Adoptium repository..."
+    if ! grep -q "adoptium" /etc/apt/sources.list.d/adoptium.list 2>/dev/null; then
+        wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo apt-key add -
+        echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | sudo tee /etc/apt/sources.list.d/adoptium.list
+    else
+        echo "ℹ️ Adoptium repository already added."
+    fi
+
+    echo "🔄 Updating package lists after adding repository..."
+    sudo apt-get update -y > /dev/null
 }
 
 # --- Post-installation/Uninstallation Messages ---
@@ -281,7 +283,6 @@ setup_java_environment() {
 
 # Function to process installations
 process_installations() {
-    # Custom Java installation/uninstallation first
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         # Uninstall only Java-specific items (NOT system packages)
         install_java
@@ -291,13 +292,22 @@ process_installations() {
             process_extensions "EXTENSIONS"
         fi
     else
-        # Install Java and setup environment
+        # STEP 1: Install system prerequisites FIRST (wget, gnupg needed for repository)
+        if [ ${#PACKAGES_SYSTEM[@]} -gt 0 ]; then
+            process_system_packages "PACKAGES_SYSTEM"
+        fi
+
+        # STEP 2: Add Adoptium repository (now we have wget and gnupg)
+        add_adoptium_repository
+
+        # STEP 3: Install Java JDK and build tools
         install_java
         setup_java_environment
 
-        # Then use standard processing from lib/install-common.sh
-        # This handles: PACKAGES_SYSTEM, EXTENSIONS
-        process_standard_installations
+        # STEP 4: Process VS Code extensions
+        if [ ${#EXTENSIONS[@]} -gt 0 ]; then
+            process_extensions "EXTENSIONS"
+        fi
     fi
 }
 
