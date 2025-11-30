@@ -14,6 +14,11 @@ SCRIPT_ID="tool-dev-utils"
 SCRIPT_NAME="Development Utilities"
 SCRIPT_DESCRIPTION="Database management (SQLTools) and API testing (REST Client) for multi-language development"
 SCRIPT_CATEGORY="INFRA_CONFIG"
+
+# NOTE: We check only the primary extension (SQLTools) instead of all extensions
+# to avoid tight coupling between CHECK_INSTALLED_COMMAND and the EXTENSIONS array.
+# This makes the script more maintainable - if someone adds/removes extensions,
+# they don't need to update this check. The extension installer is idempotent anyway.
 CHECK_INSTALLED_COMMAND="code --list-extensions 2>/dev/null | grep -q 'mtxr.sqltools'"
 
 # Custom usage text for --help
