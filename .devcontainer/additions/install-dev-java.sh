@@ -20,6 +20,30 @@ SCRIPT_USAGE="  $(basename "$0")                # Install (default version)
   $(basename "$0") --help         # Show this help
   $(basename "$0") --uninstall    # Uninstall"
 
+# System packages
+PACKAGES_SYSTEM=(
+    "gnupg"
+    "apt-transport-https"
+    "ca-certificates"
+    "wget"
+)
+
+# Java packages (non-version-dependent)
+PACKAGES_JAVA=(
+    "maven"
+    "gradle"
+)
+
+# VS Code extensions
+EXTENSIONS=(
+    "Language Support for Java (redhat.java) - Core Java language support"
+    "Debugger for Java (vscjava.vscode-java-debug) - Debugging support"
+    "Test Runner for Java (vscjava.vscode-java-test) - Test runner and debugger"
+    "Maven for Java (vscjava.vscode-maven) - Maven project support"
+    "Dependency Viewer (vscjava.vscode-java-dependency) - View and manage dependencies"
+    "Extension Pack for Java (vscjava.vscode-java-pack) - Collection of popular Java extensions"
+)
+
 #------------------------------------------------------------------------------
 
 # Source auto-enable library
@@ -31,10 +55,6 @@ source "${SCRIPT_DIR}/lib/tool-auto-enable.sh"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib/logging.sh"
 
-# Source common installation patterns library
-# shellcheck source=/dev/null
-source "${SCRIPT_DIR}/lib/install-common.sh"
-
 #------------------------------------------------------------------------------
 
 # --- Default Configuration ---
@@ -42,22 +62,6 @@ DEFAULT_JAVA_VERSION="17" # Specify the default Java version to install
 TARGET_JAVA_VERSION=""    # Will be set based on --version flag or default
 
 # --- Utility Functions ---
-detect_architecture() {
-    if command -v dpkg > /dev/null 2>&1; then
-        ARCH=$(dpkg --print-architecture)
-    elif command -v uname > /dev/null 2>&1; then
-        local unamem=$(uname -m)
-        case "$unamem" in
-            aarch64|arm64) ARCH="arm64" ;;
-            x86_64) ARCH="amd64" ;;
-            *) ARCH="$unamem" ;;
-        esac
-    else
-        ARCH="unknown"
-    fi
-    echo "$ARCH"
-}
-
 get_installed_java_version() {
     if command -v java > /dev/null; then
         java -version 2>&1 | head -n 1 | grep -oP 'version "\K[^"]+' | cut -d. -f1
@@ -68,33 +72,18 @@ get_installed_java_version() {
 
 # --- Pre-installation/Uninstallation Setup ---
 pre_installation_setup() {
-    echo "🔧 Preparing environment..."
-    
-    # Ensure essential tools are present
-    if ! command -v sudo > /dev/null || ! command -v apt-get > /dev/null || ! command -v curl > /dev/null || ! command -v gpg > /dev/null; then
-         echo "⏳ Installing prerequisites (sudo, curl, apt-transport-https, gpg)..."
-         apt-get update -y > /dev/null
-         apt-get install -y --no-install-recommends sudo curl apt-transport-https ca-certificates gnupg > /dev/null
-    fi
-
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
         echo "🔧 Preparing for Java uninstallation..."
         if [ -z "$TARGET_JAVA_VERSION" ]; then
             TARGET_JAVA_VERSION=$(get_installed_java_version)
             if [ -z "$TARGET_JAVA_VERSION" ]; then
-                echo "⚠️ Could not detect installed Java version. Please specify with --version X to uninstall."
-                exit 1
+                echo "ℹ️ Could not detect Java version from PATH, will attempt to remove common versions."
             else
                 echo "ℹ️ Detected Java version $TARGET_JAVA_VERSION for uninstallation."
             fi
+        else
+            echo "ℹ️ Uninstalling Java version $TARGET_JAVA_VERSION as specified."
         fi
-
-        declare -g JAVA_APT_PACKAGES=(
-            "openjdk-${TARGET_JAVA_VERSION}-jdk"
-            "openjdk-${TARGET_JAVA_VERSION}-jre"
-            "maven"
-            "gradle"
-        )
     else
         echo "🔧 Performing pre-installation setup for Java..."
         SYSTEM_ARCH=$(detect_architecture)
@@ -123,116 +112,37 @@ pre_installation_setup() {
         else
             echo "ℹ️ Adoptium repository already added."
         fi
-        
+
         echo "🔄 Updating package lists after adding repository..."
         sudo apt-get update -y > /dev/null
-
-        declare -g JAVA_APT_PACKAGES=(
-            "temurin-${TARGET_JAVA_VERSION}-jdk"
-            "maven"
-            "gradle"
-        )
     fi
 }
-
-# --- Define VS Code extensions for Java Development (format: "Name (extension-id) - Description") ---
-EXTENSIONS=(
-    "Language Support for Java (redhat.java) - Core Java language support"
-    "Debugger for Java (vscjava.vscode-java-debug) - Debugging support"
-    "Test Runner for Java (vscjava.vscode-java-test) - Test runner and debugger"
-    "Maven for Java (vscjava.vscode-maven) - Maven project support"
-    "Dependency Viewer (vscjava.vscode-java-dependency) - View and manage dependencies"
-    "Extension Pack for Java (vscjava.vscode-java-pack) - Collection of popular Java extensions"
-)
-
-# --- Define verification commands ---
-VERIFY_COMMANDS=(
-    "command -v java >/dev/null && java -version || echo '❌ Java not found'"
-    "command -v javac >/dev/null && javac -version || echo '❌ Java compiler not found'"
-    "command -v mvn >/dev/null && mvn --version || echo '❌ Maven not found'"
-    "command -v gradle >/dev/null && gradle --version || echo '❌ Gradle not found'"
-)
 
 # --- Post-installation/Uninstallation Messages ---
 post_installation_message() {
     local java_version
-    local maven_version
-    local gradle_version
-    java_version=$(java -version 2>&1 | head -n 1)
-    maven_version=$(mvn --version 2>/dev/null | head -n 1 || echo "not found")
-    gradle_version=$(gradle --version 2>/dev/null | head -n 1 || echo "not found")
+    java_version=$(java -version 2>&1 | head -n 1 || echo "not found")
 
     echo
-    echo "🎉 Installation process complete for: $SCRIPT_NAME!"
-    echo "Purpose: $SCRIPT_DESCRIPTION"
+    echo "🎉 Installation complete!"
+    echo "   Java: $java_version"
+    echo "   Maven: $(mvn --version 2>/dev/null | head -n 1 || echo 'not found')"
+    echo "   Gradle: $(gradle --version 2>/dev/null | grep "^Gradle" || echo 'not found')"
     echo
-    echo "Important Notes:"
-    echo "1. Java: $java_version"
-    echo "2. Maven: $maven_version"
-    echo "3. Gradle: $gradle_version"
-    echo "4. VS Code extensions for Java development suggested/installed."
+    echo "Quick start: mvn archetype:generate"
+    echo "Docs: https://docs.oracle.com/en/java/"
     echo
-    echo "Quick Start Commands:"
-    echo "- Check Java version: java -version"
-    echo "- Check Maven version: mvn --version"
-    echo "- Check Gradle version: gradle --version"
-    echo "- Compile Java file: javac HelloWorld.java"
-    echo "- Run Java program: java HelloWorld"
-    echo "- Create Maven project: mvn archetype:generate"
-    echo "- Create Gradle project: gradle init"
-    echo
-    echo "Documentation Links:"
-    echo "- Java Documentation: https://docs.oracle.com/en/java/"
-    echo "- Maven Documentation: https://maven.apache.org/guides/"
-    echo "- Gradle Documentation: https://docs.gradle.org/current/userguide/userguide.html"
-    echo "- VS Code Java Extension Pack: https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack"
-    echo
-    echo "Installation Status:"
-    verify_installations
 }
 
 post_uninstallation_message() {
     echo
-    echo "🏁 Uninstallation process complete for specified Java components."
-    echo
-    echo "Additional Notes:"
-    echo "1. If other Java versions remain, they were not touched unless specified."
-    echo "2. Maven and Gradle caches might remain in ~/.m2 and ~/.gradle"
-    echo "3. Check VS Code extensions if they need manual removal."
-
-    echo
-    echo "Checking for remaining components..."
+    echo "🏁 Uninstallation complete!"
     if command -v java >/dev/null; then
-        echo "⚠️ Java $(java -version 2>&1 | head -n 1) is still installed."
+        echo "   ⚠️  Java still found in PATH"
     else
-        echo "✅ Java appears to be removed."
+        echo "   ✅ Java removed"
     fi
-    if command -v mvn >/dev/null; then
-        echo "⚠️ Maven $(mvn --version | head -n 1) is still installed."
-    else
-        echo "✅ Maven appears to be removed."
-    fi
-    if command -v gradle >/dev/null; then
-        echo "⚠️ Gradle $(gradle --version | head -n 1) is still installed."
-    else
-        echo "✅ Gradle appears to be removed."
-    fi
-
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        local remaining_ext=0
-        for ext_id in "${!EXTENSIONS[@]}"; do
-            if code --list-extensions 2>/dev/null | grep -qi "^${ext_id}$"; then
-                if [ $remaining_ext -eq 0 ]; then
-                    echo "⚠️ Some VS Code extensions might remain:"
-                fi
-                echo "   - ${EXTENSIONS[$ext_id]%%|*}"
-                ((remaining_ext++))
-            fi
-        done
-        if [ $remaining_ext -eq 0 ]; then
-            echo "✅ No VS Code extensions remain."
-        fi
-    fi
+    echo
 }
 
 #------------------------------------------------------------------------------
@@ -301,34 +211,51 @@ source "${CORE_SCRIPT_DIR}/lib/core-install-extensions.sh"
 # HELPER FUNCTIONS
 #------------------------------------------------------------------------------
 
-# Function to process APT installations
-process_apt_installations() {
-    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        if [ ${#JAVA_APT_PACKAGES[@]} -gt 0 ]; then
-            echo "🗑️ Uninstalling Java packages..."
-            for package in "${JAVA_APT_PACKAGES[@]}"; do
-                if dpkg -l "$package" 2>/dev/null | grep -q "^ii"; then
-                    echo "  Removing $package..."
-                    sudo apt-get remove -y "$package" > /dev/null 2>&1 || true
-                fi
-            done
+# Function to install/uninstall Java JDK and build tools
+install_java() {
+    local jdk_package="temurin-${TARGET_JAVA_VERSION}-jdk"
 
-            # Clean up
-            sudo apt-get autoremove -y > /dev/null 2>&1 || true
-            echo "✅ Java packages removed"
+    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
+        echo "🗑️ Removing Java installation..."
+
+        # Remove JDK
+        if dpkg -l "$jdk_package" 2>/dev/null | grep -q "^ii"; then
+            echo "  Removing $jdk_package..."
+            sudo apt-get remove -y "$jdk_package" > /dev/null 2>&1 || true
         fi
+
+        # Remove build tools using PACKAGES_JAVA array
+        for package in "${PACKAGES_JAVA[@]}"; do
+            if dpkg -l "$package" 2>/dev/null | grep -q "^ii"; then
+                echo "  Removing $package..."
+                sudo apt-get remove -y "$package" > /dev/null 2>&1 || true
+            fi
+        done
+
+        # Clean up
+        sudo apt-get autoremove -y > /dev/null 2>&1 || true
+        echo "✅ Java removed"
     else
-        if [ ${#JAVA_APT_PACKAGES[@]} -gt 0 ]; then
-            echo "📦 Installing Java packages..."
-            for package in "${JAVA_APT_PACKAGES[@]}"; do
-                echo "  Installing $package..."
-                if sudo apt-get install -y "$package" > /dev/null 2>&1; then
-                    echo "  ✅ Installed $package"
-                else
-                    echo "  ⚠️  Failed to install $package"
-                fi
-            done
+        echo "📦 Installing Java $TARGET_JAVA_VERSION..."
+
+        # Install JDK
+        if sudo apt-get install -y "$jdk_package" > /dev/null 2>&1; then
+            echo "  ✅ Installed $jdk_package"
+        else
+            echo "  ⚠️  Failed to install $jdk_package"
+            return 1
         fi
+
+        # Install build tools using PACKAGES_JAVA array
+        for package in "${PACKAGES_JAVA[@]}"; do
+            if sudo apt-get install -y "$package" > /dev/null 2>&1; then
+                echo "  ✅ Installed $package"
+            else
+                echo "  ⚠️  Failed to install $package"
+            fi
+        done
+
+        echo "✅ Java installation completed"
     fi
 }
 
@@ -342,16 +269,8 @@ setup_java_environment() {
     fi
 
     if [ -n "$java_home" ]; then
-        # Add JAVA_HOME to .bashrc if not already present
-        if ! grep -q "JAVA_HOME" ~/.bashrc; then
-            echo "" >> ~/.bashrc
-            echo "# Java environment" >> ~/.bashrc
-            echo "export JAVA_HOME=\"$java_home\"" >> ~/.bashrc
-            echo "export PATH=\"\$JAVA_HOME/bin:\$PATH\"" >> ~/.bashrc
-            echo "✅ Added JAVA_HOME to ~/.bashrc"
-        else
-            echo "ℹ️ JAVA_HOME already configured in ~/.bashrc"
-        fi
+        # Add JAVA_HOME to .bashrc using library function
+        add_to_bashrc "JAVA_HOME" "# Java environment" "export JAVA_HOME=\"$java_home\"" "export PATH=\"\$JAVA_HOME/bin:\$PATH\""
 
         # Export for current session
         export JAVA_HOME="$java_home"
@@ -361,17 +280,23 @@ setup_java_environment() {
 
 # Function to process installations
 process_installations() {
-    # Process APT packages
-    process_apt_installations
+    # Custom Java installation/uninstallation first
+    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
+        # Uninstall only Java-specific items (NOT system packages)
+        install_java
 
-    # Setup environment if installing
-    if [ "${UNINSTALL_MODE}" -eq 0 ]; then
+        # Process VS Code extensions
+        if [ ${#EXTENSIONS[@]} -gt 0 ]; then
+            process_extensions "EXTENSIONS"
+        fi
+    else
+        # Install Java and setup environment
+        install_java
         setup_java_environment
-    fi
 
-    # Process VS Code extensions
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        process_extensions "EXTENSIONS"
+        # Then use standard processing from lib/install-common.sh
+        # This handles: PACKAGES_SYSTEM, EXTENSIONS
+        process_standard_installations
     fi
 }
 
@@ -394,11 +319,10 @@ else
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
-    verify_installations
     post_installation_message
 
     # Auto-enable for container rebuild
-    auto_enable_tool "java-runtime-&-development-tools" "Java Runtime & Development Tools"
+    auto_enable_tool "$SCRIPT_ID" "$SCRIPT_NAME"
 fi
 
 echo "✅ Script execution finished."
