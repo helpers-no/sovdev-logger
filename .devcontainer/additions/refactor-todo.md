@@ -2,6 +2,12 @@
 
 This file contains stuff that we need to do before we are finished refactoring.
 
+## SCRIPT_VER variable
+The scripts will evolve over time and we need a way to keep track of them.
+The --help should display the version and also the install/uninstall
+updat ethe template to include the SCRIPT_VER
+For all scripts we now start at 0.0.3 and follow the best practice numbering 
+
 ## Standard version checking function
 
 ### Problem
@@ -132,11 +138,42 @@ Test after rebuild:
 docker ps
 docker images
 ```
+note: i think that the path is not set as i do: vscode ➜ /workspace (main) $ docker ps
+bash: docker: command not found
 
-## auto_enable_tool and auto_disable_tool
-Manages addition and removal from .devcontainer.extend/enabled-tools.conf 
-TODO: All scripts must use these functions. and template _template-install-script.sh must be updated so that all new scripts follow the rules.
-TODO: apparently functions dont need parameters so those can be removed
+
+## auto_enable_tool and auto_disable_tool ✅ COMPLETED
+Manages addition and removal from .devcontainer.extend/enabled-tools.conf
+✅ DONE: All scripts now use these functions correctly (no parameters)
+✅ DONE: Added auto_disable_tool to uninstall paths where missing
+✅ DONE: Removed unnecessary parameters from all calls
+
+**Fixed scripts:**
+- install-dev-csharp.sh
+- install-dev-golang.sh
+- install-dev-java.sh
+- install-dev-php-laravel.sh
+- install-dev-python.sh
+- install-dev-rust.sh
+- install-dev-typescript.sh
+- install-tool-powershell.sh
+
+**Pattern used:**
+```bash
+if [ "${UNINSTALL_MODE}" -eq 1 ]; then
+    # ... uninstall logic
+    post_uninstallation_message
+
+    # Remove from auto-enable config
+    auto_disable_tool  # No parameters
+else
+    # ... install logic
+    post_installation_message
+
+    # Auto-enable for container rebuild
+    auto_enable_tool  # No parameters
+fi
+```
 
 ## --debug  flag
 Some scripts have the --debug flag and some not. why?

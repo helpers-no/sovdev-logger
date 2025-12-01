@@ -3,21 +3,32 @@
 tools that we should add while refactoring
 
 
-## Okta tool
+## Okta tool ✅ COMPLETED
 
-Tool for managing Okta - can contain:
-https://marketplace.visualstudio.com/items?itemName=OktaDcp.okta-explorer
-https://pypi.org/project/okta-cli/
-
-there are IaC stuff
-https://registry.terraform.io/providers/okta/okta/latest/docs
-https://www.pulumi.com/registry/packages/okta/
-(nothing for bicep, and old outdated ansible)
+✅ Created install-tool-okta.sh
+- Installs okta-cli Python package (v18.1.2)
+- Installs Okta Explorer VS Code extension
+- Comprehensive documentation with IaC references (Terraform, Pulumi)
+- Script version: 0.0.3
+- Category: CLOUD_TOOLS
 
 
-## Power platform tool
+## Power platform tool ✅ COMPLETED
 
-see chat https://claude.ai/share/f5368700-3761-4568-8cda-64127508a172
+✅ Created install-tool-powerplatform.sh
+- Installs Microsoft Power Platform CLI (pac) via PACKAGES_DOTNET
+- Installs Power Platform Tools VS Code extension
+- Prerequisites: .NET SDK, x64 (AMD64) architecture only
+- ARM64 detection with clear error message
+- Comprehensive documentation about Linux devcontainer capabilities
+- Script version: 0.0.3
+- Category: CLOUD_TOOLS
+
+Implementation notes:
+- Created new PACKAGES_DOTNET infrastructure (lib/core-install-dotnet.sh)
+- Power Platform CLI only supports x64 on Linux (not ARM64)
+- 80-90% of Power Platform development works in Linux devcontainer
+- Windows-only tools (PRT, CMT, pac data) clearly documented
 
 ## Azure Tools
 
@@ -49,13 +60,6 @@ Potential `install-tool-documentation.sh` script for visual documentation and di
   - https://marketplace.visualstudio.com/items?itemName=jebbs.plantuml
   - **Note:** Requires Java runtime and Graphviz (system packages)
 
-**API Documentation:**
-- **OpenAPI (Swagger) Editor** (42Crunch.vscode-openapi)
-  - Edit and preview OpenAPI/Swagger specs
-  - https://marketplace.visualstudio.com/items?itemName=42Crunch.vscode-openapi
-- **REST Book** (tanhakabir.rest-book)
-  - Interactive API documentation notebooks
-  - https://marketplace.visualstudio.com/items?itemName=tanhakabir.rest-book
 
 **Technical Documentation:**
 - **AsciiDoc** (asciidoctor.asciidoctor-vscode)
@@ -66,3 +70,14 @@ Potential `install-tool-documentation.sh` script for visual documentation and di
 **Recommendation for MVP:**
 Keep it simple with just Draw.io - most universal and works standalone.
 Other tools can be added if needed, or users install manually.
+
+
+## API developer tool
+
+**API Documentation:**
+- **OpenAPI (Swagger) Editor** (42Crunch.vscode-openapi)
+  - Edit and preview OpenAPI/Swagger specs
+  - https://marketplace.visualstudio.com/items?itemName=42Crunch.vscode-openapi
+- **REST Book** (tanhakabir.rest-book)
+  - Interactive API documentation notebooks
+  - https://marketplace.visualstudio.com/items?itemName=tanhakabir.rest-book
