@@ -10,16 +10,6 @@
 #
 # Usage:
 #   bash service-nginx.sh --help           # Show all available operations
-#   bash service-nginx.sh --start          # Start nginx (for supervisord)
-#   bash service-nginx.sh --stop           # Stop nginx
-#   bash service-nginx.sh --restart        # Restart nginx
-#   bash service-nginx.sh --status         # Check status
-#   bash service-nginx.sh --logs           # Show recent logs
-#   bash service-nginx.sh --validate       # Validate configuration
-#   bash service-nginx.sh --reload         # Reload configuration
-#   bash service-nginx.sh --test           # Test connectivity
-#
-
 #------------------------------------------------------------------------------
 # SERVICE METADATA - For supervisord and dev-setup integration
 #------------------------------------------------------------------------------
@@ -44,6 +34,7 @@ COMMANDS=(
     "Control|--stop|Stop nginx gracefully|service_stop|false|"
     "Control|--restart|Restart nginx service|service_restart|false|"
     "Status|--status|Check if nginx is running|service_status|false|"
+    "Status|--is-running|Silent check if running (exit 0=running, 1=stopped)|service_is_running|false|"
     "Status|--logs|Show recent nginx logs|service_logs|false|"
     "Status|--logs-follow|Follow nginx logs in real-time|service_logs_follow|false|"
     "Config|--validate|Validate nginx configuration|service_validate|false|"
@@ -362,6 +353,16 @@ service_restart() {
 #------------------------------------------------------------------------------
 # Service Operations - Status
 #------------------------------------------------------------------------------
+
+service_is_running() {
+    # Silent check - returns 0 if running, 1 if not
+    # No output, just exit code for scripting
+    if is_service_running; then
+        return 0
+    else
+        return 1
+    fi
+}
 
 service_status() {
     echo ""

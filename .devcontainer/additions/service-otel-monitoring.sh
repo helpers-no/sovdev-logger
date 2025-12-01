@@ -14,13 +14,6 @@
 #
 # Usage:
 #   bash service-otel-monitoring.sh --help           # Show all operations
-#   bash service-otel-monitoring.sh --start          # Start all (for supervisord)
-#   bash service-otel-monitoring.sh --stop           # Stop all
-#   bash service-otel-monitoring.sh --status         # Check status
-#   bash service-otel-monitoring.sh --logs           # Show logs
-#   bash service-otel-monitoring.sh --health         # Health check
-#
-
 #------------------------------------------------------------------------------
 # SERVICE METADATA - For supervisord and dev-setup integration
 #------------------------------------------------------------------------------
@@ -48,6 +41,7 @@ COMMANDS=(
     "Control|--start-metrics|Start only metrics collector|service_start_metrics|false|"
     "Control|--start-exporter|Start only script exporter|service_start_exporter|false|"
     "Status|--status|Check status of all services|service_status|false|"
+    "Status|--is-running|Silent check if running (exit 0=running, 1=stopped)|service_is_running|false|"
     "Status|--logs|Show recent logs from all services|service_logs|false|"
     "Status|--logs-lifecycle|Show lifecycle collector logs|service_logs_lifecycle|false|"
     "Status|--logs-metrics|Show metrics collector logs|service_logs_metrics|false|"
@@ -586,6 +580,16 @@ service_start_exporter() {
 #------------------------------------------------------------------------------
 # Service Operations - Status
 #------------------------------------------------------------------------------
+
+service_is_running() {
+    # Silent check - returns 0 if at least one component is running, 1 if all stopped
+    # No output, just exit code for scripting
+    if is_lifecycle_running || is_metrics_running || is_exporter_running; then
+        return 0  # At least one component is running
+    else
+        return 1  # All stopped
+    fi
+}
 
 service_status() {
     echo ""

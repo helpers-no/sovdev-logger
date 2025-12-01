@@ -10,7 +10,7 @@
 CONFIG_NAME="Host Information"
 CONFIG_DESCRIPTION="Detect host OS, user, and architecture for telemetry monitoring"
 CONFIG_CATEGORY="INFRA_CONFIG"
-CHECK_CONFIG_COMMAND="[ -f /workspace/.devcontainer.secrets/env-vars/.host-info ]"
+CHECK_CONFIGURED_COMMAND="[ -f /workspace/.devcontainer.secrets/env-vars/.host-info ]"
 
 #------------------------------------------------------------------------------
 
@@ -43,51 +43,85 @@ setup_persistent_storage() {
     mkdir -p "$PERSISTENT_DIR"
 }
 
+get_architecture() {
+    # Normalize architecture names
+    local arch=$(uname -m)
+    case "$arch" in
+        x86_64) echo "amd64" ;;
+        aarch64) echo "arm64" ;;
+        armv7l) echo "arm32" ;;
+        *) echo "$arch" ;;
+    esac
+}
+
+get_host_hostname() {
+    # For devcontainer environments, the hostname is the container ID
+    # Use a generic identifier since we're in a virtualized environment
+    echo "devcontainer"
+}
+
+get_docker_server_stats() {
+    # Get Docker server statistics if Docker is available
+    if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+        local docker_info=$(docker info 2>/dev/null)
+
+        # Extract statistics
+        local total=$(echo "$docker_info" | grep "^ Containers:" | awk '{print $2}')
+        local running=$(echo "$docker_info" | grep "^  Running:" | awk '{print $2}')
+        local stopped=$(echo "$docker_info" | grep "^  Stopped:" | awk '{print $2}')
+        local paused=$(echo "$docker_info" | grep "^  Paused:" | awk '{print $2}')
+        local images=$(echo "$docker_info" | grep "^ Images:" | awk '{print $2}')
+
+        # Export for later use
+        export DOCKER_CONTAINERS_TOTAL="${total:-0}"
+        export DOCKER_CONTAINERS_RUNNING="${running:-0}"
+        export DOCKER_CONTAINERS_STOPPED="${stopped:-0}"
+        export DOCKER_CONTAINERS_PAUSED="${paused:-0}"
+        export DOCKER_IMAGES_TOTAL="${images:-0}"
+        return 0
+    fi
+
+    # Set defaults if Docker not available
+    export DOCKER_CONTAINERS_TOTAL="0"
+    export DOCKER_CONTAINERS_RUNNING="0"
+    export DOCKER_CONTAINERS_STOPPED="0"
+    export DOCKER_CONTAINERS_PAUSED="0"
+    export DOCKER_IMAGES_TOTAL="0"
+    return 1
+}
+
 detect_host_info() {
     log_info "Detecting host information for telemetry..."
     echo ""
 
     # Detect OS and user from environment variables
-    # Note: Hostname only available for Windows (COMPUTERNAME env var)
-    # Mac/Linux don't export hostname as env var by default, so we use "unknown"
     if [ -n "$DEV_MAC_USER" ]; then
         export HOST_OS="macOS"
         export HOST_USER="$DEV_MAC_USER"
-        export HOST_HOSTNAME="unknown"
+        export HOST_HOSTNAME="devcontainer"
         export HOST_DOMAIN="none"
     elif [ -n "$DEV_LINUX_USER" ]; then
         export HOST_OS="Linux"
         export HOST_USER="$DEV_LINUX_USER"
-        export HOST_HOSTNAME="unknown"
+        export HOST_HOSTNAME="devcontainer"
         export HOST_DOMAIN="none"
     elif [ -n "$DEV_WIN_USERNAME" ]; then
         export HOST_OS="Windows"
         export HOST_USER="$DEV_WIN_USERNAME"
-        export HOST_HOSTNAME="${DEV_WIN_COMPUTERNAME:-unknown}"
+        export HOST_HOSTNAME="${DEV_WIN_COMPUTERNAME:-devcontainer}"
         export HOST_DOMAIN="${DEV_WIN_USERDOMAIN:-none}"
     else
         export HOST_OS="unknown"
         export HOST_USER="unknown"
-        export HOST_HOSTNAME="unknown"
+        export HOST_HOSTNAME="devcontainer"
         export HOST_DOMAIN="none"
     fi
 
-    # Get architecture from container (which matches host architecture)
-    ARCH=$(uname -m)
-    case "$ARCH" in
-        x86_64)
-            export HOST_CPU_ARCH="amd64"
-            ;;
-        aarch64)
-            export HOST_CPU_ARCH="arm64"
-            ;;
-        armv7l)
-            export HOST_CPU_ARCH="arm32"
-            ;;
-        *)
-            export HOST_CPU_ARCH="$ARCH"
-            ;;
-    esac
+    # Get architecture using helper function
+    export HOST_CPU_ARCH="$(get_architecture)"
+
+    # Get Docker server statistics
+    get_docker_server_stats
 
     # Save to environment file for persistence
     save_host_info_to_env
@@ -98,6 +132,9 @@ detect_host_info() {
     echo "  Hostname: $HOST_HOSTNAME"
     [ -n "$HOST_DOMAIN" ] && echo "  Domain: $HOST_DOMAIN"
     echo "  Architecture: $HOST_CPU_ARCH"
+    echo "  Docker Server:"
+    echo "    Containers: $DOCKER_CONTAINERS_TOTAL (Running: $DOCKER_CONTAINERS_RUNNING, Stopped: $DOCKER_CONTAINERS_STOPPED, Paused: $DOCKER_CONTAINERS_PAUSED)"
+    echo "    Images: $DOCKER_IMAGES_TOTAL"
     echo ""
     log_success "Host information detected"
 }
@@ -114,6 +151,13 @@ export HOST_USER="$HOST_USER"
 export HOST_HOSTNAME="$HOST_HOSTNAME"
 export HOST_DOMAIN="$HOST_DOMAIN"
 export HOST_CPU_ARCH="$HOST_CPU_ARCH"
+
+# Docker server statistics
+export DOCKER_CONTAINERS_TOTAL="$DOCKER_CONTAINERS_TOTAL"
+export DOCKER_CONTAINERS_RUNNING="$DOCKER_CONTAINERS_RUNNING"
+export DOCKER_CONTAINERS_STOPPED="$DOCKER_CONTAINERS_STOPPED"
+export DOCKER_CONTAINERS_PAUSED="$DOCKER_CONTAINERS_PAUSED"
+export DOCKER_IMAGES_TOTAL="$DOCKER_IMAGES_TOTAL"
 EOF
 
     chmod 600 "$PERSISTENT_FILE"
@@ -128,38 +172,33 @@ verify_host_info() {
     setup_persistent_storage
 
     # Always detect fresh (host info can change if user switches machines)
-    # Detect without showing banner
-    # Note: Hostname only available for Windows (COMPUTERNAME env var)
-    # Mac/Linux don't export hostname as env var by default, so we use "unknown"
     if [ -n "$DEV_MAC_USER" ]; then
         export HOST_OS="macOS"
         export HOST_USER="$DEV_MAC_USER"
-        export HOST_HOSTNAME="unknown"
+        export HOST_HOSTNAME="devcontainer"
         export HOST_DOMAIN="none"
     elif [ -n "$DEV_LINUX_USER" ]; then
         export HOST_OS="Linux"
         export HOST_USER="$DEV_LINUX_USER"
-        export HOST_HOSTNAME="unknown"
+        export HOST_HOSTNAME="devcontainer"
         export HOST_DOMAIN="none"
     elif [ -n "$DEV_WIN_USERNAME" ]; then
         export HOST_OS="Windows"
         export HOST_USER="$DEV_WIN_USERNAME"
-        export HOST_HOSTNAME="${DEV_WIN_COMPUTERNAME:-unknown}"
+        export HOST_HOSTNAME="${DEV_WIN_COMPUTERNAME:-devcontainer}"
         export HOST_DOMAIN="${DEV_WIN_USERDOMAIN:-none}"
     else
         export HOST_OS="unknown"
         export HOST_USER="unknown"
-        export HOST_HOSTNAME="unknown"
+        export HOST_HOSTNAME="devcontainer"
         export HOST_DOMAIN="none"
     fi
 
-    ARCH=$(uname -m)
-    case "$ARCH" in
-        x86_64) export HOST_CPU_ARCH="amd64" ;;
-        aarch64) export HOST_CPU_ARCH="arm64" ;;
-        armv7l) export HOST_CPU_ARCH="arm32" ;;
-        *) export HOST_CPU_ARCH="$ARCH" ;;
-    esac
+    # Get architecture using helper function
+    export HOST_CPU_ARCH="$(get_architecture)"
+
+    # Get Docker server statistics
+    get_docker_server_stats
 
     save_host_info_to_env
 

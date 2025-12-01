@@ -44,7 +44,7 @@
     "remoteUser": "vscode",
     "containerUser": "vscode",
     "remoteEnv": {
-        "DOCKER_HOST": "/var/run/docker.sock",
+        "DOCKER_HOST": "unix:///var/run/docker.sock",
         "DOCKER_HOST_URI": "/var/run/docker.sock",
         "PODMAN_SOCKET": "/var/run/docker.sock"
     },

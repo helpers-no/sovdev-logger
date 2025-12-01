@@ -11,19 +11,21 @@
 # --- Script Metadata ---
 SCRIPT_ID="dev-python"
 SCRIPT_NAME="Python Development Tools"
-SCRIPT_DESCRIPTION="Adds pytest and VS Code extensions for Python development (Python already in devcontainer)"
+SCRIPT_DESCRIPTION="Adds ipython, pytest-cov, and VS Code extensions for Python development"
 SCRIPT_CATEGORY="LANGUAGE_DEV"
-CHECK_INSTALLED_COMMAND="[ -f /usr/local/bin/python3 ] || [ -f /usr/bin/python3 ] || command -v python3 >/dev/null 2>&1"
+CHECK_INSTALLED_COMMAND="command -v ipython >/dev/null 2>&1"
 
 # Optional: Custom usage text for --help
 SCRIPT_USAGE="  $(basename "$0")              # Install Python development environment
   $(basename "$0") --help       # Show this help
-  $(basename "$0") --uninstall  # Uninstall Python packages (system Python remains)
+  $(basename "$0") --uninstall  # Uninstall Python packages (Python runtime remains)
   $(basename "$0") --debug      # Install with debug output"
 
-# Python packages
+# Python packages (pytest, black, mypy already in base image)
 PACKAGES_PYTHON=(
-    "pytest"  # Testing framework
+    "ipython"       # Enhanced interactive Python shell
+    "pytest-cov"    # Code coverage for pytest
+    "python-dotenv" # Environment variable management
 )
 
 # VS Code extensions
@@ -87,16 +89,19 @@ post_installation_message() {
     local python_version
     python_version=$(python3 --version 2>/dev/null || echo "not found")
 
-    local pip_version
-    pip_version=$(pip3 --version 2>/dev/null | head -n 1 || echo "not found")
+    local ipython_version
+    ipython_version=$(ipython --version 2>/dev/null || echo "not found")
 
     echo
     echo "🎉 Installation complete!"
     echo "   Python: $python_version"
-    echo "   pip: $pip_version"
+    echo "   ipython: $ipython_version"
+    echo "   pytest-cov: installed (for code coverage)"
+    echo "   python-dotenv: installed (for .env files)"
     echo
-    echo "Quick start: python3 -m venv myenv && source myenv/bin/activate"
-    echo "Docs: https://docs.python.org/"
+    echo "Quick start: ipython    # Enhanced Python shell"
+    echo "             pytest --cov=. tests/  # Run tests with coverage"
+    echo "Docs: https://ipython.readthedocs.io/"
     echo
 }
 

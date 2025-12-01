@@ -6,8 +6,7 @@
 # - Direct Node.js binary installation (most reliable, no external repos)
 # - Added GitHub CLI (gh) for enhanced Git workflow
 # - Added Supervisord for multi-process management in devcontainers
-# - PowerShell moved to optional install script (install-dev-powershell.sh)
-# - Azure CLI moved to optional install script (install-tool-azure.sh)
+# - Added Docker CLI (static binary, ~25MB - no buildx/compose bloat)
 
 # Use the official Python devcontainer image as the base
 # Note: Using bookworm (Debian 12) as trixie images are not yet available from Microsoft
@@ -38,6 +37,9 @@ ARG DEV_WIN_OS
 # Set Node.js version (update this as needed)
 ARG NODE_VERSION=22.12.0
 
+# Set Docker CLI version (update this as needed)
+ARG DOCKER_VERSION=27.5.1
+
 # Set environment variables in container (combined for efficiency)
 ENV DEV_MAC_LOGNAME=$DEV_MAC_LOGNAME \
     DEV_MAC_USER=$DEV_MAC_USER \
@@ -55,7 +57,7 @@ ENV DEV_MAC_LOGNAME=$DEV_MAC_LOGNAME \
 # =============================================================================
 # COMBINED INSTALLATION - All tools in one layer for size optimization
 # =============================================================================
-# Install system packages, Node.js, GitHub CLI, and Supervisord in a single layer
+# Install system packages, Node.js, Docker CLI, GitHub CLI, and Supervisord in a single layer
 # This reduces the number of Docker layers and allows aggressive cleanup
 #
 # Packages installed:
@@ -73,6 +75,7 @@ ENV DEV_MAC_LOGNAME=$DEV_MAC_LOGNAME \
 #
 # Tools installed:
 # - Node.js LTS (22.12.0): JavaScript runtime with npm (direct binary install)
+# - Docker CLI (27.5.1): Container management (static binary, ~25MB)
 # - GitHub CLI (gh): Enhanced Git/GitHub workflow
 # - Supervisord: Multi-process manager for devcontainer services
 
@@ -95,9 +98,11 @@ RUN sudo apt-get update && \
         lsb-release \
         xz-utils \
         supervisor && \
+
     # Install Node.js directly from official binaries (most reliable method)
     # Supports x86_64 (amd64), ARM64, and ARM32 (armhf) architectures
-    ARCH=$(dpkg --print-architecture) && \
+    # Determine system architecture for binary downloads
+    ARCH=$(dpkg --print-architecture) && \    
     case "$ARCH" in \
         amd64) NODE_ARCH="x64" ;; \
         arm64) NODE_ARCH="arm64" ;; \
@@ -109,6 +114,21 @@ RUN sudo apt-get update && \
     rm /tmp/node.tar.xz && \
     # Verify Node.js and npm are installed
     node --version && npm --version && \
+    # Install Docker CLI (static binary - minimal footprint, ~25MB)
+    case "$ARCH" in \
+        amd64) DOCKER_ARCH="x86_64" ;; \
+        arm64) DOCKER_ARCH="aarch64" ;; \
+        armhf) DOCKER_ARCH="armhf" ;; \
+        *) echo "Unsupported architecture for Docker: $ARCH" && exit 1 ;; \
+    esac && \
+    curl -fsSL "https://download.docker.com/linux/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz" | \
+        sudo tar xzv --strip-components=1 -C /usr/local/bin docker/docker && \
+    # Verify Docker CLI is installed
+    docker --version && \
+    # Create docker group matching host socket GID and add vscode user
+    # This allows vscode user to access Docker socket without sudo
+    sudo groupadd -g 102 docker 2>/dev/null || true && \
+    sudo usermod -aG docker vscode && \
     # Install GitHub CLI
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
     sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
@@ -151,11 +171,6 @@ RUN sudo apt-get update && \
 # =============================================================================
 # OPTIONAL TOOLS - Install via scripts in .devcontainer/additions/
 # =============================================================================
-# Cloud tools: Run install-tool-azure.sh, install-dev-powershell.sh
-# Language runtimes: Use install-dev-*.sh scripts for Rust, Go, Java, etc.
-# Infrastructure tools: Use install-kubectl.sh, install-srv-otel-monitoring.sh, etc.
-# Services: Use install-tailscale.sh, install-web-proxy.sh, etc.
-#
 # These tools are now optional and managed via the enabled-tools.conf system.
 # Run 'dev-setup' to see available tools and install what you need.
 #
@@ -177,6 +192,7 @@ ENV DEBIAN_FRONTEND=
 # Base tools installed in this container:
 # - Python 3.12 (from base image)
 # - Node.js 22.12.0 LTS with npm (direct binary installation)
+# - Docker CLI 27.5.1 (static binary, ~25MB - no buildx/compose)
 # - GitHub CLI (gh) for enhanced Git workflow
 # - Supervisord for multi-process management (~500KB, always available)
 # - Essential networking and development tools (ping, traceroute, jc, etc.)
@@ -188,7 +204,7 @@ ENV DEBIAN_FRONTEND=
 # Support: Until June 2028 (5 years of support)
 #
 # PATH includes:
-# - /usr/local/bin (npm global packages, custom tools)
+# - /usr/local/bin (npm global packages, docker, custom tools)
 # - /workspace/.devcontainer (dev-setup and other scripts)
 #
 # Supervisord structure:
@@ -198,19 +214,13 @@ ENV DEBIAN_FRONTEND=
 # - Socket: /var/run/supervisor.sock
 # - Commands: supervisord, supervisorctl
 #
-# Optional tools (install via scripts):
-# - Azure CLI: bash .devcontainer/additions/install-tool-azure.sh
-# - PowerShell: bash .devcontainer/additions/install-dev-powershell.sh
-# - Rust, Go, Java, etc.: Use corresponding install-dev-*.sh scripts
-# - OTel monitoring: bash .devcontainer/additions/install-srv-otel-monitoring.sh
-# - Web proxy: bash .devcontainer/additions/install-web-proxy.sh
-# - Tailscale VPN: bash .devcontainer/additions/install-tailscale.sh
 # - Run 'dev-setup' for interactive tool management
 #
 # Why these versions:
 # - Python 3.12: Widely supported, stable, perfect for observability tooling
 # - Debian Bookworm: Stable and supported until 2028 (Trixie images not yet available)
 # - Node.js 22.12.0: Latest LTS, includes npm by default
+# - Docker CLI 27.5.1: Latest stable, static binary for minimal footprint
 # - Supervisord: Lightweight process manager for running multiple services
 # - Direct binary install: Most reliable, no dependency on external repos
 #
@@ -224,14 +234,4 @@ ENV DEBIAN_FRONTEND=
 # - Windows (Intel/AMD)
 # - Linux (x64, ARM64, ARM32)
 #
-# Service management workflow:
-# 1. Install service scripts add .conf files to /etc/supervisor/conf.d/
-# 2. Start all services: sudo supervisord -c /etc/supervisor/supervisord.conf
-# 3. Manage services: sudo supervisorctl status|start|stop|restart [service]
-# 4. View logs: sudo supervisorctl tail -f [service]
-# 5. Or use helper: dev-services {status|start|stop|restart}
-#
-# Future upgrade path:
-# When Microsoft releases Trixie-based images (expected 2026), simply update to:
-# FROM mcr.microsoft.com/devcontainers/python:1-3.12-trixie
 # =============================================================================

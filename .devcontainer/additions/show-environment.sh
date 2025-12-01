@@ -34,15 +34,12 @@ ADDITIONS_DIR="$SCRIPT_DIR"
 source "$SCRIPT_DIR/lib/component-scanner.sh"
 
 #------------------------------------------------------------------------------
-# Category definitions
+# Category definitions - Load from categories.sh
 #------------------------------------------------------------------------------
 
-declare -A CATEGORIES
-CATEGORIES["AI_TOOLS"]="AI & Coding Assistants"
-CATEGORIES["LANGUAGE_DEV"]="Language Development"
-CATEGORIES["INFRA_CONFIG"]="Infrastructure & Configuration"
-CATEGORIES["DATA_ANALYTICS"]="Data & Analytics"
-CATEGORIES["UNCATEGORIZED"]="Other Tools"
+# Source categories library to get all category definitions
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/lib/categories.sh"
 
 # Global arrays for tools
 declare -a AVAILABLE_TOOLS=()
@@ -89,7 +86,8 @@ scan_available_tools() {
     local found=0
 
     # Use library to scan install scripts (suppress errors)
-    while IFS=$'\t' read -r script_basename script_name script_description script_category check_command; do
+    # Output format: script_basename<TAB>SCRIPT_ID<TAB>SCRIPT_NAME<TAB>SCRIPT_DESCRIPTION<TAB>SCRIPT_CATEGORY<TAB>CHECK_INSTALLED_COMMAND<TAB>PREREQUISITE_CONFIGS
+    while IFS=$'\t' read -r script_basename script_id script_name script_description script_category check_command prerequisite_configs; do
         # Add to arrays
         AVAILABLE_TOOLS+=("$script_name")
         TOOL_SCRIPTS+=("$script_basename")
@@ -132,19 +130,24 @@ scan_available_services() {
 
     local found=0
 
-    # Use library to scan service scripts (suppress errors)
-    while IFS=$'\t' read -r start_script stop_script service_name service_description service_category check_running_command; do
+    # Scan for new service-*.sh scripts first
+    while IFS=$'\t' read -r script_basename service_name service_description service_category script_path prerequisite_configs; do
         # Add to arrays
         AVAILABLE_SERVICES+=("$service_name")
-        SERVICE_SCRIPTS+=("$start_script")
+        SERVICE_SCRIPTS+=("$script_basename")
         SERVICE_DESCRIPTIONS+=("$service_description")
         SERVICE_CATEGORIES+=("$service_category")
-        SERVICE_START_SCRIPTS+=("$start_script")
-        SERVICE_STOP_SCRIPTS+=("$stop_script")
-        SERVICE_CHECK_COMMANDS+=("$check_running_command")
+        SERVICE_START_SCRIPTS+=("$script_path")
+        SERVICE_STOP_SCRIPTS+=("")
+
+        # Check if service is running using the --is-running flag
+        # This returns 0 if running, 1 if stopped, with no output
+        # Suppress all output (stdout and stderr) to avoid logging messages
+        local service_check="bash \"$script_path\" --is-running >/dev/null 2>&1"
+        SERVICE_CHECK_COMMANDS+=("$service_check")
 
         ((found++))
-    done < <(scan_service_scripts "$ADDITIONS_DIR" 2>/dev/null)
+    done < <(scan_service_scripts_new "$ADDITIONS_DIR" 2>/dev/null)
 
     if [[ $found -eq 0 ]]; then
         return 1
@@ -229,9 +232,75 @@ check_config_configured() {
     return $?
 }
 
+get_config_source() {
+    local config_index="$1"
+    local script_name="${CONFIG_SCRIPTS[$config_index]}"
+    local script_path="$ADDITIONS_DIR/$script_name"
+
+    # Extract PERSISTENT_FILE from the config script
+    local persistent_file=$(grep -m1 "^PERSISTENT_FILE=" "$script_path" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | sed 's/\$PERSISTENT_DIR/\/workspace\/.devcontainer.secrets\/env-vars/')
+
+    # Check if persistent file exists
+    if [[ -n "$persistent_file" ]] && [[ -f "$persistent_file" ]]; then
+        echo "(from secrets)"
+    else
+        echo "(manual)"
+    fi
+}
+
 #------------------------------------------------------------------------------
 # Display functions
 #------------------------------------------------------------------------------
+
+get_container_name() {
+    # Try multiple methods to get container name
+
+    # Method 1: Try docker inspect if socket is available
+    if command -v docker >/dev/null 2>&1; then
+        local container_id=$(hostname)
+        local name=$(docker inspect --format='{{.Name}}' "$container_id" 2>/dev/null | sed 's/^\///')
+        if [[ -n "$name" ]]; then
+            echo "$name"
+            return 0
+        fi
+    fi
+
+    # Method 2: Parse devcontainer.json
+    if [[ -f /workspace/.devcontainer/devcontainer.json ]]; then
+        local name=$(grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' /workspace/.devcontainer/devcontainer.json | cut -d'"' -f4)
+        if [[ -n "$name" ]]; then
+            # Convert to lowercase and replace spaces with hyphens (Docker container naming convention)
+            name=$(echo "$name" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+            echo "$name"
+            return 0
+        fi
+    fi
+
+    # Method 3: Fallback to just container ID
+    echo "$(hostname)"
+}
+
+get_docker_stats() {
+    # Get Docker server statistics if Docker is available
+    if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+        local docker_info=$(docker info 2>/dev/null)
+
+        # Extract statistics
+        local total=$(echo "$docker_info" | grep "^ Containers:" | awk '{print $2}')
+        local running=$(echo "$docker_info" | grep "^  Running:" | awk '{print $2}')
+        local stopped=$(echo "$docker_info" | grep "^  Stopped:" | awk '{print $2}')
+        local paused=$(echo "$docker_info" | grep "^  Paused:" | awk '{print $2}')
+        local images=$(echo "$docker_info" | grep "^ Images:" | awk '{print $2}')
+
+        # Only output if we got valid data
+        if [[ -n "$total" ]]; then
+            echo "total=$total;running=$running;stopped=$stopped;paused=$paused;images=$images"
+            return 0
+        fi
+    fi
+
+    return 1
+}
 
 show_environment_info() {
     # Add buffer and ensure clean output
@@ -239,41 +308,69 @@ show_environment_info() {
     echo ""
 
     echo "═══════════════════════════════════════════════════════════════════"
-    echo "                    ENVIRONMENT INFORMATION"
+    echo "                    DEVELOPMENT ENVIRONMENT"
     echo "═══════════════════════════════════════════════════════════════════"
     echo ""
 
-    # System info
-    echo "System Information:"
-    echo "  • Container: $(whoami)@$(hostname)"
-    if [[ -f /etc/os-release ]]; then
-        echo "  • OS: $(grep PRETTY_NAME /etc/os-release | cut -d'"' -f2)"
-    fi
-    # System resources
-    local disk_info=$(df -h / | awk 'NR==2 {print $4 " free of " $2}')
-    echo "  • Disk Space: $disk_info"
-    echo ""
+    echo "┌─────────────────────────────────────────────────────────────────┐"
+    echo "│ HOST ENVIRONMENT                                                 │"
+    echo "└─────────────────────────────────────────────────────────────────┘"
 
     # Host information (if available)
     if [ -f /workspace/.devcontainer.secrets/env-vars/.host-info ]; then
         # shellcheck source=/dev/null
         source /workspace/.devcontainer.secrets/env-vars/.host-info
-        echo "Host Information:"
-        echo "  • Operating System: $HOST_OS"
-        echo "  • User: $HOST_USER"
-        echo "  • Hostname: $HOST_HOSTNAME"
-        [ -n "$HOST_DOMAIN" ] && echo "  • Domain: $HOST_DOMAIN"
-        echo "  • Architecture: $HOST_CPU_ARCH"
-        echo ""
+        echo "  Operating System:  $HOST_OS"
+        echo "  User:              $HOST_USER"
+        echo "  Hostname:          $HOST_HOSTNAME"
+        [ -n "$HOST_DOMAIN" ] && echo "  Domain:            $HOST_DOMAIN" || echo "  Domain:            none"
+        echo "  Architecture:      $HOST_CPU_ARCH"
+    else
+        echo "  Host information not available"
     fi
+    echo ""
 
-    # Core tools - always installed
-    echo "Core Tools:"
-    command -v python3 >/dev/null && echo "  ✅ Python: $(python3 --version | cut -d' ' -f2)" || echo "  ❌ Python: not installed"
-    command -v node >/dev/null && echo "  ✅ Node.js: $(node --version | sed 's/v//')" || echo "  ❌ Node.js: not installed"
-    command -v npm >/dev/null && echo "  ✅ npm: $(npm --version)" || echo "  ❌ npm: not installed"
-    command -v az >/dev/null && echo "  ✅ Azure CLI: $(az version 2>/dev/null | grep -o '\"azure-cli\": \"[^\"]*\"' | cut -d'"' -f4)" || echo "  ❌ Azure CLI: not installed"
-    command -v pwsh >/dev/null && echo "  ✅ PowerShell: $(pwsh --version 2>/dev/null | cut -d' ' -f2)" || echo "  ❌ PowerShell: not installed"
+    echo "┌─────────────────────────────────────────────────────────────────┐"
+    echo "│ CONTAINER ENVIRONMENT                                            │"
+    echo "└─────────────────────────────────────────────────────────────────┘"
+
+    # Container info
+    local container_name=$(get_container_name)
+    echo "  Container Name:    $container_name"
+    echo "  Container ID:      $(whoami)@$(hostname)"
+    if [[ -f /etc/os-release ]]; then
+        echo "  Base Image:        $(grep PRETTY_NAME /etc/os-release | cut -d'"' -f2)"
+    fi
+    # System resources
+    local disk_info=$(df -h / | awk 'NR==2 {print $4 " free of " $2}')
+    echo "  Disk Space:        $disk_info"
+    echo "  Working Directory: $(pwd)"
+
+    # Docker server statistics (if available)
+    local docker_stats=$(get_docker_stats)
+    if [[ -n "$docker_stats" ]]; then
+        # Parse the statistics
+        local total=$(echo "$docker_stats" | cut -d';' -f1 | cut -d'=' -f2)
+        local running=$(echo "$docker_stats" | cut -d';' -f2 | cut -d'=' -f2)
+        local stopped=$(echo "$docker_stats" | cut -d';' -f3 | cut -d'=' -f2)
+        local paused=$(echo "$docker_stats" | cut -d';' -f4 | cut -d'=' -f2)
+        local images=$(echo "$docker_stats" | cut -d';' -f5 | cut -d'=' -f2)
+
+        echo "  Docker Server:"
+        echo "    Containers:      $total (Running: $running, Stopped: $stopped, Paused: $paused)"
+        echo "    Images:          $images"
+    fi
+    echo ""
+
+    echo "┌─────────────────────────────────────────────────────────────────┐"
+    echo "│ RUNTIME ENVIRONMENT                                              │"
+    echo "└─────────────────────────────────────────────────────────────────┘"
+    # Base tools from container image
+    command -v python3 >/dev/null && echo "  ✅ Python $(python3 --version | cut -d' ' -f2)"
+    command -v node >/dev/null && echo "  ✅ Node.js $(node --version | sed 's/v//')"
+    command -v npm >/dev/null && echo "  ✅ npm $(npm --version)"
+    command -v git >/dev/null && echo "  ✅ Git $(git --version | cut -d' ' -f3)"
+    command -v docker >/dev/null && echo "  ✅ Docker CLI $(docker --version | cut -d' ' -f3 | sed 's/,//')"
     echo ""
 
     # Scan tools and services
@@ -285,13 +382,15 @@ show_environment_info() {
     # Available tools organized by category
     scan_available_tools >/dev/null 2>&1 || true
     if [[ ${#AVAILABLE_TOOLS[@]} -gt 0 ]]; then
-        echo "Available Tools (by category):"
+        echo "┌─────────────────────────────────────────────────────────────────┐"
+        echo "│ INSTALLED TOOLS BY CATEGORY                                      │"
+        echo "└─────────────────────────────────────────────────────────────────┘"
         echo ""
 
         total_tools=${#AVAILABLE_TOOLS[@]}
 
-        # Iterate through categories in order
-        for category_key in "AI_TOOLS" "LANGUAGE_DEV" "INFRA_CONFIG" "DATA_ANALYTICS" "UNCATEGORIZED"; do
+        # Iterate through all categories in sort order
+        while IFS= read -r category_key; do
             local count=${CATEGORY_COUNTS[$category_key]:-0}
 
             # Skip empty categories
@@ -299,7 +398,8 @@ show_environment_info() {
                 continue
             fi
 
-            local category_name="${CATEGORIES[$category_key]}"
+            # Get display name from library
+            local category_name=$(get_category_display_name "$category_key")
             echo "$category_name:"
 
             # Get tool indices for this category
@@ -319,14 +419,33 @@ show_environment_info() {
                 fi
             done
             echo ""
-        done
+        done < <(get_all_category_ids)
+
+        # Also check for UNCATEGORIZED tools
+        if [[ ${CATEGORY_COUNTS["UNCATEGORIZED"]:-0} -gt 0 ]]; then
+            echo "Other Tools:"
+            local tool_indices="${TOOLS_BY_CATEGORY["UNCATEGORIZED"]}"
+            IFS=',' read -ra INDICES <<< "$tool_indices"
+            for tool_index in "${INDICES[@]}"; do
+                local tool_name="${AVAILABLE_TOOLS[$tool_index]}"
+                local script_name="${TOOL_SCRIPTS[$tool_index]}"
+                if check_tool_installed "$script_name"; then
+                    echo "  ✅ $tool_name"
+                    ((installed_count++))
+                else
+                    echo "  ❌ $tool_name"
+                fi
+            done
+            echo ""
+        fi
     fi
 
     # Running services
     scan_available_services >/dev/null 2>&1 || true
     if [[ ${#AVAILABLE_SERVICES[@]} -gt 0 ]]; then
-        echo "Services:"
-        echo ""
+        echo "┌─────────────────────────────────────────────────────────────────┐"
+        echo "│ SERVICES                                                         │"
+        echo "└─────────────────────────────────────────────────────────────────┘"
 
         total_services=${#AVAILABLE_SERVICES[@]}
 
@@ -353,8 +472,9 @@ show_environment_info() {
 
     scan_available_configs >/dev/null 2>&1 || true
     if [[ ${#AVAILABLE_CONFIGS[@]} -gt 0 ]]; then
-        echo "Configurations:"
-        echo ""
+        echo "┌─────────────────────────────────────────────────────────────────┐"
+        echo "│ CONFIGURATIONS                                                   │"
+        echo "└─────────────────────────────────────────────────────────────────┘"
 
         total_configs=${#AVAILABLE_CONFIGS[@]}
 
@@ -363,7 +483,8 @@ show_environment_info() {
                 local config_name="${AVAILABLE_CONFIGS[$i]}"
 
                 if check_config_configured "$i"; then
-                    echo "  ✅ $config_name (configured)"
+                    local source=$(get_config_source "$i")
+                    echo "  ✅ $config_name $source"
                     ((configured_count++))
                 else
                     echo "  ❌ $config_name (not configured)"
@@ -377,17 +498,18 @@ show_environment_info() {
 
     # Summary statistics
     echo "─────────────────────────────────────────────────────────────────"
-    echo "Summary:"
+    echo "SUMMARY"
+    echo "─────────────────────────────────────────────────────────────────"
     if [[ $total_tools -gt 0 ]]; then
         local tools_pct=$((installed_count * 100 / total_tools))
-        echo "  • Tools: $installed_count of $total_tools installed ($tools_pct%)"
+        echo "  Tools:          $installed_count of $total_tools installed ($tools_pct%)"
     fi
     if [[ $total_services -gt 0 ]]; then
-        echo "  • Services: $running_services of $total_services running"
+        echo "  Services:       $running_services of $total_services running"
     fi
     if [[ $total_configs -gt 0 ]]; then
         local configs_pct=$((configured_count * 100 / total_configs))
-        echo "  • Configurations: $configured_count of $total_configs configured ($configs_pct%)"
+        echo "  Configurations: $configured_count of $total_configs configured ($configs_pct%)"
     fi
     echo "═══════════════════════════════════════════════════════════════════"
     echo ""
