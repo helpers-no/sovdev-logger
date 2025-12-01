@@ -30,6 +30,12 @@ SCRIPT_USAGE="  $(basename "$0")              # Install development utilities
 # System packages (all packages already in base devcontainer - see Dockerfile.base)
 PACKAGES_SYSTEM=()
 
+# Node.js packages
+PACKAGES_NODE=()
+
+# Python packages
+PACKAGES_PYTHON=()
+
 # VS Code extensions
 EXTENSIONS=(
     "SQLTools (mtxr.sqltools) - Database management and SQL query tool for MySQL, PostgreSQL, SQLite, MSSQL, MongoDB, etc."
@@ -63,41 +69,15 @@ post_installation_message() {
     echo
     echo "🎉 Installation complete!"
     echo
-    echo "Installed Tools:"
-    echo "  • SQLTools - Database management for multiple database types"
-    echo "  • REST Client - API testing directly in VS Code"
-    echo
-    echo "SQLTools Features:"
-    echo "  - Connects to: MySQL, PostgreSQL, SQLite, MSSQL, MongoDB, and more"
-    echo "  - Query databases visually"
-    echo "  - Browse tables and schemas"
-    echo "  - Export query results"
-    echo "  - Bookmark frequent queries"
-    echo
-    echo "REST Client Features:"
-    echo "  - Test APIs without leaving VS Code"
-    echo "  - Free, open-source alternative to Postman"
-    echo "  - No account/signup required"
-    echo "  - Save requests in .http or .rest files"
-    echo "  - Environment variables support"
-    echo
     echo "Quick start:"
-    echo "  SQLTools: Click the database icon in VS Code sidebar"
-    echo "  REST Client: Create a file with .http extension and write HTTP requests"
+    echo "  - SQLTools:    Click database icon in VS Code sidebar"
+    echo "  - REST Client: Create .http file and write HTTP requests"
     echo
     echo "Example .http file:"
     echo "  GET https://api.github.com/users/octocat"
-    echo "  ###"
-    echo "  POST https://api.example.com/users"
-    echo "  Content-Type: application/json"
-    echo ""
-    echo "  {"
-    echo '    "name": "John Doe"'
-    echo "  }"
     echo
-    echo "Docs:"
-    echo "  - SQLTools: https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools"
-    echo "  - REST Client: https://marketplace.visualstudio.com/items?itemName=humao.rest-client"
+    echo "Docs: https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools"
+    echo "      https://marketplace.visualstudio.com/items?itemName=humao.rest-client"
     echo
 }
 
@@ -160,6 +140,8 @@ export FORCE_MODE
 
 # Source core installation scripts
 source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
+
+# Note: lib/install-common.sh already sourced earlier (needed for --help)
 
 #------------------------------------------------------------------------------
 # HELPER FUNCTIONS
