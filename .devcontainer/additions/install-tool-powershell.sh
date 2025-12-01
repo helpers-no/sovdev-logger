@@ -105,32 +105,28 @@ install_powershell() {
     # PowerShell version to install (latest stable as of 2025)
     local powershell_version="${TARGET_VERSION:-7.5.4}"
 
-    # Detect system architecture
-    local target_platform=$(uname -m)
+    # Detect architecture using lib function
+    local system_arch=$(detect_architecture)
     local ps_arch
     local ps_package_url
 
-    echo "🖥️  Detected architecture: $target_platform"
-
-    # Determine architecture-specific download URL
-    case "$target_platform" in
-        "x86_64"|"amd64")
+    # Map to PowerShell naming convention
+    case "$system_arch" in
+        amd64)
             ps_arch="x64"
             ps_package_url="https://github.com/PowerShell/PowerShell/releases/download/v${powershell_version}/powershell-${powershell_version}-linux-x64.tar.gz"
             ;;
-        "aarch64"|"arm64")
+        arm64)
             ps_arch="arm64"
             ps_package_url="https://github.com/PowerShell/PowerShell/releases/download/v${powershell_version}/powershell-${powershell_version}-linux-arm64.tar.gz"
             ;;
-        "armv7l"|"arm")
-            ps_arch="arm32"
-            ps_package_url="https://github.com/PowerShell/PowerShell/releases/download/v${powershell_version}/powershell-${powershell_version}-linux-arm32.tar.gz"
-            ;;
         *)
-            echo "❌ Unsupported architecture: $target_platform"
+            echo "❌ Unsupported architecture: $system_arch"
             return 1
             ;;
     esac
+
+    echo "🖥️  Detected architecture: $system_arch (PowerShell: $ps_arch)"
 
     echo "⬇️  Downloading PowerShell v${powershell_version} for $ps_arch..."
     local temp_tarball="/tmp/powershell.tar.gz"
