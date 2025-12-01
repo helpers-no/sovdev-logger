@@ -230,6 +230,81 @@ pre_installation_setup() {
     fi
 }
 
+#------------------------------------------------------------------------------
+# UTILITY FUNCTIONS (OPTIONAL)
+#------------------------------------------------------------------------------
+# Version checking functions - Use ONLY when needed.
+#
+# WHEN TO USE VERSION FUNCTIONS:
+# - Custom installation logic (downloading binaries, manual setup, NOT using PACKAGES_*)
+# - Script supports --version flag for version-aware installation
+# - Need to compare versions, check prerequisites, make installation decisions
+#
+# WHEN NOT TO USE VERSION FUNCTIONS:
+# - Using PACKAGES_SYSTEM, PACKAGES_NODE, etc. (library functions handle versions internally)
+# - Simple installation where version checking isn't needed for logic
+# - Library functions already display appropriate messages
+#
+# EXAMPLES WHERE VERSION FUNCTIONS ARE NEEDED:
+# - install-dev-golang.sh: Custom download from golang.org, supports --version flag
+# - install-srv-otel-monitoring.sh: Downloads .deb/.tar.gz from GitHub, checks versions
+#
+# EXAMPLES WHERE VERSION FUNCTIONS ARE NOT NEEDED:
+# - install-srv-nginx.sh: Uses PACKAGES_SYSTEM (library handles it)
+# - install-tool-azure.sh: Uses PACKAGES_SYSTEM + PACKAGES_NODE (library handles it)
+#
+# If you DO need version functions, use this pattern:
+#
+# NAMING CONVENTION:
+# - Single tool: get_installed_version()
+# - Multiple tools: get_installed_TOOLNAME_version() for each tool
+#
+# EXAMPLES BY TOOL TYPE:
+#
+# Simple version extraction (most tools):
+# get_installed_version() {
+#     if command -v [tool-command] >/dev/null 2>&1; then
+#         [tool-command] --version 2>/dev/null | head -1
+#     else
+#         echo ""
+#     fi
+# }
+#
+# Version with grep/awk parsing (Go, Rust, etc.):
+# get_installed_version() {
+#     if command -v go >/dev/null 2>&1; then
+#         go version 2>/dev/null | grep -oP 'go\K[0-9.]+'
+#     else
+#         echo ""
+#     fi
+# }
+#
+# JSON output extraction (Azure CLI, etc.):
+# get_installed_version() {
+#     if command -v az >/dev/null 2>&1; then
+#         az version --output json 2>/dev/null | grep -o '"azure-cli": "[^"]*"' | cut -d'"' -f4
+#     else
+#         echo ""
+#     fi
+# }
+#
+# Multi-tool scripts - use separate functions per tool:
+# get_installed_tool1_version() {
+#     if command -v tool1 >/dev/null 2>&1; then
+#         tool1 --version 2>/dev/null | head -1
+#     else
+#         echo ""
+#     fi
+# }
+#
+# get_installed_tool2_version() {
+#     if command -v tool2 >/dev/null 2>&1; then
+#         tool2 --version 2>/dev/null | head -1
+#     else
+#         echo ""
+#     fi
+# }
+
 # ============================================================================
 # DEPRECATED: VERIFY_COMMANDS - DO NOT USE IN NEW SCRIPTS
 # ============================================================================
@@ -251,12 +326,16 @@ pre_installation_setup() {
 
 # --- Post-installation/Uninstallation Messages ---
 post_installation_message() {
-    local tool_version
-    tool_version=$([tool-command] --version 2>/dev/null || echo "not found")
-
+    # If you defined version functions above, use them here:
+    # local tool_version
+    # tool_version=$(get_installed_version)
+    # if [ -z "$tool_version" ]; then
+    #     tool_version="not found"
+    # fi
+    #
+    # If using PACKAGES_* arrays (no version functions), keep it simple:
     echo
     echo "🎉 Installation complete!"
-    echo "   Tool: $tool_version"
     echo
     echo "Quick start: [quick start command]"
     echo "Docs: [documentation URL]"
@@ -264,13 +343,22 @@ post_installation_message() {
 }
 
 post_uninstallation_message() {
+    # If you defined version functions above, use them to verify removal:
+    # local tool_version
+    # tool_version=$(get_installed_version)
+    #
+    # echo
+    # echo "🏁 Uninstallation complete!"
+    # if [ -n "$tool_version" ]; then
+    #     echo "   ⚠️  [Tool] $tool_version still found in PATH"
+    # else
+    #     echo "   ✅ [Tool] removed"
+    # fi
+    # echo
+    #
+    # If using PACKAGES_* arrays (no version functions), keep it simple:
     echo
     echo "🏁 Uninstallation complete!"
-    if command -v [tool-name] >/dev/null; then
-        echo "   ⚠️  [Tool] still found in PATH"
-    else
-        echo "   ✅ [Tool] removed"
-    fi
     echo
 }
 

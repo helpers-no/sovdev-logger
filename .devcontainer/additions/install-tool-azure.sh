@@ -22,11 +22,14 @@ SCRIPT_USAGE="  $(basename "$0")              # Install Azure development tools
   $(basename "$0") --uninstall  # Uninstall Azure tools
   $(basename "$0") --debug      # Install with debug output"
 
-# System packages (all packages already in base devcontainer - see Dockerfile.base)
-PACKAGES_SYSTEM=()
+# System packages
+PACKAGES_SYSTEM=(
+    "azure-cli"  # Installed from Microsoft APT repository
+)
 
-# Node.js packages
+# Node.js packages (cross-platform: works on x86_64 and ARM64)
 PACKAGES_NODE=(
+    "azure-functions-core-tools@4"  # Azure Functions runtime v4 (latest)
     "azurite"  # Azure Storage emulator for local development
 )
 
@@ -58,7 +61,9 @@ pre_installation_setup() {
         echo "🔧 Preparing for uninstallation..."
     else
         echo "🔧 Performing pre-installation setup..."
-        echo "✅ Pre-installation setup complete"
+
+        # Add Azure CLI repository before package installation
+        add_azure_cli_repository
     fi
 }
 
@@ -94,134 +99,10 @@ add_azure_cli_repository() {
     echo "✅ Azure CLI repository added successfully"
 }
 
-# --- Install Azure CLI ---
-install_azure_cli() {
-    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        if command -v az >/dev/null 2>&1; then
-            echo "Removing Azure CLI..."
-            sudo apt-get remove -y azure-cli 2>/dev/null || true
-            echo "✅ Azure CLI removed"
-        else
-            echo "✅ Azure CLI not installed, skipping"
-        fi
-        return
-    fi
-
-    # Check if already installed
-    if command -v az >/dev/null 2>&1; then
-        local current_version=$(az version --output json 2>/dev/null | grep -o '"azure-cli": "[^"]*"' | cut -d'"' -f4)
-        echo "✅ Azure CLI already installed (version: ${current_version})"
-        return
-    fi
-
-    echo "Installing Azure CLI..."
-    if sudo DEBIAN_FRONTEND=noninteractive apt-get install -y azure-cli 2>/dev/null; then
-        local version=$(az version --output json 2>/dev/null | grep -o '"azure-cli": "[^"]*"' | cut -d'"' -f4)
-        echo "✅ Azure CLI ${version} installed successfully"
-    else
-        echo "❌ Failed to install Azure CLI"
-        return 1
-    fi
-}
-
-# --- Install Azure Functions Core Tools ---
-install_azure_functions() {
-    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        if command -v func >/dev/null 2>&1; then
-            echo "Removing Azure Functions Core Tools..."
-            # Remove npm global installation
-            npm uninstall -g azure-functions-core-tools 2>/dev/null || true
-            sudo rm -f /usr/local/bin/func 2>/dev/null || true
-            echo "✅ Azure Functions Core Tools removed"
-        else
-            echo "✅ Azure Functions Core Tools not installed, skipping"
-        fi
-        return
-    fi
-
-    # Check if already installed
-    if command -v func >/dev/null 2>&1; then
-        local current_version=$(func --version 2>/dev/null || echo "unknown")
-        echo "✅ Azure Functions Core Tools already installed (version: ${current_version})"
-        return
-    fi
-
-    echo "Installing Azure Functions Core Tools..."
-
-    # Detect architecture
-    local arch=$(uname -m)
-
-    case $arch in
-        x86_64)
-            echo "Detected x86_64 architecture - using direct download"
-            local func_version="4.0.7317"
-            local download_url="https://github.com/Azure/azure-functions-core-tools/releases/download/${func_version}/Azure.Functions.Cli.linux-x64.${func_version}.zip"
-
-            # Create temp directory
-            local temp_dir=$(mktemp -d)
-            cd "$temp_dir"
-
-            # Download and extract
-            if curl -L -o func.zip "$download_url" 2>/dev/null; then
-                unzip -q func.zip 2>/dev/null
-                sudo mv func /usr/local/bin/
-                sudo chmod +x /usr/local/bin/func
-                echo "✅ Azure Functions Core Tools installed for x86_64"
-            else
-                echo "⚠️  Failed to download, trying npm fallback..."
-                if npm install -g azure-functions-core-tools@4 2>/dev/null; then
-                    echo "✅ Azure Functions Core Tools installed via npm"
-                else
-                    echo "❌ All installation methods failed"
-                fi
-            fi
-
-            # Cleanup
-            cd - > /dev/null
-            rm -rf "$temp_dir"
-            ;;
-        aarch64|arm64)
-            echo "Detected ARM64 architecture - using npm preview version"
-            echo "Note: ARM64 Linux support is in preview with some limitations"
-            if npm install -g azure-functions-core-tools@4.0.7332-preview1 2>/dev/null; then
-                echo "✅ Azure Functions Core Tools (ARM64 preview) installed via npm"
-            else
-                echo "⚠️  ARM64 preview failed, trying standard version"
-                if npm install -g azure-functions-core-tools@4 2>/dev/null; then
-                    echo "✅ Azure Functions Core Tools (standard) installed via npm"
-                    echo "   Note: May have compatibility issues on ARM64"
-                else
-                    echo "❌ All installation methods failed"
-                fi
-            fi
-            ;;
-        *)
-            echo "⚠️  Unsupported architecture: $arch"
-            echo "   Trying npm installation..."
-            if npm install -g azure-functions-core-tools@4 2>/dev/null; then
-                echo "✅ Azure Functions Core Tools installed via npm"
-            else
-                echo "❌ Failed to install Azure Functions Core Tools"
-            fi
-            ;;
-    esac
-}
-
 # --- Post-installation/Uninstallation Messages ---
 post_installation_message() {
-    local az_version
-    local func_version
-    local azurite_version
-
-    az_version=$(az version --output json 2>/dev/null | grep -o '"azure-cli": "[^"]*"' | cut -d'"' -f4 || echo "not found")
-    func_version=$(func --version 2>/dev/null || echo "not found")
-    azurite_version=$(npm list -g azurite 2>/dev/null | grep azurite | cut -d'@' -f2 || echo "not found")
-
     echo
     echo "🎉 Installation complete!"
-    echo "   Azure CLI: $az_version"
-    echo "   Azure Functions Core Tools: $func_version"
-    echo "   Azurite: $azurite_version"
     echo
     echo "Quick start commands:"
     echo "  - Check Azure CLI:       az version"
@@ -244,9 +125,6 @@ post_installation_message() {
 post_uninstallation_message() {
     echo
     echo "🏁 Uninstallation complete!"
-    echo "   ✅ Azure CLI removed"
-    echo "   ✅ Azure Functions Core Tools removed"
-    echo "   ✅ Azurite removed"
     echo
 }
 
@@ -310,43 +188,8 @@ source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 
 # Function to process installations
 process_installations() {
-    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        # Uninstall order: extensions → node packages → Azure Functions → Azure CLI
-        if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-            process_extensions "EXTENSIONS"
-        fi
-        if [ ${#PACKAGES_NODE[@]} -gt 0 ]; then
-            process_node_packages "PACKAGES_NODE"
-        fi
-        install_azure_functions
-        install_azure_cli
-    else
-        # Install order: STEP 1 → 2 → 3 → 4 → 5 → 6
-
-        # STEP 1: Install system prerequisites FIRST
-        if [ ${#PACKAGES_SYSTEM[@]} -gt 0 ]; then
-            process_system_packages "PACKAGES_SYSTEM"
-        fi
-
-        # STEP 2: Add Azure CLI repository (now we have curl and gnupg)
-        add_azure_cli_repository
-
-        # STEP 3: Install Azure CLI
-        install_azure_cli
-
-        # STEP 4: Install Azure Functions Core Tools
-        install_azure_functions
-
-        # STEP 5: Install Node.js packages (Azurite)
-        if [ ${#PACKAGES_NODE[@]} -gt 0 ]; then
-            process_node_packages "PACKAGES_NODE"
-        fi
-
-        # STEP 6: Process VS Code extensions
-        if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-            process_extensions "EXTENSIONS"
-        fi
-    fi
+    # Use standard processing from lib/install-common.sh
+    process_standard_installations
 }
 
 #------------------------------------------------------------------------------
@@ -359,6 +202,9 @@ if [ "${UNINSTALL_MODE}" -eq 1 ]; then
     pre_installation_setup
     process_installations
     post_uninstallation_message
+
+    # Remove from auto-enable config
+    auto_disable_tool
 else
     echo "🔄 Starting installation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
@@ -367,7 +213,7 @@ else
     post_installation_message
 
     # Auto-enable for container rebuild
-    auto_enable_tool "$SCRIPT_ID" "$SCRIPT_NAME"
+    auto_enable_tool
 fi
 
 echo "✅ Script execution finished."

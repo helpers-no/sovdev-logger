@@ -4,9 +4,120 @@ This file contains stuff that we need to do before we are finished refactoring.
 
 ## Standard version checking function
 
-The script install-dev-golang.sh has a function get_installed_go_version() that checks the version and return it.
-The other functions dont and they should.
-TODO: add a sommon named function in the template that all scripts call to get this information.
+### Problem
+Some scripts with CUSTOM installation logic don't have version checking functions, leading to duplicate code.
+Scripts using PACKAGES_* arrays incorrectly have version functions (library handles versions).
+
+### Key Decision: Version Functions Only for Custom Installations
+
+**Use version functions ONLY when:**
+- Custom installation logic (downloading binaries, manual setup, NOT using PACKAGES_*)
+- Script supports --version flag for version-aware installation
+- Need to compare versions, check prerequisites, make installation decisions
+
+**Skip version functions when:**
+- Using PACKAGES_SYSTEM, PACKAGES_NODE, etc. (library functions handle versions internally)
+- Library functions already display appropriate messages
+- No version-aware installation logic needed
+
+### Affected Scripts
+
+**Scripts WITH custom installation that NEED version functions:**
+- ✅ install-dev-golang.sh (has it - custom download, supports --version)
+- ✅ install-dev-java.sh (has it - custom download, supports --version)
+- ❌ install-srv-otel-monitoring.sh (needs it - downloads .deb/.tar.gz from GitHub)
+
+**Scripts USING PACKAGES_* that should NOT have version functions:**
+- ✅ install-srv-nginx.sh (correct - uses PACKAGES_SYSTEM)
+- ❌ install-tool-azure.sh (needs removal - uses PACKAGES_SYSTEM + PACKAGES_NODE)
+- install-dev-rust.sh (uses rustup - evaluate if custom or standard)
+- install-dev-python.sh (uses PACKAGES_SYSTEM - evaluate)
+- install-dev-typescript.sh (uses PACKAGES_NODE - evaluate)
+- install-dev-csharp.sh (uses Microsoft repo + apt - evaluate)
+- install-dev-php-laravel.sh (uses PACKAGES_SYSTEM - evaluate)
+
+### Solution Pattern
+
+**Standard Function Name**: `get_installed_version()` (or `get_installed_TOOLNAME_version()` for multi-tool scripts)
+
+**Location**: After pre_installation_setup(), in "Utility Functions" section (OPTIONAL)
+
+**Standard Template**:
+```bash
+# --- Utility Functions ---
+# Centralized version checking - returns version string or empty if not installed
+get_installed_version() {
+    if command -v [tool-command] >/dev/null 2>&1; then
+        [tool-command] --version 2>/dev/null | [extraction-logic]
+    else
+        echo ""
+    fi
+}
+```
+
+**Usage Pattern** - Replace all inline version checks:
+- pre_installation_setup(): Detect current version for upgrade messages
+- install_*() functions: Check if already installed with correct version
+- post_installation_message(): Display installed version
+- post_uninstallation_message(): Verify removal
+
+**Examples by Tool Type**:
+
+Simple extraction (Go, Python, Rust):
+```bash
+get_installed_version() {
+    if command -v go >/dev/null 2>&1; then
+        go version 2>/dev/null | grep -oP 'go\K[0-9.]+'
+    else
+        echo ""
+    fi
+}
+```
+
+JSON extraction (Azure CLI):
+```bash
+get_installed_version() {
+    if command -v az >/dev/null 2>&1; then
+        az version --output json 2>/dev/null | grep -o '"azure-cli": "[^"]*"' | cut -d'"' -f4
+    else
+        echo ""
+    fi
+}
+```
+
+Multi-tool scripts (separate function per tool):
+```bash
+get_installed_otel_version() {
+    if command -v otelcol-contrib >/dev/null 2>&1; then
+        otelcol-contrib --version 2>/dev/null | head -1
+    else
+        echo ""
+    fi
+}
+
+get_installed_script_exporter_version() {
+    if [ -f /usr/local/bin/script_exporter ]; then
+        /usr/local/bin/script_exporter --version 2>/dev/null | head -1
+    else
+        echo ""
+    fi
+}
+```
+
+### Implementation Steps
+
+1. ✅ Update template with clear guidance on when to use/skip version functions
+2. ❌ Add version functions to install-srv-otel-monitoring.sh (custom GitHub downloads)
+3. ❌ Remove version functions from install-tool-azure.sh (uses PACKAGES_*)
+4. ❌ Evaluate and update remaining dev scripts based on installation method
+5. Test each modified script to ensure correct behavior
+
+### Benefits
+- **Simpler scripts** when using PACKAGES_* (no unnecessary code)
+- **Consistent pattern** for custom installations (DRY principle)
+- **Clear distinction** between standard (PACKAGES_*) and custom installations
+- **Easier maintenance** - change version logic in one place for custom installs
+- **Template clarity** - explicit guidance on when to use each pattern
 
 ## auto_enable_tool and auto_disable_tool
 Manages addition and removal from .devcontainer.extend/enabled-tools.conf 
