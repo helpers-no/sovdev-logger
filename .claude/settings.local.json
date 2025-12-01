@@ -98,7 +98,10 @@
       "Bash(./install-srv-nginx.sh:*)",
       "Bash(./install-srv-otel-monitoring.sh:*)",
       "Bash(./install-tool-azure.sh:*)",
-      "Bash(./install-dev-rust.sh:*)"
+      "Bash(./install-dev-rust.sh:*)",
+      "Bash(/Users/terje.christensen/learn/redcross-public/sovdev-logger/.devcontainer/additions/install-tool-azure.sh --help)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:claude.ai)"
     ],
     "deny": [],
     "ask": []
