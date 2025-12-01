@@ -119,6 +119,20 @@ get_installed_script_exporter_version() {
 - **Easier maintenance** - change version logic in one place for custom installs
 - **Template clarity** - explicit guidance on when to use each pattern
 
+## Docker Extension Testing
+
+Docker extension was added to install-tool-dev-utils.sh with Docker CLI (docker.io package).
+Extension installed successfully but needs testing after devcontainer rebuild to verify:
+- Docker CLI can connect to Rancher Desktop via /var/run/docker.sock
+- Docker extension UI works correctly
+- `docker ps` command works inside devcontainer
+
+Test after rebuild:
+```bash
+docker ps
+docker images
+```
+
 ## auto_enable_tool and auto_disable_tool
 Manages addition and removal from .devcontainer.extend/enabled-tools.conf 
 TODO: All scripts must use these functions. and template _template-install-script.sh must be updated so that all new scripts follow the rules.

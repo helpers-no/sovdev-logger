@@ -12,7 +12,7 @@
 # --- Script Metadata ---
 SCRIPT_ID="tool-dev-utils"
 SCRIPT_NAME="Development Utilities"
-SCRIPT_DESCRIPTION="Database management (SQLTools) and API testing (REST Client) for multi-language development"
+SCRIPT_DESCRIPTION="Database management (SQLTools), API testing (REST Client), and container management (Docker) for multi-language development"
 SCRIPT_CATEGORY="INFRA_CONFIG"
 
 # NOTE: We check only the primary extension (SQLTools) instead of all extensions
@@ -27,8 +27,10 @@ SCRIPT_USAGE="  $(basename "$0")              # Install development utilities
   $(basename "$0") --uninstall  # Uninstall utilities
   $(basename "$0") --debug      # Install with debug output"
 
-# System packages (all packages already in base devcontainer - see Dockerfile.base)
-PACKAGES_SYSTEM=()
+# System packages
+PACKAGES_SYSTEM=(
+    "docker.io"  # Docker CLI for container management
+)
 
 # Node.js packages
 PACKAGES_NODE=()
@@ -38,8 +40,9 @@ PACKAGES_PYTHON=()
 
 # VS Code extensions
 EXTENSIONS=(
-    "SQLTools (mtxr.sqltools) - Database management and SQL query tool for MySQL, PostgreSQL, SQLite, MSSQL, MongoDB, etc."
-    "REST Client (humao.rest-client) - Send HTTP requests and view responses directly in VS Code (alternative to Postman/Insomnia)"
+    "SQLTools (mtxr.sqltools) - Database management and SQL query tool for MySQL, PostgreSQL, SQLite, MSSQL, MongoDB"
+    "REST Client (humao.rest-client) - Send HTTP requests and view responses directly in VS Code"
+    "Docker (ms-azuretools.vscode-docker) - Manage containers, images, volumes, networks, and Dockerfiles"
 )
 
 #------------------------------------------------------------------------------
@@ -70,13 +73,16 @@ post_installation_message() {
     echo "🎉 Installation complete!"
     echo
     echo "Quick start:"
-    echo "  - SQLTools:    Click database icon in VS Code sidebar"
-    echo "  - REST Client: Create .http file and write HTTP requests"
+    echo "  - Test Docker:  docker ps"
+    echo "  - Docker UI:    Click Docker icon in VS Code sidebar"
+    echo "  - SQLTools:     Click database icon in VS Code sidebar"
+    echo "  - REST Client:  Create .http file and write HTTP requests"
     echo
     echo "Example .http file:"
     echo "  GET https://api.github.com/users/octocat"
     echo
-    echo "Docs: https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools"
+    echo "Docs: https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-docker"
+    echo "      https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools"
     echo "      https://marketplace.visualstudio.com/items?itemName=humao.rest-client"
     echo
 }
@@ -84,8 +90,6 @@ post_installation_message() {
 post_uninstallation_message() {
     echo
     echo "🏁 Uninstallation complete!"
-    echo "   ✅ SQLTools extension removed"
-    echo "   ✅ REST Client extension removed"
     echo
 }
 
@@ -139,6 +143,7 @@ export FORCE_MODE
 #------------------------------------------------------------------------------
 
 # Source core installation scripts
+source "${SCRIPT_DIR}/lib/core-install-system.sh"
 source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 
 # Note: lib/install-common.sh already sourced earlier (needed for --help)
