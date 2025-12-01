@@ -48,7 +48,6 @@ EXTENSIONS=(
     "Pylance (ms-python.vscode-pylance) - Python language server"
     "DBT (bastienboutonnet.vscode-dbt) - DBT language support"
     "DBT Power User (innoverio.vscode-dbt-power-user) - Enhanced DBT support"
-    "Databricks (databricks.databricks) - Databricks integration"
 )
 
 #------------------------------------------------------------------------------
