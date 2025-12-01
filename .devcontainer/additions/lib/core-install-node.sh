@@ -67,9 +67,16 @@ process_node_packages() {
             old_version=$(get_npm_package_version "$package")
             debug "Package '$package' is already installed (v$old_version)"
 
-            # Try to update the package
+            # Try to update the package (but only if no specific version was requested)
             if [ "$EUID" -ne 0 ]; then
-                npm install -g "$package@latest" >/dev/null 2>&1
+                # Check if package has version specifier (e.g., package@4)
+                if [[ "$package" == *@* ]]; then
+                    # Package has version specifier, don't try to update to @latest
+                    debug "Package has version specifier, skipping update check"
+                else
+                    # No version specifier, try to update to latest
+                    npm install -g "$package@latest" >/dev/null 2>&1
+                fi
             fi
 
             local new_version
