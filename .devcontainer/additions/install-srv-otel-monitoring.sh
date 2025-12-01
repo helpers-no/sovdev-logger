@@ -4,22 +4,43 @@
 # Install OpenTelemetry Collector for devcontainer monitoring when connected to our network.
 # For usage information, run: ./install-srv-otel-monitoring.sh --help
 #
+# Uses:
+# - script_exporter (v3.1.0) https://github.com/ricoberger/script_exporter
+#   Collects custom metrics by executing shell scripts (memory, disk, process stats)
+# - OpenTelemetry Collector Contrib (v0.140.1) https://github.com/open-telemetry/opentelemetry-collector-contrib
+#   Extended version with Prometheus/Loki/Tempo exporters, resource processors for multi-tenant tagging
 #------------------------------------------------------------------------------
 # CONFIGURATION - Modify this section for each new script
 #------------------------------------------------------------------------------
 
-# Script metadata - must be at the very top of the configuration section
-SCRIPT_NAME="OpenTelemetry Monitoring"
+# --- Script Metadata ---
 SCRIPT_ID="srv-otel"
+SCRIPT_NAME="OpenTelemetry Monitoring"
 SCRIPT_DESCRIPTION="Install OpenTelemetry Collector for devcontainer monitoring when connected to our network"
-SCRIPT_CATEGORY="INFRA_CONFIG"
+SCRIPT_CATEGORY="BACKGROUND_SERVICES"
 CHECK_INSTALLED_COMMAND="([ -f /usr/bin/otelcol-contrib ] || command -v otelcol-contrib >/dev/null 2>&1) && ([ -f /usr/local/bin/script_exporter ] || command -v script_exporter >/dev/null 2>&1)"
 
-# Optional: Custom usage text for --help
+# Custom usage text for --help
 SCRIPT_USAGE="  $(basename "$0")              # Install OpenTelemetry Collector
   $(basename "$0") --help       # Show this help
   $(basename "$0") --uninstall  # Uninstall OpenTelemetry Collector
   $(basename "$0") --debug      # Install with debug output"
+
+# OTel Collector configuration
+OTEL_VERSION="0.140.1"  # Latest stable version as of 2025-11
+OTEL_PACKAGE_NAME="otelcol-contrib"
+OTEL_CONFIG_DIR="/workspace/.devcontainer/additions/otel"
+
+# script_exporter configuration (for custom metrics collection)
+SCRIPT_EXPORTER_VERSION="3.1.0"  # Latest stable version as of 2025-01
+SCRIPT_EXPORTER_BINARY="/usr/local/bin/script_exporter"
+SCRIPT_EXPORTER_CONFIG="${OTEL_CONFIG_DIR}/script-exporter-config.yaml"
+
+# System packages (curl is in base image, but needed for downloads)
+PACKAGES_SYSTEM=()
+
+# VS Code extensions
+EXTENSIONS=()
 
 #------------------------------------------------------------------------------
 
@@ -34,132 +55,325 @@ source "${SCRIPT_DIR}/lib/logging.sh"
 
 #------------------------------------------------------------------------------
 
-# Custom OpenTelemetry Collector installation function
-install_otel_collector() {
-    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        echo "=�  Removing OpenTelemetry Collector..."
-
-        # Stop and disable services
-        sudo systemctl stop otelcol-contrib 2>/dev/null || true
-        sudo systemctl disable otelcol-contrib 2>/dev/null || true
-
-        # Remove binaries
-        sudo rm -f /usr/bin/otelcol-contrib
-        sudo rm -f /usr/local/bin/script_exporter
-
-        # Remove configuration directories
-        if [ -d "/etc/otelcol-contrib" ]; then
-            sudo rm -rf /etc/otelcol-contrib
-            echo " OpenTelemetry Collector configuration removed"
-        fi
-
-        return
-    fi
-
-    # Check if otelcol-contrib is already installed
-    if command -v otelcol-contrib >/dev/null 2>&1; then
-        echo " OpenTelemetry Collector is already installed"
-        return
-    fi
-
-    echo "=� Installing OpenTelemetry Collector..."
-
-    # Install otelcol-contrib via curl
-    # This is a placeholder - actual installation would depend on the specific method used
-    # The user likely has custom installation scripts in .devcontainer/additions/
-    echo "�  Custom installation required - see .devcontainer/additions/ for setup scripts"
-}
-
 # Before running installation, we need to add any required repositories or setup
 pre_installation_setup() {
     if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-        echo "=' Preparing for uninstallation..."
+        echo "🔧 Preparing for uninstallation..."
     else
-        echo "=' Performing pre-installation setup..."
+        echo "🔧 Performing pre-installation setup..."
+
+        # Create config directory
+        mkdir -p "$OTEL_CONFIG_DIR"
 
         # Check prerequisites
         if [ -f "${SCRIPT_DIR}/config-devcontainer-identity.sh" ]; then
-            echo " Found prerequisite: config-devcontainer-identity.sh"
+            echo "✅ Found prerequisite: config-devcontainer-identity.sh"
         else
-            echo "�  Prerequisite missing: config-devcontainer-identity.sh"
+            echo "⚠️  Prerequisite missing: config-devcontainer-identity.sh"
         fi
-
-        if [ -f "${SCRIPT_DIR}/config-nginx.sh" ]; then
-            echo " Found prerequisite: config-nginx.sh"
-        else
-            echo "�  Prerequisite missing: config-nginx.sh"
-        fi
-
-        # Check if OpenTelemetry Collector is already installed
-        if command -v otelcol-contrib >/dev/null 2>&1; then
-            echo " OpenTelemetry Collector is already installed"
-        fi
-
-        # Update package lists
-        sudo apt-get update -qq
     fi
 }
 
-# Define package arrays (remove any empty arrays that aren't needed)
-PACKAGES_SYSTEM=(
-    "curl"
-    "ca-certificates"
-)
+# Custom installation logic for OTel Collector
+install_otel_collector() {
+    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
+        echo ""
+        echo "🗑️  Uninstalling OpenTelemetry Collector..."
+        echo ""
 
-PACKAGES_NODE=()
+        # Stop running collector
+        if pgrep -f "otelcol.*--config" >/dev/null 2>&1; then
+            echo "⚠️  Stopping running collector..."
+            sudo pkill -f "otelcol.*--config" || true
+            sleep 2
+        fi
 
-PACKAGES_PYTHON=()
+        # Check if package is installed
+        if dpkg -l "$OTEL_PACKAGE_NAME" 2>/dev/null | grep -q "^ii"; then
+            echo "   Removing package: $OTEL_PACKAGE_NAME"
 
-# Define VS Code extensions (format: "Name (extension-id) - Description")
-EXTENSIONS=()
+            if sudo apt-get remove -y "$OTEL_PACKAGE_NAME"; then
+                echo "✅ Package removed successfully"
 
-# Define verification commands
-VERIFY_COMMANDS=(
-    "command -v otelcol-contrib >/dev/null && echo ' OpenTelemetry Collector is available' || echo '�  OpenTelemetry Collector not found'"
-    "command -v script_exporter >/dev/null && echo ' Script exporter is available' || echo '�  Script exporter not found'"
-    "test -d /etc/otelcol-contrib && echo ' OpenTelemetry Collector configuration directory exists' || echo '�  Configuration directory not found'"
-)
+                # Clean up dependencies
+                echo "   Cleaning up unused dependencies..."
+                sudo apt-get autoremove -y
+            else
+                echo "❌ Failed to remove package"
+                return 1
+            fi
+        else
+            echo "ℹ️  Package not installed: $OTEL_PACKAGE_NAME"
+        fi
+
+        # Remove logs (optional)
+        if [ -f "/var/log/otelcol.log" ]; then
+            echo "   Found log file: /var/log/otelcol.log"
+            if [ "${FORCE_MODE}" -eq 1 ]; then
+                sudo rm -f /var/log/otelcol.log
+                echo "   Removed log file"
+            else
+                echo "   To remove logs, run: sudo rm -f /var/log/otelcol.log"
+            fi
+        fi
+
+        echo ""
+        echo "ℹ️  Config directory preserved: $OTEL_CONFIG_DIR"
+        echo "   To remove manually: rm -rf $OTEL_CONFIG_DIR"
+        echo ""
+        return
+    fi
+
+    echo ""
+    echo "📦 Installing OpenTelemetry Collector v${OTEL_VERSION}..."
+    echo ""
+
+    # Detect architecture
+    local DEB_ARCH
+    DEB_ARCH=$(detect_architecture)
+    if [ "$DEB_ARCH" = "unknown" ]; then
+        echo "❌ Unsupported architecture"
+        return 1
+    fi
+
+    echo "   Architecture: $DEB_ARCH"
+    echo "   Version: $OTEL_VERSION"
+    echo ""
+
+    # Check if already installed
+    if dpkg -l "$OTEL_PACKAGE_NAME" 2>/dev/null | grep -q "^ii"; then
+        INSTALLED_VERSION=$(dpkg-query -W -f='${Version}' "$OTEL_PACKAGE_NAME" 2>/dev/null)
+        if [ "$INSTALLED_VERSION" = "$OTEL_VERSION" ]; then
+            echo "✅ OpenTelemetry Collector v${OTEL_VERSION} is already installed"
+            return 0
+        else
+            echo "ℹ️  Found existing version: $INSTALLED_VERSION"
+            echo "   Upgrading to: $OTEL_VERSION"
+        fi
+    fi
+
+    # Construct download URL
+    DEB_FILE="${OTEL_PACKAGE_NAME}_${OTEL_VERSION}_linux_${DEB_ARCH}.deb"
+    URL="https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v${OTEL_VERSION}/${DEB_FILE}"
+
+    echo "📥 Downloading Debian package from GitHub releases..."
+    echo "   $URL"
+    echo ""
+
+    # Download to temp file
+    TEMP_DEB=$(mktemp --suffix=.deb)
+    if ! curl -L -o "$TEMP_DEB" "$URL"; then
+        echo "❌ Failed to download OTel Collector package"
+        rm -f "$TEMP_DEB"
+        return 1
+    fi
+
+    echo "✅ Download complete"
+    echo ""
+    echo "📦 Installing Debian package..."
+
+    # Install with dpkg
+    if ! sudo dpkg -i "$TEMP_DEB"; then
+        echo "⚠️  Package installation had issues, attempting to fix dependencies..."
+        # Fix any dependency issues
+        sudo apt-get install -f -y
+
+        # Verify installation succeeded
+        if ! dpkg -l "$OTEL_PACKAGE_NAME" 2>/dev/null | grep -q "^ii"; then
+            echo "❌ Failed to install package"
+            rm -f "$TEMP_DEB"
+            return 1
+        fi
+    fi
+
+    # Cleanup
+    rm -f "$TEMP_DEB"
+
+    echo "✅ Package installed successfully"
+    echo ""
+
+    # Verify installation
+    if command -v otelcol-contrib >/dev/null 2>&1 && otelcol-contrib --version >/dev/null 2>&1; then
+        VERSION_OUTPUT=$(otelcol-contrib --version 2>&1 | head -1)
+        echo "✅ Installation verified: $VERSION_OUTPUT"
+        return 0
+    else
+        echo "❌ Installation verification failed"
+        return 1
+    fi
+}
+
+# Install script_exporter for custom metrics collection
+install_script_exporter() {
+    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
+        echo ""
+        echo "🗑️  Uninstalling script_exporter..."
+        echo ""
+
+        # Stop running script_exporter
+        if pgrep -f "script_exporter.*--config" >/dev/null 2>&1; then
+            echo "⚠️  Stopping running script_exporter..."
+            sudo pkill -f "script_exporter.*--config" || true
+            sleep 2
+        fi
+
+        # Remove binary
+        if [ -f "$SCRIPT_EXPORTER_BINARY" ]; then
+            echo "   Removing binary: $SCRIPT_EXPORTER_BINARY"
+            if sudo rm -f "$SCRIPT_EXPORTER_BINARY"; then
+                echo "✅ Binary removed successfully"
+            else
+                echo "❌ Failed to remove binary"
+                return 1
+            fi
+        else
+            echo "ℹ️  Binary not installed: $SCRIPT_EXPORTER_BINARY"
+        fi
+
+        # Remove log if exists
+        if [ -f "/tmp/script-exporter.log" ]; then
+            if [ "${FORCE_MODE}" -eq 1 ]; then
+                sudo rm -f /tmp/script-exporter.log
+                echo "   Removed log file"
+            fi
+        fi
+
+        echo ""
+        return
+    fi
+
+    echo ""
+    echo "📦 Installing script_exporter v${SCRIPT_EXPORTER_VERSION}..."
+    echo ""
+
+    # Detect architecture
+    local BIN_ARCH
+    BIN_ARCH=$(detect_architecture)
+    if [ "$BIN_ARCH" = "unknown" ]; then
+        echo "❌ Unsupported architecture"
+        return 1
+    fi
+
+    echo "   Architecture: $BIN_ARCH"
+    echo "   Version: $SCRIPT_EXPORTER_VERSION"
+    echo ""
+
+    # Check if already installed
+    if [ -f "$SCRIPT_EXPORTER_BINARY" ]; then
+        INSTALLED_VERSION=$("$SCRIPT_EXPORTER_BINARY" --version 2>&1 | grep -oP 'version=v\K[0-9.]+' || echo "unknown")
+        if [ "$INSTALLED_VERSION" = "$SCRIPT_EXPORTER_VERSION" ]; then
+            echo "✅ script_exporter v${SCRIPT_EXPORTER_VERSION} is already installed"
+            return 0
+        else
+            echo "ℹ️  Found existing version: $INSTALLED_VERSION"
+            echo "   Upgrading to: $SCRIPT_EXPORTER_VERSION"
+        fi
+    fi
+
+    # Construct download URL
+    ARCHIVE_NAME="script_exporter-linux-${BIN_ARCH}.tar.gz"
+    URL="https://github.com/ricoberger/script_exporter/releases/download/v${SCRIPT_EXPORTER_VERSION}/${ARCHIVE_NAME}"
+
+    echo "📥 Downloading archive from GitHub releases..."
+    echo "   $URL"
+    echo ""
+
+    # Download to temp file
+    TEMP_ARCHIVE=$(mktemp --suffix=.tar.gz)
+    if ! curl -L -o "$TEMP_ARCHIVE" "$URL"; then
+        echo "❌ Failed to download script_exporter archive"
+        rm -f "$TEMP_ARCHIVE"
+        return 1
+    fi
+
+    echo "✅ Download complete"
+    echo ""
+    echo "📦 Extracting and installing binary to $SCRIPT_EXPORTER_BINARY..."
+
+    # Extract and install binary
+    TEMP_DIR=$(mktemp -d)
+    if ! tar -xzf "$TEMP_ARCHIVE" -C "$TEMP_DIR"; then
+        echo "❌ Failed to extract archive"
+        rm -f "$TEMP_ARCHIVE"
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+
+    # Find the binary (should be script_exporter in the extracted directory)
+    EXTRACTED_BINARY=$(find "$TEMP_DIR" -name "script_exporter" -type f | head -1)
+    if [ -z "$EXTRACTED_BINARY" ]; then
+        echo "❌ Could not find script_exporter binary in archive"
+        rm -f "$TEMP_ARCHIVE"
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+
+    # Install binary
+    sudo mv "$EXTRACTED_BINARY" "$SCRIPT_EXPORTER_BINARY"
+    sudo chmod +x "$SCRIPT_EXPORTER_BINARY"
+
+    # Cleanup
+    rm -f "$TEMP_ARCHIVE"
+    rm -rf "$TEMP_DIR"
+
+    echo "✅ Binary installed successfully"
+    echo ""
+
+    # Verify installation
+    if command -v script_exporter >/dev/null 2>&1 && script_exporter --version >/dev/null 2>&1; then
+        VERSION_OUTPUT=$(script_exporter --version 2>&1 | head -1)
+        echo "✅ Installation verified: $VERSION_OUTPUT"
+        return 0
+    else
+        echo "❌ Installation verification failed"
+        return 1
+    fi
+}
 
 # Post-installation notes
 post_installation_message() {
+    local otel_version
+    otel_version=$(otelcol-contrib --version 2>/dev/null | head -1 || echo "not found")
+
+    local script_exp_version
+    script_exp_version=$(script_exporter --version 2>/dev/null | head -1 || echo "not found")
 
     echo
-    echo "<� Installation process complete for: $SCRIPT_NAME!"
-    echo "Purpose: $SCRIPT_DESCRIPTION"
+    echo "🎉 Installation complete!"
+    echo "   OTEL Collector: $otel_version"
+    echo "   script_exporter: $script_exp_version"
     echo
-    echo "Important Notes:"
-    echo "1. OpenTelemetry Collector requires custom installation"
-    echo "2. Prerequisites: config-devcontainer-identity.sh, config-nginx.sh"
-    echo "3. See .devcontainer/additions/ for setup scripts"
-    echo "4. Configuration files should be in /etc/otelcol-contrib/"
+    echo "Next steps:"
+    echo "1. Configure identity: bash .devcontainer/additions/config-devcontainer-identity.sh"
+    echo "2. Start service: bash .devcontainer/additions/service-otel-monitoring.sh start"
+    echo "3. View dashboards: http://grafana.localhost"
     echo
-    echo "Quick Start:"
-    echo "- Check installation: otelcol-contrib --version"
-    echo "- Check script exporter: script_exporter --version"
-    echo "- Start service: sudo systemctl start otelcol-contrib"
-    echo "- Check status: sudo systemctl status otelcol-contrib"
+    echo "Docs: $OTEL_CONFIG_DIR/README-otel.md"
     echo
-    echo "Documentation Links:"
-    echo "- OpenTelemetry Collector: https://opentelemetry.io/docs/collector/"
-    echo "- OpenTelemetry Contrib: https://github.com/open-telemetry/opentelemetry-collector-contrib"
 }
 
 # Post-uninstallation notes
 post_uninstallation_message() {
-
-    # Remove from auto-enable config
-    auto_disable_tool
     echo
-    echo "<� Uninstallation process complete for: $SCRIPT_NAME!"
+    echo "🏁 Uninstallation complete!"
+    if command -v otelcol-contrib >/dev/null 2>&1; then
+        echo "   ⚠️  OTEL Collector still found in PATH"
+    else
+        echo "   ✅ OTEL Collector removed"
+    fi
+    if [ -f "$SCRIPT_EXPORTER_BINARY" ]; then
+        echo "   ⚠️  script_exporter still found"
+    else
+        echo "   ✅ script_exporter removed"
+    fi
     echo
-    echo "Additional Notes:"
-    echo "1. OpenTelemetry Collector has been removed"
-    echo "2. Configuration files in /etc/otelcol-contrib/ have been removed"
-    echo "3. Services have been stopped and disabled"
+    echo "Note: Config preserved at $OTEL_CONFIG_DIR"
+    echo "To remove: rm -rf $OTEL_CONFIG_DIR ~/.devcontainer-identity"
+    echo
 }
 
 #------------------------------------------------------------------------------
-# MAIN SCRIPT EXECUTION - Do not modify below this line
+# ARGUMENT PARSING
 #------------------------------------------------------------------------------
 
 # Initialize mode flags
@@ -198,34 +412,43 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Export mode flags for core scripts
+# Export mode flags
 export DEBUG_MODE
 export UNINSTALL_MODE
 export FORCE_MODE
 
-# Source all core installation scripts
+#------------------------------------------------------------------------------
+# SOURCE CORE SCRIPTS
+#------------------------------------------------------------------------------
+
+# Source core installation scripts
 source "${SCRIPT_DIR}/lib/core-install-system.sh"
-source "${SCRIPT_DIR}/lib/core-install-node.sh"
 source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
-source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
-source "${SCRIPT_DIR}/lib/core-install-python.sh"
 
 # Note: lib/install-common.sh already sourced earlier (needed for --help)
+
+#------------------------------------------------------------------------------
+# HELPER FUNCTIONS
+#------------------------------------------------------------------------------
 
 # Function to process installations
 process_installations() {
     # Custom OpenTelemetry Collector installation first
-    install_otel_collector
+    install_otel_collector || exit 1
+
+    # Then script_exporter
+    install_script_exporter || exit 1
 
     # Then use standard processing from lib/install-common.sh
     process_standard_installations
 }
 
+#------------------------------------------------------------------------------
+# MAIN EXECUTION
+#------------------------------------------------------------------------------
 
-
-# Main execution
 if [ "${UNINSTALL_MODE}" -eq 1 ]; then
-    echo "= Starting uninstallation process for: $SCRIPT_NAME"
+    echo "🔄 Starting uninstallation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
@@ -234,13 +457,15 @@ if [ "${UNINSTALL_MODE}" -eq 1 ]; then
     # Remove from auto-enable config
     auto_disable_tool
 else
-    echo "= Starting installation process for: $SCRIPT_NAME"
+    echo "🔄 Starting installation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
-    verify_installations
     post_installation_message
 
     # Auto-enable for container rebuild
     auto_enable_tool
 fi
+
+echo "✅ Script execution finished."
+exit 0

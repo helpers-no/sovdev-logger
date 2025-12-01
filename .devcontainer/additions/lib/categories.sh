@@ -28,7 +28,8 @@ if [[ -z "${CATEGORY_TABLE+x}" ]]; then
 2|AI_TOOLS|AI & Machine Learning Tools|AI and ML tools (Claude Code, etc.)|AI and machine learning development tools (Claude Code, etc.)
 3|CLOUD_TOOLS|Cloud & Infrastructure Tools|Cloud infrastructure (Azure, etc.)|Cloud platform tools and SDKs (Azure, AWS, GCP)
 4|DATA_ANALYTICS|Data & Analytics Tools|Data analysis tools|Data analysis, visualization, and data engineering tools (Jupyter, pandas, DBT)
-5|INFRA_CONFIG|Infrastructure & Configuration|Infrastructure and configuration tools|Infrastructure as Code, configuration management, and DevOps tools (Ansible, Kubernetes, Terraform)
+5|BACKGROUND_SERVICES|Background Services & Daemons|Background services (nginx, OTEL, etc.)|Background services and daemons (nginx reverse proxy, OTEL collector, monitoring services)
+6|INFRA_CONFIG|Infrastructure & Configuration|Infrastructure and configuration tools|Infrastructure as Code, configuration management, and DevOps tools (Ansible, Kubernetes, Terraform)
 "
 fi
 
@@ -147,6 +148,7 @@ if [[ -z "${CATEGORY_LANGUAGE_DEV+x}" ]]; then
     readonly CATEGORY_AI_TOOLS="AI_TOOLS"
     readonly CATEGORY_CLOUD_TOOLS="CLOUD_TOOLS"
     readonly CATEGORY_DATA_ANALYTICS="DATA_ANALYTICS"
+    readonly CATEGORY_BACKGROUND_SERVICES="BACKGROUND_SERVICES"
     readonly CATEGORY_INFRA_CONFIG="INFRA_CONFIG"
 fi
 
