@@ -10,7 +10,7 @@
 CONFIG_NAME="Git Identity"
 CONFIG_DESCRIPTION="Set your global Git username and email for commits"
 CONFIG_CATEGORY="INFRA_CONFIG"
-CHECK_CONFIG_COMMAND="git config --global user.name >/dev/null 2>&1 && git config --global user.email >/dev/null 2>&1"
+CHECK_CONFIGURED_COMMAND="git config --global user.name >/dev/null 2>&1 && git config --global user.email >/dev/null 2>&1"
 
 #------------------------------------------------------------------------------
 
