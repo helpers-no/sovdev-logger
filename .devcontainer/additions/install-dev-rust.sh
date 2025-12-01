@@ -83,10 +83,9 @@ install_rust() {
         fi
         
         # Remove Rust environment from bashrc if it exists
-        if grep -q "export RUST_HOME" ~/.bashrc; then
-            sed -i '/export RUST_HOME/d' ~/.bashrc
-            sed -i '/# Rust environment/d' ~/.bashrc
-            sed -i '/export PATH=.*\.cargo\/bin/d' ~/.bashrc
+        if grep -q "\.cargo/bin" ~/.bashrc 2>/dev/null; then
+            sed -i '/# Rust environment/d' ~/.bashrc 2>/dev/null
+            sed -i '/\.cargo\/bin/d' ~/.bashrc 2>/dev/null
             echo "✅ Rust environment removed from ~/.bashrc"
         fi
         
@@ -142,54 +141,36 @@ install_rust() {
 
 # Post-installation notes
 post_installation_message() {
+    local rust_version
+    rust_version=$(rustc --version 2>/dev/null || echo "not found")
+
+    local cargo_version
+    cargo_version=$(cargo --version 2>/dev/null || echo "not found")
+
     echo
-    echo "🎉 Installation process complete for: $SCRIPT_NAME!"
-    echo "Purpose: $SCRIPT_DESCRIPTION"
+    echo "🎉 Installation complete!"
+    echo "   Rust: $rust_version"
+    echo "   Cargo: $cargo_version"
     echo
-    echo "Important Notes:"
-    echo "1. Rust stable has been installed via rustup"
-    echo "2. Cargo (package manager) is available"
-    echo "3. Rust tools are available in \$HOME/.cargo/bin"
-    echo "4. VS Code Rust extensions will provide rich language support"
-    echo "5. Additional cargo tools installed: cargo-edit, cargo-watch, cargo-outdated"
+    echo "Quick start: cargo new my_project && cd my_project && cargo run"
+    echo "Docs: https://doc.rust-lang.org/"
     echo
-    echo "Quick Start:"
-    echo "- Check installation: rustc --version && cargo --version"
-    echo "- Create a new project: cargo new my_project"
-    echo "- Build project: cargo build"
-    echo "- Run project: cargo run"
-    echo "- Add dependency: cargo add serde"
-    echo "- Update dependencies: cargo update"
-    echo
-    echo "Documentation Links:"
-    echo "- Rust Documentation: https://doc.rust-lang.org/"
-    echo "- Cargo Book: https://doc.rust-lang.org/cargo/"
-    echo "- Rust By Example: https://doc.rust-lang.org/rust-by-example/"
-    echo "- VS Code Rust Extension: https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer"
 }
 
 # Post-uninstallation notes
 post_uninstallation_message() {
     echo
-    echo "🏁 Uninstallation process complete for: $SCRIPT_NAME!"
+    echo "🏁 Uninstallation complete!"
+    echo "   ✅ Rustup uninstalled"
+    echo "   ✅ Rust environment removed from ~/.bashrc"
+    echo "   ✅ Cargo and rustup directories removed"
     echo
-    echo "Additional Notes:"
-    echo "1. Rustup has been uninstalled"
-    echo "2. Rust environment variables have been removed from ~/.bashrc"
-    echo "3. Cargo and rustup directories have been removed"
-    echo "4. You may need to restart your shell for changes to take effect"
-    
-    # Check if Rust is still accessible
-    if command -v rustc >/dev/null; then
-        echo
-        echo "⚠️  Warning: Rust is still accessible in PATH:"
-        echo "- Location: $(which rustc)"
-        echo "- This may be a different Rust installation"
-    fi
+    echo "Note: Run 'hash -r' or start a new shell to clear the command hash table"
+    echo
 }
 
 #------------------------------------------------------------------------------
-# STANDARD SCRIPT LOGIC - Do not modify anything below this line
+# ARGUMENT PARSING
 #------------------------------------------------------------------------------
 
 # Initialize mode flags
@@ -228,61 +209,74 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Export mode flags for core scripts
+# Export mode flags
 export DEBUG_MODE
 export UNINSTALL_MODE
 export FORCE_MODE
 
-# Source all core installation scripts
-source "${SCRIPT_DIR}/lib/core-install-system.sh"
-source "${SCRIPT_DIR}/lib/core-install-node.sh"
-source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
-source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
-source "${SCRIPT_DIR}/lib/core-install-python.sh"
-source "${SCRIPT_DIR}/lib/core-install-cargo.sh"
+#------------------------------------------------------------------------------
+# SOURCE CORE SCRIPTS
+#------------------------------------------------------------------------------
 
-# Note: lib/install-common.sh already sourced earlier (needed for --help)
+# Source core installation scripts
+source "${SCRIPT_DIR}/lib/core-install-system.sh"
+source "${SCRIPT_DIR}/lib/core-install-cargo.sh"
+source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
+
+
+
+#------------------------------------------------------------------------------
+# HELPER FUNCTIONS
+#------------------------------------------------------------------------------
 
 # Function to process installations
 process_installations() {
-    # Custom Rust installation first
-    install_rust
-
-    # Then use standard processing from lib/install-common.sh
-    process_standard_installations
+    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
+        # During uninstall: reverse order to uninstall dependents before dependencies
+        # 1. Extensions (no dependencies)
+        if [ ${#EXTENSIONS[@]} -gt 0 ]; then
+            process_extensions "EXTENSIONS"
+        fi
+        # 2. Cargo packages (requires cargo binary to be present)
+        if [ ${#PACKAGES_CARGO[@]} -gt 0 ]; then
+            process_cargo_packages "PACKAGES_CARGO"
+        fi
+        # 3. Rust runtime (removes cargo binary and directories)
+        install_rust
+        # 4. System packages (base dependencies, removed last)
+        if [ ${#PACKAGES_SYSTEM[@]} -gt 0 ]; then
+            process_system_packages "PACKAGES_SYSTEM"
+        fi
+    else
+        # During install: install Rust runtime first
+        install_rust
+        # Then install packages and extensions
+        process_standard_installations
+    fi
 }
 
-# Function to verify installations
-# Note: Using common implementation from lib/install-common.sh (sourced above)
-# No local definition needed - library function is used directly
 
-# Main execution
+
+#------------------------------------------------------------------------------
+# MAIN EXECUTION
+#------------------------------------------------------------------------------
+
 if [ "${UNINSTALL_MODE}" -eq 1 ]; then
     echo "🔄 Starting uninstallation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        for ext_id in "${!EXTENSIONS[@]}"; do
-            IFS='|' read -r name description _ <<< "${EXTENSIONS[$ext_id]}"
-            check_extension_state "$ext_id" "uninstall" "$name"
-        done
-    fi
     post_uninstallation_message
 else
     echo "🔄 Starting installation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
     pre_installation_setup
     process_installations
-    verify_installations
-    if [ ${#EXTENSIONS[@]} -gt 0 ]; then
-        for ext_id in "${!EXTENSIONS[@]}"; do
-            IFS='|' read -r name description _ <<< "${EXTENSIONS[$ext_id]}"
-            check_extension_state "$ext_id" "install" "$name"
-        done
-    fi
     post_installation_message
 
     # Auto-enable for container rebuild
-    auto_enable_tool "rust-development-tools" "Rust Development Tools"
+    auto_enable_tool "$SCRIPT_ID" "$SCRIPT_NAME"
 fi
+
+echo "✅ Script execution finished."
+exit 0

@@ -34,7 +34,7 @@ is_cargo_package_installed() {
 }
 
 # Function to install Cargo packages
-process_cargo_packages() {
+process_cargo_packages_install() {
     debug "=== Starting Cargo package installation ==="
 
     # Get array reference
@@ -67,4 +67,51 @@ process_cargo_packages() {
     echo "  Successfully installed: $installed"
     echo "  Failed:                 $failed"
     echo
+}
+
+# Function to uninstall Cargo packages
+process_cargo_packages_uninstall() {
+    debug "=== Starting Cargo package uninstallation ==="
+
+    # Get array reference
+    declare -n arr=$1
+
+    log "Uninstalling ${#arr[@]} Cargo packages..."
+    echo
+    printf "%-50s %-20s\n" "Package" "Status"
+    printf "%s\n" "----------------------------------------------------------------------"
+
+    local uninstalled=0
+    local failed=0
+
+    for package in "${arr[@]}"; do
+        # Extract package name without version
+        local pkg_name="${package%%@*}"
+        printf "%-50s " "$package"
+
+        if cargo uninstall "$pkg_name" 2>/dev/null; then
+            printf "%-20s\n" "Uninstalled"
+            uninstalled=$((uninstalled + 1))
+        else
+            printf "%-20s\n" "Failed"
+            failed=$((failed + 1))
+        fi
+    done
+
+    echo
+    echo "----------------------------------------"
+    log "Cargo Package Uninstallation Summary"
+    echo "  Total packages:           ${#arr[@]}"
+    echo "  Successfully uninstalled: $uninstalled"
+    echo "  Failed:                   $failed"
+    echo
+}
+
+# Function to process packages (install or uninstall)
+process_cargo_packages() {
+    if [ "${UNINSTALL_MODE:-0}" -eq 1 ]; then
+        process_cargo_packages_uninstall "$@"
+    else
+        process_cargo_packages_install "$@"
+    fi
 }
