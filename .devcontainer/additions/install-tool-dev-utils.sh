@@ -55,7 +55,6 @@ pre_installation_setup() {
         echo "🔧 Preparing for uninstallation..."
     else
         echo "🔧 Performing pre-installation setup..."
-        echo "✅ Pre-installation setup complete"
     fi
 }
 
@@ -182,6 +181,9 @@ if [ "${UNINSTALL_MODE}" -eq 1 ]; then
     pre_installation_setup
     process_installations
     post_uninstallation_message
+
+    # Remove from auto-enable config
+    auto_disable_tool
 else
     echo "🔄 Starting installation process for: $SCRIPT_NAME"
     echo "Purpose: $SCRIPT_DESCRIPTION"
@@ -190,7 +192,7 @@ else
     post_installation_message
 
     # Auto-enable for container rebuild
-    auto_enable_tool "$SCRIPT_ID" "$SCRIPT_NAME"
+    auto_enable_tool
 fi
 
 echo "✅ Script execution finished."
