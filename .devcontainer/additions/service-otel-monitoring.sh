@@ -23,10 +23,11 @@ SERVICE_SCRIPT_NAME="OTel Monitoring"
 SERVICE_SCRIPT_DESCRIPTION="OpenTelemetry monitoring stack (lifecycle, metrics, script exporter)"
 SERVICE_SCRIPT_CATEGORY="INFRA_CONFIG"
 SERVICE_PREREQUISITE_CONFIGS="config-devcontainer-identity.sh"
+SERVICE_PREREQUISITE_TOOLS="install-srv-otel-monitoring.sh"  # Must be installed first
 
 # Supervisord metadata
 SERVICE_PRIORITY="30"
-SERVICE_DEPENDS=""
+SERVICE_DEPENDS="service-nginx"  # Sends data through nginx reverse proxy
 SERVICE_AUTO_RESTART="true"
 
 #------------------------------------------------------------------------------

@@ -41,12 +41,28 @@ else
     exit 1
 fi
 
-# Category definitions
+# Source service auto-enable library for managing enabled-services.conf
+if [[ -f "$LIB_DIR/service-auto-enable.sh" ]]; then
+    source "$LIB_DIR/service-auto-enable.sh"
+else
+    echo "Error: service-auto-enable.sh library not found at $LIB_DIR" >&2
+    exit 1
+fi
+
+# Source categories library
+if [[ -f "$LIB_DIR/categories.sh" ]]; then
+    source "$LIB_DIR/categories.sh"
+else
+    echo "Error: categories.sh library not found at $LIB_DIR" >&2
+    exit 1
+fi
+
+# Build category display name mapping from library
 declare -A CATEGORIES
-CATEGORIES["AI_TOOLS"]="AI & Coding Assistants"
-CATEGORIES["LANGUAGE_DEV"]="Language Development"
-CATEGORIES["INFRA_CONFIG"]="Infrastructure & Configuration"
-CATEGORIES["DATA_ANALYTICS"]="Data & Analytics"
+while IFS= read -r category_key; do
+    CATEGORIES[$category_key]=$(get_category_display_name "$category_key")
+done < <(get_all_category_ids)
+# Add UNCATEGORIZED
 CATEGORIES["UNCATEGORIZED"]="Other Tools"
 
 # Global arrays for tools
@@ -62,9 +78,13 @@ declare -A CATEGORY_COUNTS     # Maps category to tool count
 # Global arrays for services
 declare -a AVAILABLE_SERVICES=()
 declare -a SERVICE_SCRIPTS=()
+declare -a SERVICE_IDS=()
 declare -a SERVICE_DESCRIPTIONS=()
 declare -a SERVICE_CATEGORIES=()
+declare -a SERVICE_PRIORITIES=()
+declare -a SERVICE_DEPENDS=()
 declare -a SERVICE_PREREQUISITE_CONFIGS=()
+declare -a SERVICE_PREREQUISITE_TOOLS=()
 
 # Service category organization
 declare -A SERVICES_BY_CATEGORY  # Maps category to comma-separated service indices
@@ -157,7 +177,8 @@ scan_available_tools() {
     local found=0
 
     # Use library to scan install scripts
-    while IFS=$'\t' read -r script_basename script_name script_description script_category check_command; do
+    # Output format: script_basename<TAB>SCRIPT_ID<TAB>SCRIPT_NAME<TAB>SCRIPT_DESCRIPTION<TAB>SCRIPT_CATEGORY<TAB>CHECK_INSTALLED_COMMAND<TAB>PREREQUISITE_CONFIGS
+    while IFS=$'\t' read -r script_basename script_id script_name script_description script_category check_command prerequisite_configs; do
         # Add to arrays
         AVAILABLE_TOOLS+=("$script_name")
         TOOL_SCRIPTS+=("$script_basename")
@@ -194,9 +215,13 @@ scan_available_tools() {
 scan_available_services() {
     AVAILABLE_SERVICES=()
     SERVICE_SCRIPTS=()
+    SERVICE_IDS=()
     SERVICE_DESCRIPTIONS=()
     SERVICE_CATEGORIES=()
+    SERVICE_PRIORITIES=()
+    SERVICE_DEPENDS=()
     SERVICE_PREREQUISITE_CONFIGS=()
+    SERVICE_PREREQUISITE_TOOLS=()
 
     # Reset category organization
     SERVICES_BY_CATEGORY=()
@@ -212,12 +237,27 @@ scan_available_services() {
 
     # Scan for service-*.sh scripts
     while IFS=$'\t' read -r script_basename service_name service_description service_category script_path prerequisite_configs; do
+        # Extract additional metadata for enable/disable and ordering
+        local service_id=$(extract_script_metadata "$script_path" "SCRIPT_ID")
+        local service_priority=$(extract_service_script_metadata "$script_path" "SERVICE_PRIORITY")
+        local service_depends=$(extract_service_script_metadata "$script_path" "SERVICE_DEPENDS")
+        local prerequisite_tools=$(extract_service_script_metadata "$script_path" "SERVICE_PREREQUISITE_TOOLS")
+
+        # Default priority if not set
+        if [[ -z "$service_priority" ]]; then
+            service_priority="99"
+        fi
+
         # Add to arrays
         AVAILABLE_SERVICES+=("$service_name")
         SERVICE_SCRIPTS+=("$script_basename")
+        SERVICE_IDS+=("$service_id")
         SERVICE_DESCRIPTIONS+=("$service_description")
         SERVICE_CATEGORIES+=("$service_category")
+        SERVICE_PRIORITIES+=("$service_priority")
+        SERVICE_DEPENDS+=("$service_depends")
         SERVICE_PREREQUISITE_CONFIGS+=("$prerequisite_configs")
+        SERVICE_PREREQUISITE_TOOLS+=("$prerequisite_tools")
 
         # Track service index by category
         local service_index=$found
@@ -507,6 +547,175 @@ show_all_services_menu() {
 }
 
 #------------------------------------------------------------------------------
+# Service prerequisite checking
+#------------------------------------------------------------------------------
+
+check_service_installation_prerequisites() {
+    local service_index=$1
+    local service_name="${AVAILABLE_SERVICES[$service_index]}"
+    local prerequisite_tools="${SERVICE_PREREQUISITE_TOOLS[$service_index]}"
+
+    if [[ -z "$prerequisite_tools" ]]; then
+        return 0  # No installation prerequisites
+    fi
+
+    # Check if install script exists
+    local install_script="$ADDITIONS_DIR/$prerequisite_tools"
+    if [[ ! -f "$install_script" ]]; then
+        dialog --title "Installation Error" \
+            --msgbox "ERROR: Installation script not found:\n$prerequisite_tools\n\nThis is a configuration error." \
+            12 70
+        clear
+        return 1
+    fi
+
+    # Extract CHECK_INSTALLED_COMMAND from install script
+    local check_command=$(grep -m1 "^CHECK_INSTALLED_COMMAND=" "$install_script" 2>/dev/null | cut -d'=' -f2- | tr -d '"')
+
+    if [[ -z "$check_command" ]]; then
+        # No check command means we can't validate installation
+        return 0
+    fi
+
+    # Run the check command
+    if eval "$check_command" >/dev/null 2>&1; then
+        return 0  # Installed
+    else
+        # Not installed - offer to install
+        dialog --title "Installation Required" \
+            --yesno "$service_name requires installation first.\n\nThe following installation script must be run:\n  $prerequisite_tools\n\nWould you like to run the installation now?" \
+            14 70
+        local response=$?
+        clear
+
+        if [[ $response -eq 0 ]]; then
+            # User said yes - run the install script
+            clear
+            echo "Running installation: $prerequisite_tools"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+
+            bash "$install_script"
+            local install_result=$?
+
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            if [[ $install_result -eq 0 ]]; then
+                echo ""
+                read -p "Installation complete. Press Enter to continue..."
+                return 0
+            else
+                echo ""
+                read -p "Installation failed. Press Enter to continue..."
+                return 1
+            fi
+        else
+            # User said no
+            return 1
+        fi
+    fi
+}
+
+#------------------------------------------------------------------------------
+# Show service dependency visualization
+#------------------------------------------------------------------------------
+
+show_service_dependencies() {
+    local service_index=$1
+    local service_name="${AVAILABLE_SERVICES[$service_index]}"
+    local prerequisite_tools="${SERVICE_PREREQUISITE_TOOLS[$service_index]}"
+    local prerequisite_configs="${SERVICE_PREREQUISITE_CONFIGS[$service_index]}"
+    local service_depends="${SERVICE_DEPENDS[$service_index]}"
+    local service_priority="${SERVICE_PRIORITIES[$service_index]}"
+
+    local msg="Service Dependency Chain for: $service_name\n"
+    msg+="Priority: $service_priority\n"
+    msg+="\n"
+    msg+="┌─────────────────────────────────────────────────────────┐\n"
+
+    # Installation layer
+    if [[ -n "$prerequisite_tools" ]]; then
+        local install_script="$ADDITIONS_DIR/$prerequisite_tools"
+        local status="✗ Not installed"
+
+        if [[ -f "$install_script" ]]; then
+            local check_command=$(grep -m1 "^CHECK_INSTALLED_COMMAND=" "$install_script" 2>/dev/null | cut -d'=' -f2- | tr -d '"')
+            if [[ -n "$check_command" ]] && eval "$check_command" >/dev/null 2>&1; then
+                status="✓ Installed"
+            fi
+        fi
+
+        msg+="│ INSTALLATION LAYER                                      │\n"
+        msg+="│   $prerequisite_tools\n"
+        msg+="│   Status: $status\n"
+        msg+="│                           ↓                             │\n"
+    fi
+
+    # Configuration layer
+    if [[ -n "$prerequisite_configs" ]]; then
+        source "$ADDITIONS_DIR/lib/prerequisite-check.sh"
+        local status="✗ Not configured"
+
+        if check_prerequisite_configs "$prerequisite_configs" "$ADDITIONS_DIR" 2>/dev/null; then
+            status="✓ Configured"
+        fi
+
+        msg+="│ CONFIGURATION LAYER                                     │\n"
+        msg+="│   $prerequisite_configs\n"
+        msg+="│   Status: $status\n"
+        msg+="│                           ↓                             │\n"
+    fi
+
+    # Service layer (current service)
+    local service_script="${SERVICE_SCRIPTS[$service_index]}"
+    local service_status="⏸ Stopped"
+
+    # Check if service is running
+    if bash "$ADDITIONS_DIR/$service_script" --is-running >/dev/null 2>&1; then
+        service_status="▶ Running"
+    fi
+
+    msg+="│ SERVICE LAYER (This Service)                            │\n"
+    msg+="│   $service_script\n"
+    msg+="│   Status: $service_status\n"
+
+    # Runtime dependencies
+    if [[ -n "$service_depends" ]]; then
+        msg+="│                           ↓                             │\n"
+        msg+="│ RUNTIME DEPENDENCIES                                    │\n"
+
+        # service_depends might be comma-separated, but typically single
+        local dep_status="✗ Not running"
+
+        # Find the dependency service
+        for i in "${!SERVICE_IDS[@]}"; do
+            if [[ "${SERVICE_IDS[$i]}" == "$service_depends" || "${SERVICE_SCRIPTS[$i]}" == "$service_depends" ]]; then
+                local dep_script="${SERVICE_SCRIPTS[$i]}"
+                if bash "$ADDITIONS_DIR/$dep_script" --is-running >/dev/null 2>&1; then
+                    dep_status="✓ Running"
+                fi
+                break
+            fi
+        done
+
+        msg+="│   $service_depends\n"
+        msg+="│   Status: $dep_status\n"
+    fi
+
+    msg+="└─────────────────────────────────────────────────────────┘\n"
+    msg+="\n"
+    msg+="Legend:\n"
+    msg+="  ✓ = Ready/Running    ✗ = Not ready/Not running\n"
+    msg+="  ▶ = Running          ⏸ = Stopped\n"
+
+    dialog --title "Service Dependencies" \
+        --msgbox "$msg" \
+        30 65
+    clear
+}
+
+#------------------------------------------------------------------------------
 # Service submenu - Show commands from selected service-*.sh script
 #------------------------------------------------------------------------------
 
@@ -517,7 +726,12 @@ show_service_submenu() {
     local script_path="$ADDITIONS_DIR/$script_name"
     local prerequisite_configs="${SERVICE_PREREQUISITE_CONFIGS[$service_index]}"
 
-    # Check prerequisites first
+    # Check installation prerequisites first
+    if ! check_service_installation_prerequisites "$service_index"; then
+        return 1
+    fi
+
+    # Check configuration prerequisites
     if [[ -n "$prerequisite_configs" ]]; then
         # Source prerequisite-check library
         source "$ADDITIONS_DIR/lib/prerequisite-check.sh"
@@ -561,6 +775,11 @@ show_service_submenu() {
             ((option_num++))
         done
 
+        # Add special option to view dependencies
+        local view_deps_num=$option_num
+        menu_options+=("$view_deps_num" "[INFO] View Dependency Chain" "Show prerequisites and dependencies")
+        ((option_num++))
+
         # Add back option
         menu_options+=("0" "Back to Service List" "")
 
@@ -582,6 +801,12 @@ show_service_submenu() {
         # Handle back option
         if [[ $choice -eq 0 || -z "$choice" ]]; then
             return 0
+        fi
+
+        # Handle view dependencies option
+        if [[ $choice -eq $view_deps_num ]]; then
+            show_service_dependencies "$service_index"
+            continue
         fi
 
         # Execute selected command
@@ -649,39 +874,106 @@ execute_service_cmd_action() {
 }
 
 #------------------------------------------------------------------------------
-# Show auto-start enabled services
+# Manage auto-start services (enable/disable)
 #------------------------------------------------------------------------------
 
-show_autostart_services() {
-    local enabled_conf="/workspace/.devcontainer.extend/enabled-services.conf"
-
-    # Read enabled services
-    local enabled_services=()
-    if [[ -f "$enabled_conf" ]]; then
-        while IFS= read -r line; do
-            # Skip comments and empty lines
-            [[ "$line" =~ ^#.*$ ]] && continue
-            [[ -z "$line" ]] && continue
-            enabled_services+=("$line")
-        done < "$enabled_conf"
-    fi
-
-    # Build message
-    local message="Services configured to auto-start on container restart:\n\n"
-
-    if [[ ${#enabled_services[@]} -eq 0 ]]; then
-        message+="No services enabled for auto-start.\n\n"
-        message+="Services will auto-enable themselves when first started successfully."
-    else
-        for service_id in "${enabled_services[@]}"; do
-            message+="  ✅ $service_id\n"
+manage_autostart_services() {
+    while true; do
+        # Build array of indices sorted by priority
+        local -a sorted_indices=()
+        for i in "${!AVAILABLE_SERVICES[@]}"; do
+            sorted_indices+=("$i")
         done
-        message+="\nThese services will automatically start when the container restarts.\n\n"
-        message+="Manage: dev-services enable/disable <service>"
-    fi
 
-    dialog --title "Auto-Start Services" --msgbox "$message" $DIALOG_HEIGHT $DIALOG_WIDTH
-    clear
+        # Sort indices by priority (bubble sort for simplicity)
+        local n=${#sorted_indices[@]}
+        for ((i=0; i<n; i++)); do
+            for ((j=0; j<n-i-1; j++)); do
+                local idx1=${sorted_indices[$j]}
+                local idx2=${sorted_indices[$j+1]}
+                local p1=${SERVICE_PRIORITIES[$idx1]}
+                local p2=${SERVICE_PRIORITIES[$idx2]}
+                if [[ $p1 -gt $p2 ]]; then
+                    # Swap
+                    local temp=${sorted_indices[$j]}
+                    sorted_indices[$j]=${sorted_indices[$j+1]}
+                    sorted_indices[$j+1]=$temp
+                fi
+            done
+        done
+
+        # Build checklist with all services in priority order
+        local checklist_options=()
+        local option_num=1
+
+        for i in "${sorted_indices[@]}"; do
+            local service_name="${AVAILABLE_SERVICES[$i]}"
+            local service_id="${SERVICE_IDS[$i]}"
+            local service_priority="${SERVICE_PRIORITIES[$i]}"
+            local prereq="${SERVICE_PREREQUISITE_CONFIGS[$i]}"
+
+            # Build display name with priority
+            local display_name="[P:$service_priority] $service_name"
+
+            # Add prerequisite hint if any
+            if [[ -n "$prereq" ]]; then
+                display_name="$display_name (requires config)"
+            fi
+
+            # Check if service is auto-enabled
+            local status="off"
+            if is_auto_enabled "$service_id"; then
+                status="on"
+            fi
+
+            checklist_options+=("$option_num" "$display_name" "$status")
+            ((option_num++))
+        done
+
+        # Show checklist
+        local selected
+        selected=$(dialog --clear \
+            --title "Manage Auto-Start Services" \
+            --checklist "Select services to auto-start on container restart:\n\n[P:##] = Priority (lower numbers start first)\nSPACE=toggle  ENTER=save  ESC=cancel" \
+            $DIALOG_HEIGHT $DIALOG_WIDTH $MENU_HEIGHT \
+            "${checklist_options[@]}" \
+            2>&1 >/dev/tty)
+
+        # Check if user cancelled (ESC)
+        if [[ $? -ne 0 ]]; then
+            return 0
+        fi
+
+        # Process selections
+        # First, disable all services
+        for i in "${!AVAILABLE_SERVICES[@]}"; do
+            local service_id="${SERVICE_IDS[$i]}"
+            local service_name="${AVAILABLE_SERVICES[$i]}"
+
+            if is_auto_enabled "$service_id"; then
+                disable_service_autostart "$service_id" "$service_name" >/dev/null 2>&1
+            fi
+        done
+
+        # Then, enable selected services
+        for selection in $selected; do
+            # Remove quotes from selection
+            selection=$(echo "$selection" | tr -d '"')
+            # Map selection back to actual service index using sorted_indices
+            local sorted_index=$((selection - 1))
+            local service_index=${sorted_indices[$sorted_index]}
+            local service_id="${SERVICE_IDS[$service_index]}"
+            local service_name="${AVAILABLE_SERVICES[$service_index]}"
+
+            enable_service_autostart "$service_id" "$service_name" >/dev/null 2>&1
+        done
+
+        # Show success message
+        dialog --title "Success" --msgbox "Auto-start services updated successfully!" 8 50
+        clear
+
+        return 0
+    done
 }
 
 #------------------------------------------------------------------------------
@@ -701,7 +993,7 @@ manage_services() {
             --menu "Choose an option (ESC to return to main menu):" \
             $DIALOG_HEIGHT $DIALOG_WIDTH $MENU_HEIGHT \
             "1" "Start/Stop Services" \
-            "2" "View Auto-Start Services" \
+            "2" "Manage Auto-Start Services" \
             "3" "Back to Main Menu" \
             2>&1 >/dev/tty)
 
@@ -716,7 +1008,7 @@ manage_services() {
                 show_all_services_menu
                 ;;
             2)
-                show_autostart_services
+                manage_autostart_services
                 ;;
             3|"")
                 return 0
@@ -1149,30 +1441,39 @@ manage_configs() {
 show_category_menu() {
     local menu_options=()
     local option_num=1
-    
-    # Build menu with categories that have tools, in order
-    for category_key in "AI_TOOLS" "LANGUAGE_DEV" "INFRA_CONFIG" "DATA_ANALYTICS" "UNCATEGORIZED"; do
+    local -a displayed_categories=()
+
+    # Build menu with categories that have tools, in order from library
+    while IFS= read -r category_key; do
         local count=${CATEGORY_COUNTS[$category_key]:-0}
-        
-        # Skip empty categories (except UNCATEGORIZED if it has tools)
+
+        # Skip empty categories
         if [[ $count -eq 0 ]]; then
             continue
         fi
-        
+
         local category_name="${CATEGORIES[$category_key]}"
         local help_text="$count tool(s) available in this category"
-        
+
         menu_options+=("$option_num" "$category_name" "$help_text")
+        displayed_categories+=("$category_key")
         ((option_num++))
-    done
-    
+    done < <(get_all_category_ids)
+
+    # Also check UNCATEGORIZED
+    if [[ ${CATEGORY_COUNTS["UNCATEGORIZED"]:-0} -gt 0 ]]; then
+        local count=${CATEGORY_COUNTS["UNCATEGORIZED"]}
+        menu_options+=("$option_num" "${CATEGORIES["UNCATEGORIZED"]}" "$count tool(s) available in this category")
+        displayed_categories+=("UNCATEGORIZED")
+    fi
+
     # If no tools found in any category
     if [[ ${#menu_options[@]} -eq 0 ]]; then
         dialog --title "No Tools" --msgbox "No development tools found in any category." $DIALOG_HEIGHT $DIALOG_WIDTH
         clear
         return 1
     fi
-    
+
     # Show category selection menu with dynamic help
     local choice
     choice=$(dialog --clear \
@@ -1182,27 +1483,19 @@ show_category_menu() {
         $DIALOG_HEIGHT $DIALOG_WIDTH $MENU_HEIGHT \
         "${menu_options[@]}" \
         2>&1 >/dev/tty)
-    
+
     # Check if user cancelled (ESC)
     if [[ $? -ne 0 ]]; then
         return 1
     fi
-    
-    # Map choice back to category key
-    local selected_index=1
-    for category_key in "AI_TOOLS" "LANGUAGE_DEV" "INFRA_CONFIG" "DATA_ANALYTICS" "UNCATEGORIZED"; do
-        local count=${CATEGORY_COUNTS[$category_key]:-0}
-        if [[ $count -eq 0 ]]; then
-            continue
-        fi
-        
-        if [[ $selected_index -eq $choice ]]; then
-            echo "$category_key"
-            return 0
-        fi
-        ((selected_index++))
-    done
-    
+
+    # Map choice back to category key using our tracking array
+    local selected_category="${displayed_categories[$((choice - 1))]}"
+    if [[ -n "$selected_category" ]]; then
+        echo "$selected_category"
+        return 0
+    fi
+
     return 1
 }
 

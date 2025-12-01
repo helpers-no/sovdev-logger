@@ -12,7 +12,7 @@
 SCRIPT_ID="tool-databricks"
 SCRIPT_NAME="Databricks Development Tools"
 SCRIPT_DESCRIPTION="Installs Databricks CLI, Python SDK, Connect, and related tooling for Asset Bundles development"
-SCRIPT_CATEGORY="DATA_PLATFORM"
+SCRIPT_CATEGORY="DATA_ANALYTICS"
 CHECK_INSTALLED_COMMAND="command -v databricks >/dev/null 2>&1"
 
 # Custom usage text for --help

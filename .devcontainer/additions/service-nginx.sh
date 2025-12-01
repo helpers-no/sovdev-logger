@@ -19,6 +19,7 @@ SERVICE_SCRIPT_NAME="Nginx Reverse Proxy"
 SERVICE_SCRIPT_DESCRIPTION="Nginx reverse proxy for LiteLLM (adds Host header)"
 SERVICE_SCRIPT_CATEGORY="INFRA_CONFIG"
 SERVICE_PREREQUISITE_CONFIGS=""  # Optional: "config-nginx.sh" if required
+SERVICE_PREREQUISITE_TOOLS="install-srv-nginx.sh"  # Must be installed first
 
 # Supervisord metadata
 SERVICE_PRIORITY="20"
