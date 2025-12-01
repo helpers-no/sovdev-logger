@@ -10,10 +10,10 @@
 
 # --- Script Metadata ---
 SCRIPT_ID="tool-iac"
-SCRIPT_NAME="Configuration Tools"
-SCRIPT_DESCRIPTION="Installs tools and extensions for Infrastructure as Code (IaC) and configuration management (Ansible)"
+SCRIPT_NAME="Infrastructure as Code Tools"
+SCRIPT_DESCRIPTION="Installs Infrastructure as Code and configuration management tools: Ansible, Terraform, and Bicep"
 SCRIPT_CATEGORY="INFRA_CONFIG"
-CHECK_INSTALLED_COMMAND="[ -f /usr/local/bin/ansible ] || [ -f /usr/bin/ansible ] || command -v ansible >/dev/null 2>&1"
+CHECK_INSTALLED_COMMAND="command -v ansible >/dev/null 2>&1 || command -v terraform >/dev/null 2>&1 || command -v bicep >/dev/null 2>&1"
 
 # Custom usage text for --help
 SCRIPT_USAGE="  $(basename "$0")              # Install IaC tools
@@ -25,6 +25,7 @@ SCRIPT_USAGE="  $(basename "$0")              # Install IaC tools
 PACKAGES_SYSTEM=(
     "ansible"
     "ansible-lint"
+    "terraform"  # Installed from HashiCorp APT repository
 )
 
 # Node.js packages
@@ -36,6 +37,8 @@ PACKAGES_PYTHON=()
 # VS Code extensions
 EXTENSIONS=(
     "Ansible (redhat.ansible) - Ansible language support and tools"
+    "Terraform (hashicorp.terraform) - Terraform language support and IntelliSense"
+    "Bicep (ms-azuretools.vscode-bicep) - Azure Bicep language support"
 )
 
 #------------------------------------------------------------------------------
@@ -57,6 +60,104 @@ pre_installation_setup() {
         echo "🔧 Preparing for uninstallation..."
     else
         echo "🔧 Performing pre-installation setup..."
+
+        # Add HashiCorp repository for Terraform
+        add_hashicorp_repository
+    fi
+}
+
+# --- Add HashiCorp Repository ---
+add_hashicorp_repository() {
+    echo "➕ Adding HashiCorp repository..."
+
+    local keyring_dir="/etc/apt/keyrings"
+    local keyring_file="$keyring_dir/hashicorp-archive-keyring.gpg"
+    local repo_file="/etc/apt/sources.list.d/hashicorp.list"
+
+    # Check if repository already configured
+    if [ -f "$repo_file" ] && grep -q "apt.releases.hashicorp.com" "$repo_file" 2>/dev/null; then
+        echo "✅ HashiCorp repository already configured"
+        sudo apt-get update -y > /dev/null 2>&1
+        return
+    fi
+
+    # Create keyrings directory if needed
+    sudo mkdir -p "$keyring_dir"
+
+    # Download and install HashiCorp signing key
+    curl -fsSL https://apt.releases.hashicorp.com/gpg | \
+        sudo gpg --dearmor -o "$keyring_file"
+
+    # Add HashiCorp repository
+    local distro_codename=$(lsb_release -cs)
+    echo "deb [signed-by=$keyring_file] https://apt.releases.hashicorp.com ${distro_codename} main" | \
+        sudo tee "$repo_file"
+
+    # Update package lists
+    sudo apt-get update -y > /dev/null 2>&1
+    echo "✅ HashiCorp repository added successfully"
+}
+
+# --- Custom Bicep Installation ---
+install_bicep() {
+    if [ "${UNINSTALL_MODE}" -eq 1 ]; then
+        echo ""
+        echo "🗑️  Uninstalling Bicep..."
+        sudo rm -f /usr/local/bin/bicep
+        echo "✅ Bicep removed"
+        return
+    fi
+
+    # Check if bicep is already installed
+    if command -v bicep >/dev/null 2>&1; then
+        local current_version=$(bicep --version 2>/dev/null || echo "unknown")
+        echo "✅ Bicep is already installed (version: ${current_version})"
+        return
+    fi
+
+    echo ""
+    echo "📦 Installing Bicep CLI..."
+
+    # Detect architecture using lib function
+    local system_arch=$(detect_architecture)
+
+    # Map to Bicep naming convention
+    local bicep_arch
+    case "$system_arch" in
+        amd64)
+            bicep_arch="x64"
+            ;;
+        arm64)
+            bicep_arch="arm64"
+            ;;
+        *)
+            echo "❌ Unsupported architecture: $system_arch"
+            return 1
+            ;;
+    esac
+
+    echo "   System architecture: $system_arch (Bicep: $bicep_arch)"
+
+    # Download latest Bicep CLI for Linux
+    local bicep_url="https://github.com/Azure/bicep/releases/latest/download/bicep-linux-${bicep_arch}"
+    local temp_file=$(mktemp)
+
+    if curl -fsSL "$bicep_url" -o "$temp_file"; then
+        sudo install -m 755 "$temp_file" /usr/local/bin/bicep
+        rm -f "$temp_file"
+
+        # Verify installation
+        if command -v bicep >/dev/null 2>&1; then
+            local version=$(bicep --version 2>/dev/null || echo "unknown")
+            echo "✅ Bicep installed successfully (version: ${version})"
+        else
+            echo "❌ Bicep installation verification failed"
+            return 1
+        fi
+    else
+        echo "❌ Failed to download Bicep"
+        rm -f "$temp_file"
+        return 1
     fi
 }
 
@@ -66,12 +167,16 @@ post_installation_message() {
     echo "🎉 Installation complete!"
     echo
     echo "Quick start commands:"
-    echo "  - Check Ansible:         ansible --version"
-    echo "  - Check Ansible Lint:    ansible-lint --version"
-    echo "  - Create playbook:       ansible-playbook playbook.yml"
+    echo "  - Check Ansible:   ansible --version"
+    echo "  - Check Terraform: terraform version"
+    echo "  - Check Bicep:     bicep --version"
+    echo "  - Ansible playbook: ansible-playbook playbook.yml"
+    echo "  - Terraform init:   terraform init"
+    echo "  - Bicep build:      bicep build main.bicep"
     echo
     echo "Docs: https://docs.ansible.com"
-    echo "      https://ansible.readthedocs.io/projects/lint/"
+    echo "      https://developer.hashicorp.com/terraform/docs"
+    echo "      https://learn.microsoft.com/azure/azure-resource-manager/bicep/"
     echo
 }
 
@@ -79,7 +184,7 @@ post_uninstallation_message() {
     echo
     echo "🏁 Uninstallation complete!"
     echo
-    echo "Note: Configuration files in ~/.ansible remain unchanged"
+    echo "Note: Configuration files remain in ~/.ansible and ~/.terraform.d"
     echo
 }
 
@@ -144,7 +249,10 @@ source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 
 # Function to process installations
 process_installations() {
-    # Use standard processing from lib/install-common.sh
+    # Custom Bicep installation first
+    install_bicep || exit 1
+
+    # Then use standard processing from lib/install-common.sh
     process_standard_installations
 }
 
