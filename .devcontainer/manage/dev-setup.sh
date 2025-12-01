@@ -57,6 +57,51 @@ else
     exit 1
 fi
 
+# Source prerequisite-check library
+if [[ -f "$LIB_DIR/prerequisite-check.sh" ]]; then
+    source "$LIB_DIR/prerequisite-check.sh"
+else
+    echo "Error: prerequisite-check.sh library not found at $LIB_DIR" >&2
+    exit 1
+fi
+
+# Setup structured logging
+# Create log directory and file for this session
+LOG_DIR="${DEVCONTAINER_LOG_DIR:-/tmp/devcontainer-setup}"
+mkdir -p "$LOG_DIR"
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+LOG_FILE="$LOG_DIR/dev-setup-${TIMESTAMP}.log"
+export CURRENT_LOG_FILE="$LOG_FILE"
+
+# Logging functions for audit trail
+log_action() {
+    echo "[$(date +%H:%M:%S)] ACTION: $*" >> "$LOG_FILE"
+}
+
+log_user_choice() {
+    local menu="$1"
+    local choice="$2"
+    echo "[$(date +%H:%M:%S)] USER: $menu -> $choice" >> "$LOG_FILE"
+}
+
+log_installation() {
+    local tool="$1"
+    local result="$2"
+    echo "[$(date +%H:%M:%S)] INSTALL: $tool -> $result" >> "$LOG_FILE"
+}
+
+log_error_msg() {
+    echo "[$(date +%H:%M:%S)] ERROR: $*" >> "$LOG_FILE"
+}
+
+log_info_msg() {
+    echo "[$(date +%H:%M:%S)] INFO: $*" >> "$LOG_FILE"
+}
+
+# Log session start
+log_action "dev-setup session started by $(whoami)"
+log_info_msg "Log file: $LOG_FILE"
+
 # Build category display name mapping from library
 declare -A CATEGORIES
 while IFS= read -r category_key; do
@@ -147,11 +192,67 @@ check_dialog() {
 
 # Check if we're in a devcontainer project
 check_environment() {
+    local errors=0
+
+    # Check dialog
+    if ! check_dialog; then
+        ((errors++))
+    fi
+
+    # Check devcontainer directory
     if [[ ! -d "$DEVCONTAINER_DIR" ]]; then
-        dialog --title "Error" --msgbox "Not in a devcontainer project.\n\nNo $DEVCONTAINER_DIR directory found.\nPlease run this script from the root of your devcontainer project." $DIALOG_HEIGHT $DIALOG_WIDTH
-        clear
+        echo "ERROR: Devcontainer directory not found: $DEVCONTAINER_DIR" >&2
+        log_error_msg "Devcontainer directory not found: $DEVCONTAINER_DIR"
+        ((errors++))
+    fi
+
+    # Check additions directory
+    if [[ ! -d "$ADDITIONS_DIR" ]]; then
+        echo "ERROR: Additions directory not found: $ADDITIONS_DIR" >&2
+        log_error_msg "Additions directory not found: $ADDITIONS_DIR"
+        ((errors++))
+    fi
+
+    # Check required libraries
+    local required_libs=(
+        "component-scanner.sh"
+        "service-auto-enable.sh"
+        "categories.sh"
+        "prerequisite-check.sh"
+    )
+
+    for lib in "${required_libs[@]}"; do
+        if [[ ! -f "$LIB_DIR/$lib" ]]; then
+            echo "ERROR: Required library not found: $lib" >&2
+            log_error_msg "Required library not found: $lib"
+            ((errors++))
+        fi
+    done
+
+    # Check enabled config files (warnings only)
+    if [[ ! -f "/workspace/.devcontainer.extend/enabled-tools.conf" ]]; then
+        log_info_msg "enabled-tools.conf not found (will be created if needed)"
+    fi
+
+    if [[ ! -f "/workspace/.devcontainer.extend/enabled-services.conf" ]]; then
+        log_info_msg "enabled-services.conf not found (will be created if needed)"
+    fi
+
+    if [[ $errors -gt 0 ]]; then
+        echo ""
+        echo "Environment check failed with $errors error(s)" >&2
+        log_error_msg "Environment check failed with $errors error(s)"
+        if command -v dialog >/dev/null 2>&1; then
+            dialog --title "Environment Error" \
+                --msgbox "Environment validation failed with $errors error(s).\n\nPlease check that you are running this script from a devcontainer project with all required libraries installed.\n\nSee terminal output for details." \
+                15 70
+            clear
+        fi
         exit 2
     fi
+
+    log_info_msg "Environment check passed"
+    return 0
 }
 
 #------------------------------------------------------------------------------
@@ -569,8 +670,8 @@ check_service_installation_prerequisites() {
         return 1
     fi
 
-    # Extract CHECK_INSTALLED_COMMAND from install script
-    local check_command=$(grep -m1 "^CHECK_INSTALLED_COMMAND=" "$install_script" 2>/dev/null | cut -d'=' -f2- | tr -d '"')
+    # Extract CHECK_INSTALLED_COMMAND from install script using library
+    local check_command=$(extract_script_metadata "$install_script" "CHECK_INSTALLED_COMMAND")
 
     if [[ -z "$check_command" ]]; then
         # No check command means we can't validate installation
@@ -640,7 +741,7 @@ show_service_dependencies() {
         local status="✗ Not installed"
 
         if [[ -f "$install_script" ]]; then
-            local check_command=$(grep -m1 "^CHECK_INSTALLED_COMMAND=" "$install_script" 2>/dev/null | cut -d'=' -f2- | tr -d '"')
+            local check_command=$(extract_script_metadata "$install_script" "CHECK_INSTALLED_COMMAND")
             if [[ -n "$check_command" ]] && eval "$check_command" >/dev/null 2>&1; then
                 status="✓ Installed"
             fi
@@ -1617,24 +1718,46 @@ execute_tool_installation() {
     local tool_name="${AVAILABLE_TOOLS[$tool_index]}"
     local script_name="${TOOL_SCRIPTS[$tool_index]}"
     local script_path="$ADDITIONS_DIR/$script_name"
-    
+
+    log_user_choice "Browse & Install Tools" "Install: $tool_name ($script_name)"
+
     if [[ ! -f "$script_path" ]]; then
+        log_error_msg "Installation script not found: $script_path"
         dialog --title "Error" --msgbox "Installation script not found: $script_path" $DIALOG_HEIGHT $DIALOG_WIDTH
         clear
         return 1
     fi
-    
+
+    # Check prerequisites before installing
+    local prerequisite_configs=$(extract_script_metadata "$script_path" "PREREQUISITE_CONFIGS")
+    if [[ -n "$prerequisite_configs" ]]; then
+        log_info_msg "Checking prerequisites for $tool_name: $prerequisite_configs"
+        if ! check_prerequisite_configs "$prerequisite_configs" "$ADDITIONS_DIR"; then
+            local missing_msg=$(show_missing_prerequisites "$prerequisite_configs" "$ADDITIONS_DIR")
+            log_error_msg "Prerequisites not met for $tool_name: $missing_msg"
+            dialog --title "Prerequisites Not Met" \
+                --msgbox "Cannot install $tool_name. Prerequisites not met:\n\n$missing_msg\n\nPlease configure required items first." \
+                20 70
+            clear
+            return 1
+        fi
+        log_info_msg "Prerequisites met for $tool_name"
+    fi
+
     # Clear screen and show installation
     clear
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "Installing: $tool_name"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    
+
+    log_installation "$script_name" "STARTING"
+
     # Make script executable and run it
     chmod +x "$script_path"
-    
+
     if bash "$script_path"; then
+        log_installation "$script_name" "SUCCESS"
         echo ""
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "✅ Successfully installed: $tool_name"
@@ -1644,12 +1767,13 @@ execute_tool_installation() {
         echo "   bash .devcontainer/additions/$script_name"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     else
+        log_installation "$script_name" "FAILED"
         echo ""
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "❌ Failed to install: $tool_name"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     fi
-    
+
     echo ""
     read -p "Press Enter to continue..." -r
 }
