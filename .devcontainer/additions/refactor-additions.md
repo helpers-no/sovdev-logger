@@ -30,9 +30,40 @@ Implementation notes:
 - 80-90% of Power Platform development works in Linux devcontainer
 - Windows-only tools (PRT, CMT, pac data) clearly documented
 
-## Azure Tools
+## Azure Tools ✅ COMPLETED
 
-see chat https://claude.ai/share/e1b9f3ae-1902-4146-9abd-ec7d06dcaad3
+✅ Created three install scripts based on user profiles:
+
+**1. install-tool-azure-ops.sh** - Azure Operations & Infrastructure Management
+- PowerShell 7.5.4 runtime + Az/Graph/Exchange modules
+- Azure CLI
+- VS Code: PowerShell, Azure Tools pack, Bicep, Azure Policy, Kusto
+- Script version: 0.0.1
+- Category: CLOUD_TOOLS
+- Target: Azure ops/infrastructure teams
+- Replaced: install-tool-powershell.sh (deleted)
+
+**2. install-tool-azure-dev.sh** - Azure Application Development
+- Azure CLI, Functions Core Tools v4, Azurite
+- VS Code: Azure Account, Resources, App Service, Functions, Storage, Service Bus Explorer, Cosmos DB, Bicep
+- Script version: 0.0.1
+- Category: CLOUD_TOOLS
+- Target: Azure application developers
+- Replaced: install-tool-azure.sh (deleted)
+
+**3. install-tool-api-dev.sh** - API Development Tools
+- VS Code: Thunder Client, OpenAPI Editor
+- Script version: 0.0.1
+- Category: CLOUD_TOOLS
+- Target: General API developers (cloud-agnostic)
+
+Implementation notes:
+- Split original Azure/PowerShell scripts into three focused user profiles
+- Fixed bug in lib/core-install-node.sh (npm hanging on packages with version specifiers like @4)
+- All scripts tested and validated (install/uninstall working)
+- Auto-enable/disable functionality working
+
+See original discussion: https://claude.ai/share/e1b9f3ae-1902-4146-9abd-ec7d06dcaad3
 
 ## Documentation & Diagramming Tools
 
@@ -72,12 +103,14 @@ Keep it simple with just Draw.io - most universal and works standalone.
 Other tools can be added if needed, or users install manually.
 
 
-## API developer tool
+## API developer tool ✅ COMPLETED
 
-**API Documentation:**
-- **OpenAPI (Swagger) Editor** (42Crunch.vscode-openapi)
-  - Edit and preview OpenAPI/Swagger specs
-  - https://marketplace.visualstudio.com/items?itemName=42Crunch.vscode-openapi
-- **REST Book** (tanhakabir.rest-book)
-  - Interactive API documentation notebooks
-  - https://marketplace.visualstudio.com/items?itemName=tanhakabir.rest-book
+✅ Created install-tool-api-dev.sh (part of Azure Tools reorganization)
+- Thunder Client (rangav.vscode-thunder-client) - Lightweight REST API client
+- OpenAPI Editor (42crunch.vscode-openapi) - OpenAPI/Swagger editing and validation
+- Script version: 0.0.1
+- Category: CLOUD_TOOLS
+- Extensions-only script (no system/node packages)
+- Target: General API developers (cloud-agnostic)
+
+See Azure Tools section above for full context.
