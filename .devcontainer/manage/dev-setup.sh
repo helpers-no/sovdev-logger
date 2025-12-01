@@ -49,6 +49,14 @@ else
     exit 1
 fi
 
+# Source tool auto-enable library for managing enabled-tools.conf
+if [[ -f "$LIB_DIR/tool-auto-enable.sh" ]]; then
+    source "$LIB_DIR/tool-auto-enable.sh"
+else
+    echo "Error: tool-auto-enable.sh library not found at $LIB_DIR" >&2
+    exit 1
+fi
+
 # Source categories library
 if [[ -f "$LIB_DIR/categories.sh" ]]; then
     source "$LIB_DIR/categories.sh"
@@ -96,6 +104,34 @@ log_error_msg() {
 
 log_info_msg() {
     echo "[$(date +%H:%M:%S)] INFO: $*" >> "$LOG_FILE"
+}
+
+# Error handling helpers
+show_error() {
+    local title="$1"
+    local message="$2"
+
+    log_error_msg "$title: $message"
+    dialog --title "$title" --msgbox "$message" 12 70
+    clear
+}
+
+show_warning() {
+    local title="$1"
+    local message="$2"
+
+    log_info_msg "WARNING - $title: $message"
+    dialog --title "$title" --msgbox "$message" 12 70
+    clear
+}
+
+show_info() {
+    local title="$1"
+    local message="$2"
+
+    log_info_msg "$title: $message"
+    dialog --title "$title" --msgbox "$message" 12 70
+    clear
 }
 
 # Log session start
@@ -440,15 +476,8 @@ scan_available_configs() {
 
 check_config_configured() {
     local config_index=$1
-    local check_command="${CONFIG_CHECK_COMMANDS[$config_index]}"
-
-    # If no check command, assume not configured
-    if [[ -z "$check_command" ]]; then
-        return 1
-    fi
-
-    # Execute the check command
-    eval "$check_command" 2>/dev/null
+    # Delegate to unified status checking function
+    check_config_status "$config_index"
     return $?
 }
 
@@ -1072,6 +1101,89 @@ manage_autostart_services() {
         # Show success message
         dialog --title "Success" --msgbox "Auto-start services updated successfully!" 8 50
         clear
+
+        return 0
+    done
+}
+
+# Manage auto-install tools (similar to auto-start services)
+manage_autoinstall_tools() {
+    while true; do
+        # Build checklist with all tools
+        local checklist_options=()
+        local option_num=1
+
+        for i in "${!AVAILABLE_TOOLS[@]}"; do
+            local tool_name="${AVAILABLE_TOOLS[$i]}"
+            local tool_description="${TOOL_DESCRIPTIONS[$i]}"
+            local script_name="${TOOL_SCRIPTS[$i]}"
+            local script_path="$ADDITIONS_DIR/$script_name"
+
+            # Extract tool ID
+            local tool_id=$(extract_script_metadata "$script_path" "SCRIPT_ID")
+
+            # Build display name
+            local display_name="$tool_name"
+
+            # Check if tool is auto-enabled
+            local status="off"
+            if is_tool_auto_enabled "$tool_id"; then
+                status="on"
+            fi
+
+            checklist_options+=("$option_num" "$display_name" "$status")
+            ((option_num++))
+        done
+
+        # Show checklist
+        local selected
+        selected=$(dialog --clear \
+            --title "Manage Auto-Install Tools" \
+            --checklist "Select tools to auto-install on container build:\n\nSPACE=toggle  ENTER=save  ESC=cancel" \
+            $DIALOG_HEIGHT $DIALOG_WIDTH $MENU_HEIGHT \
+            "${checklist_options[@]}" \
+            2>&1 >/dev/tty)
+
+        # Check if user cancelled (ESC)
+        if [[ $? -ne 0 ]]; then
+            return 0
+        fi
+
+        log_user_choice "Manage Auto-Install Tools" "Updated selections: $selected"
+
+        # Process selections
+        # First, disable all tools
+        for i in "${!AVAILABLE_TOOLS[@]}"; do
+            local script_name="${TOOL_SCRIPTS[$i]}"
+            local script_path="$ADDITIONS_DIR/$script_name"
+            local tool_id=$(extract_script_metadata "$script_path" "SCRIPT_ID")
+            local tool_name="${AVAILABLE_TOOLS[$i]}"
+
+            if is_tool_auto_enabled "$tool_id"; then
+                disable_tool_autoinstall "$tool_id" "$tool_name" >/dev/null 2>&1
+                log_info_msg "Disabled auto-install for: $tool_name ($tool_id)"
+            fi
+        done
+
+        # Then, enable selected tools
+        for selection in $selected; do
+            # Remove quotes from selection
+            selection=$(echo "$selection" | tr -d '"')
+            # Map selection back to actual tool index
+            local tool_index=$((selection - 1))
+            local script_name="${TOOL_SCRIPTS[$tool_index]}"
+            local script_path="$ADDITIONS_DIR/$script_name"
+            local tool_id=$(extract_script_metadata "$script_path" "SCRIPT_ID")
+            local tool_name="${AVAILABLE_TOOLS[$tool_index]}"
+
+            enable_tool_autoinstall "$tool_id" "$tool_name" >/dev/null 2>&1
+            log_info_msg "Enabled auto-install for: $tool_name ($tool_id)"
+        done
+
+        # Show success message
+        dialog --title "Success" --msgbox "Auto-install tools updated successfully!" 8 50
+        clear
+        log_action "Auto-install tools configuration updated"
 
         return 0
     done
@@ -1807,18 +1919,73 @@ create_project_from_template() {
 }
 
 #------------------------------------------------------------------------------
-# Environment information
+# Unified Status Checking Functions
 #------------------------------------------------------------------------------
 
-# Function to check if a tool is installed by reading CHECK_INSTALLED_COMMAND from the script
-check_tool_installed() {
-    local script_name="$1"
+# Check if a tool is installed
+# Args: tool_index (index in AVAILABLE_TOOLS array)
+# Returns: 0 if installed, 1 if not
+check_tool_status() {
+    local tool_index=$1
+    local script_name="${TOOL_SCRIPTS[$tool_index]}"
     local script_path="$ADDITIONS_DIR/$script_name"
 
-    # Extract check command using library
     local check_command=$(extract_script_metadata "$script_path" "CHECK_INSTALLED_COMMAND")
+    check_component_installed "$check_command"
+    return $?
+}
 
-    # Check using library
+# Check if a service's installation prerequisites are met
+# Args: service_index (index in AVAILABLE_SERVICES array)
+# Returns: 0 if installed, 1 if not
+check_service_installed() {
+    local service_index=$1
+    local prerequisite_tools="${SERVICE_PREREQUISITE_TOOLS[$service_index]}"
+
+    if [[ -z "$prerequisite_tools" ]]; then
+        return 0  # No prerequisites means service doesn't need installation
+    fi
+
+    local install_script="$ADDITIONS_DIR/$prerequisite_tools"
+    if [[ ! -f "$install_script" ]]; then
+        return 1  # Install script not found
+    fi
+
+    local check_command=$(extract_script_metadata "$install_script" "CHECK_INSTALLED_COMMAND")
+    check_component_installed "$check_command"
+    return $?
+}
+
+# Check if a config is configured
+# Args: config_index (index in AVAILABLE_CONFIGS array)
+# Returns: 0 if configured, 1 if not
+check_config_status() {
+    local config_index=$1
+    local check_command="${CONFIG_CHECK_COMMANDS[$config_index]}"
+
+    if [[ -z "$check_command" ]]; then
+        return 1  # No check command means not configured
+    fi
+
+    eval "$check_command" 2>/dev/null
+    return $?
+}
+
+# Legacy function for backwards compatibility - now calls check_tool_status
+check_tool_installed() {
+    local script_name="$1"
+
+    # Find tool index by script name
+    for i in "${!TOOL_SCRIPTS[@]}"; do
+        if [[ "${TOOL_SCRIPTS[$i]}" == "$script_name" ]]; then
+            check_tool_status "$i"
+            return $?
+        fi
+    done
+
+    # Fallback: extract metadata directly if not in array
+    local script_path="$ADDITIONS_DIR/$script_name"
+    local check_command=$(extract_script_metadata "$script_path" "CHECK_INSTALLED_COMMAND")
     check_component_installed "$check_command"
     return $?
 }
@@ -1841,9 +2008,10 @@ show_main_menu() {
             "2" "Manage Services" \
             "3" "Setup & Configuration" \
             "4" "Command Tools" \
-            "5" "Create project from template" \
-            "6" "Show Environment Info" \
-            "7" "Exit" \
+            "5" "Manage Auto-Install Tools" \
+            "6" "Create project from template" \
+            "7" "Show Environment Info" \
+            "8" "Exit" \
             2>&1 >/dev/tty)
 
         # Check if user cancelled (ESC or Cancel button)
@@ -1872,18 +2040,28 @@ show_main_menu() {
                 manage_cmds
                 ;;
             5)
-                create_project_from_template
+                log_user_choice "Main Menu" "Manage Auto-Install Tools"
+                if ! scan_available_tools; then
+                    dialog --title "Error" --msgbox "Failed to scan tools" 8 50
+                    clear
+                    continue
+                fi
+                manage_autoinstall_tools
                 ;;
             6)
+                create_project_from_template
+                ;;
+            7)
                 clear
                 bash "$ADDITIONS_DIR/show-environment.sh"
                 read -p "Press Enter to return to menu..." -r
                 clear
                 ;;
-            7)
+            8)
                 clear
                 echo ""
                 echo "✅ Thanks for using $SCRIPT_NAME! 🚀"
+                log_action "dev-setup session ended by user"
                 exit 0
                 ;;
             *)
