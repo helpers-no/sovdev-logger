@@ -51,7 +51,7 @@ source "${COMMON_LIB_DIR}/categories.sh"
 #   - CHECK_INSTALLED_COMMAND, PREREQUISITE_CONFIGS
 #   - SCRIPT_USAGE (optional) - Custom usage text, uses default if not provided
 #   - PACKAGES_SYSTEM, PACKAGES_NODE, PACKAGES_PYTHON, PACKAGES_PWSH
-#   - PACKAGES_GO, PACKAGES_CARGO, PACKAGES_JAVA
+#   - PACKAGES_GO, PACKAGES_CARGO, PACKAGES_DOTNET, PACKAGES_JAVA
 #   - EXTENSIONS
 #
 # Output:
@@ -205,6 +205,15 @@ show_script_help() {
         echo ""
     fi
 
+    if [ ${#PACKAGES_DOTNET[@]} -gt 0 ]; then
+        has_packages=true
+        echo ".NET Tools (dotnet tool install --global):"
+        for pkg in "${PACKAGES_DOTNET[@]}"; do
+            echo "  - $pkg"
+        done
+        echo ""
+    fi
+
     if [ ${#PACKAGES_JAVA[@]} -gt 0 ]; then
         has_packages=true
         echo "Java Build Tools (APT):"
@@ -271,7 +280,7 @@ verify_installations() {
 
 # ============================================================================
 # Function: process_standard_installations
-# Description: Process standard package arrays (SYSTEM, NODE, PYTHON, PWSH, EXTENSIONS)
+# Description: Process standard package arrays (SYSTEM, NODE, PYTHON, PWSH, DOTNET, EXTENSIONS)
 #
 # Usage:
 #   process_standard_installations
@@ -284,12 +293,14 @@ verify_installations() {
 #     * PACKAGES_NODE - NPM global packages
 #     * PACKAGES_PYTHON - Python packages (pip/pipx)
 #     * PACKAGES_PWSH - PowerShell modules
+#     * PACKAGES_DOTNET - .NET global tools
 #     * EXTENSIONS - VS Code extensions
 #   - Processing functions from core-install-*.sh:
 #     * process_system_packages()
 #     * process_node_packages()
 #     * process_python_packages()
 #     * process_pwsh_modules()
+#     * process_dotnet_tools()
 #     * process_extensions()
 #
 # Examples:
@@ -340,6 +351,10 @@ process_standard_installations() {
 
     if [ ${#PACKAGES_CARGO[@]} -gt 0 ]; then
         process_cargo_packages "PACKAGES_CARGO"
+    fi
+
+    if [ ${#PACKAGES_DOTNET[@]} -gt 0 ]; then
+        process_dotnet_tools "PACKAGES_DOTNET"
     fi
 
     if [ ${#EXTENSIONS[@]} -gt 0 ]; then

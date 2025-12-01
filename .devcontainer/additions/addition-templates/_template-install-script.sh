@@ -166,6 +166,10 @@ PACKAGES_SYSTEM=(
 # PACKAGES_PWSH=(
 #     # "Az"
 # )
+#
+# PACKAGES_DOTNET=(
+#     # "Microsoft.PowerApps.CLI.Tool"
+# )
 
 # VS Code extensions
 EXTENSIONS=(
@@ -416,6 +420,7 @@ source "${SCRIPT_DIR}/lib/core-install-system.sh"
 source "${SCRIPT_DIR}/lib/core-install-node.sh"
 source "${SCRIPT_DIR}/lib/core-install-extensions.sh"
 source "${SCRIPT_DIR}/lib/core-install-pwsh.sh"
+source "${SCRIPT_DIR}/lib/core-install-dotnet.sh"
 source "${SCRIPT_DIR}/lib/core-install-python.sh"
 
 # Note: lib/install-common.sh already sourced earlier (needed for --help)
