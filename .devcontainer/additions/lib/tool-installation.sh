@@ -219,6 +219,9 @@ install_enabled_tools() {
     local prereq_failed_count=0
     local install_failed_count=0
 
+    # Disable set -e for the loop to prevent early exit
+    set +e
+
     for i in "${!TOOL_NAMES[@]}"; do
         local tool_name="${TOOL_NAMES[$i]}"
         local script_name="${TOOL_SCRIPTS[$i]}"
@@ -231,21 +234,24 @@ install_enabled_tools() {
 
         case $result in
             0)
-                ((installed_count++))
+                ((installed_count++)) || true
                 ;;
             1)
-                ((skipped_count++))
+                ((skipped_count++)) || true
                 ;;
             2)
-                ((prereq_failed_count++))
+                ((prereq_failed_count++)) || true
                 ;;
             3)
-                ((install_failed_count++))
+                ((install_failed_count++)) || true
                 ;;
         esac
 
         echo ""
     done
+
+    # Re-enable set -e after loop
+    set -e
 
     # Print summary
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -50,8 +50,28 @@ readonly LINE_H="━"       # Line horizontal
 #
 draw_line() {
     local width="${1:-61}"
-    local char="${2:-$LINE_H}"
-    printf '%*s\n' "$width" | tr ' ' "$char"
+    local char="${2:-━}"
+
+    if [ "$width" -eq 61 ] && [ "$char" = "━" ]; then
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    elif [ "$width" -eq 67 ] && [ "$char" = "━" ]; then
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    elif [ "$char" = "─" ]; then
+        # Regular horizontal line for summary
+        if [ "$width" -eq 61 ]; then
+            echo "─────────────────────────────────────────────────────────────"
+        elif [ "$width" -eq 67 ]; then
+            echo "─────────────────────────────────────────────────────────────────"
+        else
+            # Fallback - build the string with sed
+            local line=$(printf "%-${width}s" "" | sed 's/ /─/g')
+            echo "$line"
+        fi
+    else
+        # Fallback for custom character - build with sed
+        local line=$(printf "%-${width}s" "" | sed "s/ /${char}/g")
+        echo "$line"
+    fi
 }
 
 # Draw heavy horizontal line separator (for major sections)
@@ -64,7 +84,15 @@ draw_line() {
 #
 draw_heavy_line() {
     local width="${1:-67}"
-    printf '%*s\n' "$width" | tr ' ' "$HEAVY_H"
+    if [ "$width" -eq 67 ]; then
+        echo "═══════════════════════════════════════════════════════════════════"
+    elif [ "$width" -eq 61 ]; then
+        echo "═══════════════════════════════════════════════════════════"
+    else
+        # Fallback for custom widths - build the string
+        local line=$(printf "%-${width}s" "" | sed 's/ /═/g')
+        echo "$line"
+    fi
 }
 
 #------------------------------------------------------------------------------
@@ -81,10 +109,16 @@ draw_heavy_line() {
 #
 draw_box_top() {
     local width="${1:-67}"
-    local inner_width=$((width - 2))
-    printf "%s" "$BOX_TL"
-    printf '%*s' "$inner_width" "" | tr ' ' "$BOX_H"
-    printf "%s\n" "$BOX_TR"
+    if [ "$width" -eq 67 ]; then
+        echo "┌─────────────────────────────────────────────────────────────────┐"
+    elif [ "$width" -eq 61 ]; then
+        echo "┌─────────────────────────────────────────────────────────────┐"
+    else
+        # Fallback for custom widths - build the string
+        local inner_width=$((width - 2))
+        local line=$(printf "%-${inner_width}s" "" | sed 's/ /─/g')
+        echo "┌${line}┐"
+    fi
 }
 
 # Draw box bottom border
@@ -97,10 +131,16 @@ draw_box_top() {
 #
 draw_box_bottom() {
     local width="${1:-67}"
-    local inner_width=$((width - 2))
-    printf "%s" "$BOX_BL"
-    printf '%*s' "$inner_width" "" | tr ' ' "$BOX_H"
-    printf "%s\n" "$BOX_BR"
+    if [ "$width" -eq 67 ]; then
+        echo "└─────────────────────────────────────────────────────────────────┘"
+    elif [ "$width" -eq 61 ]; then
+        echo "└─────────────────────────────────────────────────────────────┘"
+    else
+        # Fallback for custom widths - build the string
+        local inner_width=$((width - 2))
+        local line=$(printf "%-${inner_width}s" "" | sed 's/ /─/g')
+        echo "└${line}┘"
+    fi
 }
 
 # Draw box with left-aligned title
@@ -385,7 +425,15 @@ clear_screen() {
 #
 printf_line() {
     local width="${1:-61}"
-    printf '%*s\r\n' "$width" | tr ' ' "$LINE_H"
+    if [ "$width" -eq 61 ]; then
+        printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
+    elif [ "$width" -eq 67 ]; then
+        printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
+    else
+        # Fallback for custom widths - build with sed
+        local line=$(printf "%-${width}s" "" | sed 's/ /━/g')
+        printf "%s\r\n" "$line"
+    fi
 }
 
 # Print formatted message with terminal control (for postCreateCommand.sh)

@@ -1885,9 +1885,9 @@ execute_tool_installation() {
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "✅ Successfully installed: $tool_name"
         echo ""
-        echo "💡 To make this permanent for your team:"
-        echo "   Add this line to your setup documentation:"
-        echo "   bash .devcontainer/additions/$script_name"
+        echo "ℹ️  This tool has been auto-enabled for your team."
+        echo "   It will automatically install on next container rebuild."
+        echo "   To disable: Run 'dev-setup' → Manage Auto-Install Tools"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     else
         log_installation "$script_name" "FAILED"
