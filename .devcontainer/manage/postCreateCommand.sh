@@ -16,6 +16,26 @@ ADDITIONS_DIR="$SCRIPT_DIR/../additions"
 # shellcheck source=/dev/null
 source "$ADDITIONS_DIR/lib/install-common.sh"
 
+# Source component scanner library
+# shellcheck source=/dev/null
+source "$ADDITIONS_DIR/lib/component-scanner.sh"
+
+# Source prerequisite check library
+# shellcheck source=/dev/null
+source "$ADDITIONS_DIR/lib/prerequisite-check.sh"
+
+# Source tool installation library
+# shellcheck source=/dev/null
+source "$ADDITIONS_DIR/lib/tool-installation.sh"
+
+# Source environment utilities library
+# shellcheck source=/dev/null
+source "$ADDITIONS_DIR/lib/environment-utils.sh"
+
+# Source display utilities library
+# shellcheck source=/dev/null
+source "$ADDITIONS_DIR/lib/display-utils.sh"
+
 #------------------------------------------------------------------------------
 # Configuration Restoration
 #------------------------------------------------------------------------------
@@ -100,81 +120,28 @@ check_missing_configs() {
 }
 
 #------------------------------------------------------------------------------
-# Version Checks
+# Version Checks (using environment-utils.sh)
 #------------------------------------------------------------------------------
 
-# Check Node.js version
-check_node_version() {
-    echo "Checking Node.js installation..."
-    if command -v node >/dev/null 2>&1; then
-        NODE_VERSION=$(node --version)
-        echo "✅ Node.js is installed (version: $NODE_VERSION)"
-    else
-        echo "❌ Node.js is not installed"
-        exit 1
-    fi
-}
-
-# Check Python version
-check_python_version() {
-    echo "Checking Python installation..."
-    if command -v python >/dev/null 2>&1; then
-        PYTHON_VERSION=$(python --version)
-        echo "✅ Python is installed (version: $PYTHON_VERSION)"
-    else
-        echo "❌ Python is not installed"
-        exit 1
-    fi
-}
-
-# Check global npm packages versions
-check_npm_packages() {
-    echo "📦 Installed npm global packages:"
-    npm list -g --depth=0
-}
+# Note: Version checking functions moved to environment-utils.sh library
+# Available functions:
+#   - check_node_version()
+#   - check_python_version()
+#   - check_npm_packages()
+#   - check_command_version(cmd, flag)
 
 #------------------------------------------------------------------------------
-# Environment Setup
+# Environment Setup (using environment-utils.sh)
 #------------------------------------------------------------------------------
 
-# Setup PATH to include .devcontainer directory
-setup_devcontainer_path() {
-    echo "🔗 Setting up PATH for devcontainer commands..."
-
-    # Add to .bashrc using library function
-    add_to_bashrc \
-        'export PATH="/workspace/.devcontainer:$PATH"' \
-        '# Add devcontainer commands to PATH' \
-        'export PATH="/workspace/.devcontainer:$PATH"'
-
-    # Export for current session
-    export PATH="/workspace/.devcontainer:$PATH"
-}
-
-# Create symlink for dev-setup command (without .sh extension)
-setup_dev_setup_command() {
-    echo "🔗 Setting up devcontainer command symlinks..."
-
-    # Create all command symlinks
-    local commands=("dev-setup" "dev-services" "dev-template" "check-configs" "clean-devcontainer" "show-environment")
-    local created=0
-
-    for cmd in "${commands[@]}"; do
-        # Check if there's a corresponding script or symlink already
-        if [ -f "/workspace/.devcontainer/$cmd" ] || [ -L "/workspace/.devcontainer/$cmd" ]; then
-            ((created++))
-        fi
-    done
-
-    if [ $created -gt 0 ]; then
-        echo "✅ Devcontainer commands available: ${commands[*]}"
-    else
-        echo "⚠️  Some devcontainer commands may not be available"
-    fi
-}
+# Note: Environment setup functions moved to environment-utils.sh library
+# Available functions:
+#   - setup_devcontainer_path()
+#   - setup_command_symlinks()
+#   - setup_git_infrastructure()
 
 #------------------------------------------------------------------------------
-# Git Infrastructure Setup
+# Git Infrastructure Setup (using environment-utils.sh)
 #------------------------------------------------------------------------------
 # NOTE: This is infrastructure setup, NOT user configuration (that's in config-git.sh)
 #
@@ -188,197 +155,25 @@ setup_dev_setup_command() {
 # - core.fileMode: Ignores file permission changes (mounted volumes issue)
 # - core.hideDotFiles: Shows dotfiles properly (cross-platform compatibility)
 #------------------------------------------------------------------------------
+
+# Note: mark_git_folder_as_safe() moved to environment-utils.sh as setup_git_infrastructure()
+# Keeping wrapper for backwards compatibility
 mark_git_folder_as_safe() {
-    # Mark workspace as safe globally (required for mounted volumes)
-    git config --global --add safe.directory /workspace >/dev/null 2>&1
-    git config --global --add safe.directory '*' >/dev/null 2>&1
-
-    # Container-specific git configurations for mounted volumes
-    git config --global core.fileMode false >/dev/null 2>&1      # Ignore file mode changes
-    git config --global core.hideDotFiles false >/dev/null 2>&1  # Show dotfiles
-
-    # Verify git works
-    if git status &>/dev/null; then
-        echo "✅ Git repository configured"
-    else
-        echo "❌ Git setup failed"
-        echo "   Repository owner ID: $(stat -c '%u' /workspace/.git 2>/dev/null || echo 'unknown')"
-        echo "   Container user ID: $(id -u)"
-        return 1
-    fi
+    setup_git_infrastructure
 }
 
 #------------------------------------------------------------------------------
-# Tool Installation
+# Tool Installation (using tool-installation.sh)
 #------------------------------------------------------------------------------
 
 # Run project-specific installations
+# Note: install_project_tools() now uses tool-installation.sh library
 install_project_tools() {
-    echo "🛠️ Installing project-specific tools..."
-    echo ""
+    # Install all tools from enabled-tools.conf using library function
+    install_enabled_tools "$ADDITIONS_DIR"
 
-    local ENABLED_TOOLS_CONF="/workspace/.devcontainer.extend/enabled-tools.conf"
-
-    # Source component scanner library
-    # shellcheck source=/dev/null
-    source "$ADDITIONS_DIR/lib/component-scanner.sh"
-
-    # Source prerequisite check library
-    # shellcheck source=/dev/null
-    source "$ADDITIONS_DIR/lib/prerequisite-check.sh"
-
-    # Arrays for discovered tools
-    local -a TOOL_NAMES=()
-    local -a TOOL_SCRIPTS=()
-    local -a TOOL_CHECK_COMMANDS=()
-    local -a TOOL_PREREQUISITES=()
-
-    # Load enabled tools list
-    local -a ENABLED_TOOLS=()
-
-    echo "📋 Loading enabled tools from enabled-tools.conf..."
-    if [[ -f "$ENABLED_TOOLS_CONF" ]]; then
-        while IFS= read -r line; do
-            # Skip comments and empty lines
-            [[ "$line" =~ ^#.*$ ]] && continue
-            [[ -z "$line" ]] && continue
-            ENABLED_TOOLS+=("$line")
-        done < "$ENABLED_TOOLS_CONF"
-        echo "   Found ${#ENABLED_TOOLS[@]} enabled tools"
-    else
-        echo "⚠️  No enabled-tools.conf found - skipping automated tool installation"
-        return 0
-    fi
-
-    # Discover available install scripts using component-scanner library
-    echo ""
-    echo "🔍 Discovering available tools..."
-
-    while IFS=$'\t' read -r script_basename script_id script_name script_desc script_cat check_cmd prereq_configs; do
-        # Use SCRIPT_ID directly (no conversion needed)
-        local tool_id="$script_id"
-
-        # Check if enabled
-        local is_enabled=false
-        for enabled in "${ENABLED_TOOLS[@]}"; do
-            if [[ "$enabled" == "$tool_id" ]]; then
-                is_enabled=true
-                break
-            fi
-        done
-
-        if [[ "$is_enabled" == true ]]; then
-            TOOL_NAMES+=("$script_name")
-            TOOL_SCRIPTS+=("$script_basename")
-            TOOL_CHECK_COMMANDS+=("$check_cmd")
-            TOOL_PREREQUISITES+=("$prereq_configs")
-            echo "   ✅ $script_name - ENABLED"
-        else
-            echo "   ⏸️  $script_name - disabled"
-        fi
-    done < <(scan_install_scripts "$ADDITIONS_DIR")
-
-    # Install enabled tools
-    if [[ ${#TOOL_NAMES[@]} -eq 0 ]]; then
-        echo ""
-        echo "ℹ️  No tools enabled for installation"
-        return 0
-    fi
-
-    echo ""
-    echo "📦 Installing enabled tools..."
-    echo ""
-
-    local installed_count=0
-    local skipped_count=0
-
-    # Disable set -e for the entire loop to prevent early exit
-    set +e
-
-    for i in "${!TOOL_NAMES[@]}"; do
-        local tool_name="${TOOL_NAMES[$i]}"
-        local script_name="${TOOL_SCRIPTS[$i]}"
-        local check_command="${TOOL_CHECK_COMMANDS[$i]}"
-        local prerequisite_configs="${TOOL_PREREQUISITES[$i]}"
-
-        # Check if already installed
-        if [[ -n "$check_command" ]] && eval "$check_command" 2>/dev/null; then
-            echo "✅ $tool_name - already installed (skipping)"
-            ((skipped_count++))
-        else
-            # Check prerequisites before installing
-            local prerequisites_met=true
-            if [[ -n "$prerequisite_configs" ]]; then
-                if ! check_prerequisite_configs "$prerequisite_configs" "$ADDITIONS_DIR"; then
-                    echo "⚠️  $tool_name - missing prerequisites"
-                    show_missing_prerequisites "$prerequisite_configs" "$ADDITIONS_DIR"
-                    echo ""
-                    echo "  💡 To fix:"
-                    echo "     1. Run: check-configs (configures all missing items)"
-                    echo "     2. Or run each config script listed above"
-                    echo "     3. Then re-run: bash /workspace/.devcontainer/manage/postCreateCommand.sh"
-                    echo ""
-                    echo "❌ $tool_name - installation skipped (prerequisites not met)"
-                    echo ""
-                    prerequisites_met=false
-                fi
-            fi
-
-            # Only install if prerequisites are met
-            if [[ "$prerequisites_met" == true ]]; then
-                echo "📦 Installing $tool_name..."
-                bash "$ADDITIONS_DIR/$script_name"
-                local exit_code=$?
-
-                if [ $exit_code -eq 0 ]; then
-                    echo "✅ $tool_name - installed successfully"
-                    ((installed_count++))
-                else
-                    echo "❌ $tool_name - installation failed (exit code: $exit_code)"
-                fi
-                echo ""
-            fi
-        fi
-    done
-
-    # Re-enable set -e after the loop
-    set -e
-
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "📊 Installation Summary:"
-    echo "   Installed: $installed_count"
-    echo "   Skipped (already installed): $skipped_count"
-    echo "   Total enabled: ${#TOOL_NAMES[@]}"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-
-    # Generate supervisor configs and start services (silently)
-    if command -v supervisord >/dev/null 2>&1; then
-        set +e
-        # Run config generation silently
-        bash "$ADDITIONS_DIR/config-supervisor.sh" > /dev/null 2>&1
-
-        # Start supervisor if configs exist and it's not running
-        if [ -d /etc/supervisor/conf.d ] && [ "$(ls -A /etc/supervisor/conf.d/*.conf 2>/dev/null)" ]; then
-            if ! pgrep supervisord > /dev/null 2>&1; then
-                # Start supervisord in background
-                sudo supervisord -c /etc/supervisor/supervisord.conf > /dev/null 2>&1 &
-                sleep 3
-            else
-                # Reload to pick up any new configs
-                sudo supervisorctl reread > /dev/null 2>&1
-                sudo supervisorctl update > /dev/null 2>&1
-            fi
-        fi
-        set -e
-    fi
-
-    # Reset terminal state completely (config-supervisor.sh uses tee which corrupts terminal)
-    # The tee command in logging.sh leaves terminal without proper CR/LF
-    # Send carriage return + newline to reset cursor position
-    printf "\r\n"
-    # Force terminal to process the reset
-    sleep 0.1
+    # Start supervisor services if available
+    start_supervisor_services "$ADDITIONS_DIR"
 }
 
 #------------------------------------------------------------------------------
@@ -391,8 +186,8 @@ main() {
     # Setup PATH to include devcontainer commands
     setup_devcontainer_path
 
-    # Create dev-setup symlink for easy access
-    setup_dev_setup_command
+    # Create command symlinks for easy access
+    setup_command_symlinks
 
     # Mark the git folder as safe
     mark_git_folder_as_safe
@@ -414,7 +209,7 @@ main() {
     install_project_tools
 
     # Force terminal reset before custom installations (supervisor may have corrupted it)
-    printf "\r" && sleep 0.1
+    reset_terminal
 
     # Call project-specific custom installations
     local PROJECT_INSTALLS="/workspace/.devcontainer.extend/project-installs.sh"
@@ -425,38 +220,37 @@ main() {
     fi
 
     # Reset terminal again before final message
-    printf "\r\n"
-    sleep 0.1
+    reset_terminal
 
     # Show completion message with helpful commands
     printf "\r\n"
-    printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
-    printf "🎉 Post-creation setup complete!\r\n"
-    printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
+    printf_line 61
+    printf_msg "🎉 Post-creation setup complete!"
+    printf_line 61
     printf "\r\n"
-    printf "📋 Quick Start:\r\n"
+    printf_msg "📋 Quick Start:"
     printf "\r\n"
-    printf "   dev-setup                 Main menu - install tools, manage services\r\n"
-    printf "   check-configs             Configure required settings (Git identity, etc.)\r\n"
-    printf "   dev-template              Initialize project from template\r\n"
-    printf "   show-environment          Show detailed environment status\r\n"
+    printf_msg "   dev-setup                 Main menu - install tools, manage services"
+    printf_msg "   check-configs             Configure required settings (Git identity, etc.)"
+    printf_msg "   dev-template              Initialize project from template"
+    printf_msg "   show-environment          Show detailed environment status"
     printf "\r\n"
-    printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
+    printf_line 61
     printf "\r\n"
 
     # Check if Git identity is configured and show warning at the BOTTOM
     if ! git config --global user.name >/dev/null 2>&1 || ! git config --global user.email >/dev/null 2>&1; then
-        printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
-        printf "⚠️  FIRST TIME SETUP REQUIRED\r\n"
-        printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
+        printf_line 61
+        printf_msg "⚠️  FIRST TIME SETUP REQUIRED"
+        printf_line 61
         printf "\r\n"
-        printf "   Your Git identity is not configured yet.\r\n"
-        printf "   This is required before you can make Git commits.\r\n"
+        printf_msg "   Your Git identity is not configured yet."
+        printf_msg "   This is required before you can make Git commits."
         printf "\r\n"
-        printf "   Run this command to configure it:\r\n"
-        printf "     check-configs\r\n"
+        printf_msg "   Run this command to configure it:"
+        printf_msg "     check-configs"
         printf "\r\n"
-        printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n"
+        printf_line 61
         printf "\r\n"
     fi
 }

@@ -73,6 +73,14 @@ else
     exit 1
 fi
 
+# Source tool-installation library for interactive tool installation
+if [[ -f "$LIB_DIR/tool-installation.sh" ]]; then
+    source "$LIB_DIR/tool-installation.sh"
+else
+    echo "Error: tool-installation.sh library not found at $LIB_DIR" >&2
+    exit 1
+fi
+
 # Setup structured logging
 # Create log directory and file for this session
 LOG_DIR="${DEVCONTAINER_LOG_DIR:-/tmp/devcontainer-setup}"
@@ -1826,6 +1834,9 @@ show_tool_details_and_confirm() {
 }
 
 execute_tool_installation() {
+    # Interactive wrapper for tool installation
+    # Uses tool-installation.sh library functions for prerequisite checking
+    # Keeps interactive elements (dialog, clear, read) for user experience
     local tool_index=$1
     local tool_name="${AVAILABLE_TOOLS[$tool_index]}"
     local script_name="${TOOL_SCRIPTS[$tool_index]}"

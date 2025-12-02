@@ -41,6 +41,14 @@ source "$SCRIPT_DIR/lib/component-scanner.sh"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/lib/categories.sh"
 
+# Source display utilities library for box drawing and formatting
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/lib/display-utils.sh"
+
+# Source environment utilities library for container/host info
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/lib/environment-utils.sh"
+
 # Global arrays for tools
 declare -a AVAILABLE_TOOLS=()
 declare -a TOOL_SCRIPTS=()
@@ -252,119 +260,33 @@ get_config_source() {
 # Display functions
 #------------------------------------------------------------------------------
 
-get_container_name() {
-    # Try multiple methods to get container name
-
-    # Method 1: Try docker inspect if socket is available
-    if command -v docker >/dev/null 2>&1; then
-        local container_id=$(hostname)
-        local name=$(docker inspect --format='{{.Name}}' "$container_id" 2>/dev/null | sed 's/^\///')
-        if [[ -n "$name" ]]; then
-            echo "$name"
-            return 0
-        fi
-    fi
-
-    # Method 2: Parse devcontainer.json
-    if [[ -f /workspace/.devcontainer/devcontainer.json ]]; then
-        local name=$(grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' /workspace/.devcontainer/devcontainer.json | cut -d'"' -f4)
-        if [[ -n "$name" ]]; then
-            # Convert to lowercase and replace spaces with hyphens (Docker container naming convention)
-            name=$(echo "$name" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
-            echo "$name"
-            return 0
-        fi
-    fi
-
-    # Method 3: Fallback to just container ID
-    echo "$(hostname)"
-}
-
-get_docker_stats() {
-    # Get Docker server statistics if Docker is available
-    if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-        local docker_info=$(docker info 2>/dev/null)
-
-        # Extract statistics
-        local total=$(echo "$docker_info" | grep "^ Containers:" | awk '{print $2}')
-        local running=$(echo "$docker_info" | grep "^  Running:" | awk '{print $2}')
-        local stopped=$(echo "$docker_info" | grep "^  Stopped:" | awk '{print $2}')
-        local paused=$(echo "$docker_info" | grep "^  Paused:" | awk '{print $2}')
-        local images=$(echo "$docker_info" | grep "^ Images:" | awk '{print $2}')
-
-        # Only output if we got valid data
-        if [[ -n "$total" ]]; then
-            echo "total=$total;running=$running;stopped=$stopped;paused=$paused;images=$images"
-            return 0
-        fi
-    fi
-
-    return 1
-}
+# Note: get_container_name() and get_docker_stats() moved to environment-utils.sh library
+# Using library functions instead
 
 show_environment_info() {
     # Add buffer and ensure clean output
     echo ""
     echo ""
 
-    echo "═══════════════════════════════════════════════════════════════════"
-    echo "                    DEVELOPMENT ENVIRONMENT"
-    echo "═══════════════════════════════════════════════════════════════════"
+    draw_title_bar "DEVELOPMENT ENVIRONMENT" 67
     echo ""
 
-    echo "┌─────────────────────────────────────────────────────────────────┐"
-    echo "│ HOST ENVIRONMENT                                                 │"
-    echo "└─────────────────────────────────────────────────────────────────┘"
+    draw_box_title "HOST ENVIRONMENT" 67
 
-    # Host information (if available)
-    if [ -f /workspace/.devcontainer.secrets/env-vars/.host-info ]; then
-        # shellcheck source=/dev/null
-        source /workspace/.devcontainer.secrets/env-vars/.host-info
-        echo "  Operating System:  $HOST_OS"
-        echo "  User:              $HOST_USER"
-        echo "  Hostname:          $HOST_HOSTNAME"
-        [ -n "$HOST_DOMAIN" ] && echo "  Domain:            $HOST_DOMAIN" || echo "  Domain:            none"
-        echo "  Architecture:      $HOST_CPU_ARCH"
-    else
-        echo "  Host information not available"
-    fi
+    # Host information (using library function)
+    show_host_info
     echo ""
 
-    echo "┌─────────────────────────────────────────────────────────────────┐"
-    echo "│ CONTAINER ENVIRONMENT                                            │"
-    echo "└─────────────────────────────────────────────────────────────────┘"
+    draw_box_title "CONTAINER ENVIRONMENT" 67
 
-    # Container info
-    local container_name=$(get_container_name)
-    echo "  Container Name:    $container_name"
-    echo "  Container ID:      $(whoami)@$(hostname)"
-    if [[ -f /etc/os-release ]]; then
-        echo "  Base Image:        $(grep PRETTY_NAME /etc/os-release | cut -d'"' -f2)"
-    fi
-    # System resources
-    local disk_info=$(df -h / | awk 'NR==2 {print $4 " free of " $2}')
-    echo "  Disk Space:        $disk_info"
-    echo "  Working Directory: $(pwd)"
+    # Container info (using library function)
+    show_container_info
 
-    # Docker server statistics (if available)
-    local docker_stats=$(get_docker_stats)
-    if [[ -n "$docker_stats" ]]; then
-        # Parse the statistics
-        local total=$(echo "$docker_stats" | cut -d';' -f1 | cut -d'=' -f2)
-        local running=$(echo "$docker_stats" | cut -d';' -f2 | cut -d'=' -f2)
-        local stopped=$(echo "$docker_stats" | cut -d';' -f3 | cut -d'=' -f2)
-        local paused=$(echo "$docker_stats" | cut -d';' -f4 | cut -d'=' -f2)
-        local images=$(echo "$docker_stats" | cut -d';' -f5 | cut -d'=' -f2)
-
-        echo "  Docker Server:"
-        echo "    Containers:      $total (Running: $running, Stopped: $stopped, Paused: $paused)"
-        echo "    Images:          $images"
-    fi
+    # Docker server statistics (using library function)
+    show_docker_stats
     echo ""
 
-    echo "┌─────────────────────────────────────────────────────────────────┐"
-    echo "│ RUNTIME ENVIRONMENT                                              │"
-    echo "└─────────────────────────────────────────────────────────────────┘"
+    draw_box_title "RUNTIME ENVIRONMENT" 67
     # Base tools from container image
     command -v python3 >/dev/null && echo "  ✅ Python $(python3 --version | cut -d' ' -f2)"
     command -v node >/dev/null && echo "  ✅ Node.js $(node --version | sed 's/v//')"
@@ -382,9 +304,7 @@ show_environment_info() {
     # Available tools organized by category
     scan_available_tools >/dev/null 2>&1 || true
     if [[ ${#AVAILABLE_TOOLS[@]} -gt 0 ]]; then
-        echo "┌─────────────────────────────────────────────────────────────────┐"
-        echo "│ INSTALLED TOOLS BY CATEGORY                                      │"
-        echo "└─────────────────────────────────────────────────────────────────┘"
+        draw_box_title "INSTALLED TOOLS BY CATEGORY" 67
         echo ""
 
         total_tools=${#AVAILABLE_TOOLS[@]}
@@ -443,9 +363,7 @@ show_environment_info() {
     # Running services
     scan_available_services >/dev/null 2>&1 || true
     if [[ ${#AVAILABLE_SERVICES[@]} -gt 0 ]]; then
-        echo "┌─────────────────────────────────────────────────────────────────┐"
-        echo "│ SERVICES                                                         │"
-        echo "└─────────────────────────────────────────────────────────────────┘"
+        draw_box_title "SERVICES" 67
 
         total_services=${#AVAILABLE_SERVICES[@]}
 
@@ -472,9 +390,7 @@ show_environment_info() {
 
     scan_available_configs >/dev/null 2>&1 || true
     if [[ ${#AVAILABLE_CONFIGS[@]} -gt 0 ]]; then
-        echo "┌─────────────────────────────────────────────────────────────────┐"
-        echo "│ CONFIGURATIONS                                                   │"
-        echo "└─────────────────────────────────────────────────────────────────┘"
+        draw_box_title "CONFIGURATIONS" 67
 
         total_configs=${#AVAILABLE_CONFIGS[@]}
 
@@ -511,7 +427,7 @@ show_environment_info() {
         local configs_pct=$((configured_count * 100 / total_configs))
         echo "  Configurations: $configured_count of $total_configs configured ($configs_pct%)"
     fi
-    echo "═══════════════════════════════════════════════════════════════════"
+    draw_heavy_line 67
     echo ""
 }
 
