@@ -34,9 +34,9 @@
             // Universal extensions useful for any project
             "extensions": [
                 "yzhang.markdown-all-in-one",
-                "bierner.markdown-mermaid",
+                "MermaidChart.vscode-mermaid-chart",
                 "redhat.vscode-yaml",
-                "donjayamanne.githistory",
+                "mhutchie.git-graph",
                 "timonwong.shellcheck"
             ]
         }
