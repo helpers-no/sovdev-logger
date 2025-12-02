@@ -82,7 +82,9 @@ draw_heavy_line() {
 draw_box_top() {
     local width="${1:-67}"
     local inner_width=$((width - 2))
-    printf "%s%*s%s\n" "$BOX_TL" "$inner_width" | tr ' ' "$BOX_H" | sed "s/$/$BOX_TR/"
+    printf "%s" "$BOX_TL"
+    printf '%*s' "$inner_width" "" | tr ' ' "$BOX_H"
+    printf "%s\n" "$BOX_TR"
 }
 
 # Draw box bottom border
@@ -96,7 +98,9 @@ draw_box_top() {
 draw_box_bottom() {
     local width="${1:-67}"
     local inner_width=$((width - 2))
-    printf "%s%*s%s\n" "$BOX_BL" "$inner_width" | tr ' ' "$BOX_H" | sed "s/$/$BOX_BR/"
+    printf "%s" "$BOX_BL"
+    printf '%*s' "$inner_width" "" | tr ' ' "$BOX_H"
+    printf "%s\n" "$BOX_BR"
 }
 
 # Draw box with left-aligned title
