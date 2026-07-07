@@ -20,7 +20,8 @@ obj/
 out/
 
 # IDE
-.vscode/
+.vscode/*
+!.vscode/extensions.json
 .idea/
 .claude/settings.local.json
 *.swp
@@ -83,3 +84,6 @@ terchris/
 
 # Devcontainer secrets folder - contains credentials (NEVER commit)
 .devcontainer.secrets/
+
+# DevContainer Toolbox - devcontainer.json backups from dev-update
+.devcontainer/backup/
