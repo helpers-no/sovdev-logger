@@ -1,3 +1,8 @@
+---
+mdx:
+  format: md
+---
+
 # Running Two Claude Sessions in the Same Repo
 
 Running multiple Claude Code (or Claude VS Code) sessions against the same

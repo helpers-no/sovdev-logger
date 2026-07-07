@@ -1,3 +1,8 @@
+---
+mdx:
+  format: md
+---
+
 # AI Developer Guide
 
 Instructions for AI coding assistants working on this project.
@@ -22,8 +27,8 @@ AI coding assistants are powerful but need structure to be effective. This syste
 | [PLANS.md](PLANS.md) | Plan structure, investigation guidance, templates | When creating or implementing a plan |
 | [DEVCONTAINER.md](DEVCONTAINER.md) | How to work inside the devcontainer | When running commands or installing tools |
 | [GIT.md](GIT.md) | Git safety rules and platform operations | When doing git operations |
-| [AZURE-DEVOPS.md](AZURE-DEVOPS.md) | Operating Azure DevOps (PRs, pipelines, work items) via the `az` CLI | When the repo's `origin` is Azure DevOps |
 | [TALK.md](TALK.md) | AI-to-AI testing protocol | When working with a tester |
+| [WORKTREE.md](WORKTREE.md) | Running two AI sessions in the same repo | When you need parallel work on separate branches |
 
 ---
 
@@ -35,7 +40,7 @@ When starting a new session, read files in this order:
 2. **Read all `template-*.md` files** (if any) — tech stack from installed templates
 3. **Read [WORKFLOW.md](WORKFLOW.md)** when starting new work
 4. **Read [PLANS.md](PLANS.md)** when creating or implementing a plan
-5. **Reference** [DEVCONTAINER.md](DEVCONTAINER.md), [GIT.md](GIT.md), [AZURE-DEVOPS.md](AZURE-DEVOPS.md), [TALK.md](TALK.md) as needed — but only if the project-*.md files indicate they apply
+5. **Reference** [DEVCONTAINER.md](DEVCONTAINER.md), [GIT.md](GIT.md), [TALK.md](TALK.md), [WORKTREE.md](WORKTREE.md) as needed — but only if the project-*.md files indicate they apply
 
 ---
 

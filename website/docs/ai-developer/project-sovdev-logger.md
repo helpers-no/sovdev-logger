@@ -41,12 +41,13 @@ sovdev-logger/
 │
 └── website/docs/ai-developer/    — this folder
     ├── README.md, WORKFLOW.md, PLANS.md, GIT.md,
-    ├── AZURE-DEVOPS.md, TALK.md, WORKTREE.md, DEVCONTAINER.md
+    ├── TALK.md, WORKTREE.md, DEVCONTAINER.md
     ├── project-sovdev-logger.md  — this file
     └── plans/                     — INVESTIGATE-*.md + PLAN-*.md
-        ├── backlog/
+        ├── backlog/                — 1PRIORITY.md lives here (triage view)
         ├── active/
-        └── completed/
+        ├── completed/
+        └── talk/                   — AI-to-AI testing sessions (TALK.md protocol)
 ```
 
 ---
@@ -98,7 +99,7 @@ Unlike noclickops's docs site, there is no content-generator script here — doc
 
 ## Platform: GitHub
 
-This repo is on **GitHub** (`https://github.com/helpers-no/sovdev-logger`, forked from `norwegianredcross/sovdev-logger`), not Azure DevOps. Ignore the Azure DevOps half of [`AZURE-DEVOPS.md`](AZURE-DEVOPS.md); use the **GitHub Operations (`gh`) section of [`GIT.md`](GIT.md)** for PR mechanics here.
+This repo is on **GitHub** (`https://github.com/helpers-no/sovdev-logger`, forked from `norwegianredcross/sovdev-logger`), not Azure DevOps — use the **GitHub Operations (`gh`) section of [`GIT.md`](GIT.md)** for PR mechanics here. There is no `AZURE-DEVOPS.md` in this folder (dropped, since this repo never touches Azure DevOps); if a future repo in this org needs it, pull it back in from `noclickops`'s copy.
 
 ---
 
@@ -114,7 +115,7 @@ Required flow: **branch → commit → push → PR → merge**. This repo lives 
 
 ### Two related-but-separate repos in this org
 
-`helpers-no/sovdev-logger` (this repo) is unrelated in *purpose* to `helpers-no/devcontainer-toolbox` and `helpers-no/noclickops`, but shares the same devcontainer and AI-developer-workflow conventions with them — the `website/docs/ai-developer/` framework docs in this folder were copied from `noclickops` and are meant to stay portable across all three.
+`helpers-no/sovdev-logger` (this repo) is unrelated in *purpose* to `helpers-no/devcontainer-toolbox`, `helpers-no/noclickops`, and `ollacrm`, but shares the same devcontainer and AI-developer-workflow conventions with them. The `website/docs/ai-developer/` framework docs in this folder were originally copied from `noclickops`, then refreshed from `ollacrm`'s more mature version (one-line-abstract convention for plan/investigation/talk headers, cluster naming for grouped investigations, `plans/talk/` for in-repo AI-to-AI testing sessions, `plans/backlog/1PRIORITY.md` for triage) — meant to stay portable across all of them.
 
 ---
 

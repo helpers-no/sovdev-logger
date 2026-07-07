@@ -1,3 +1,8 @@
+---
+mdx:
+  format: md
+---
+
 # Working Inside the DevContainer
 
 All projects use the **DevContainer Toolbox (DCT)** for development. The AI must run all commands inside the devcontainer, never on the host machine.

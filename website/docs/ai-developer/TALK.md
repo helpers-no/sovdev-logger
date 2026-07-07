@@ -1,3 +1,8 @@
+---
+mdx:
+  format: md
+---
+
 # Talk — AI-to-AI Testing Protocol
 
 Talk is a file-based communication protocol that enables two separate AI coding sessions to collaborate on testing. One session develops and builds, the other tests as a fresh user. They communicate by appending messages to a shared `talk.md` file.
@@ -78,6 +83,8 @@ Contributor                              Tester
 ```markdown
 # Talk - [Feature Name]
 
+One-line description of the channel: who the two parties are and what it coordinates.
+
 **Date**: YYYY-MM-DD
 **Previous**: [talk<N>.md](talk<N>.md) — Previous session title
 **Plan**: [PLAN-xyz.md](path/to/plan)
@@ -87,6 +94,8 @@ Contributor                              Tester
 
 ---
 ```
+
+The **one-line description** must be the first prose line, immediately after the H1. In setups where the talk folder lives outside the repo this is just a helpful summary; in repos where the talk folder is rendered as docs (e.g. this one keeps it under `plans/talk/`), the `plans/talk` index is a Docusaurus `generated-index` whose card blurb is auto-derived from this line — without it the card shows `**Date**: …` instead of a useful summary. See [PLANS.md](PLANS.md) → "Header" for the same convention on PLAN/INVESTIGATE docs.
 
 ### Messages
 
