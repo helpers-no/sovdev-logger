@@ -74,7 +74,12 @@ def fetch_company_data(org_number: str) -> dict:
     response = requests.get(url, timeout=10)
 
     if response.status_code != 200:
-        raise Exception(f'HTTP {response.status_code}:')
+        # Match typescript/test/e2e/company-lookup/company-lookup.ts's
+        # `HTTP ${res.statusCode}: ${data}` exactly, including the response
+        # body -- confirmed empty for this specific BRREG 404, same as
+        # TypeScript's accumulated `data`, so this also matches its trailing
+        # "HTTP 404: " (colon-space-nothing), not a coincidence to preserve.
+        raise Exception(f'HTTP {response.status_code}: {response.text}')
 
     return response.json()
 

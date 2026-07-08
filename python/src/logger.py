@@ -62,6 +62,17 @@ except ImportError:
 span_storage: ContextVar[Optional[Span]] = ContextVar("active_span", default=None)
 
 # =============================================================================
+# NOT-PROVIDED SENTINEL
+# =============================================================================
+# Python's `None` default can't distinguish "caller omitted this argument" from
+# "caller explicitly passed None" the way JavaScript distinguishes `undefined`
+# from `null` (see typescript/src/logger.ts's own remove_undefined_fields,
+# which filters `value !== undefined` and deliberately preserves explicit
+# `null`). input_json/response_json need that same distinction: omitted ->
+# field absent from output; explicitly None -> field present as `null`.
+_NOT_PROVIDED = object()
+
+# =============================================================================
 # TYPE DEFINITIONS
 # =============================================================================
 
@@ -110,11 +121,6 @@ global_logger_provider: Optional[LoggerProvider] = None
 def get_service_version() -> str:
     """Auto-detect service version from environment or default."""
     return os.environ.get("SERVICE_VERSION", os.environ.get("PYTHON_VERSION", "1.0.0"))
-
-
-def remove_undefined_fields(obj: Dict[str, Any]) -> Dict[str, Any]:
-    """Remove None fields for cleaner JSON output."""
-    return {k: v for k, v in obj.items() if v is not None}
 
 
 # =============================================================================
@@ -177,8 +183,12 @@ class JSONFormatter(logging.Formatter):
             log_entry["exception_message"] = getattr(record, "exception_message", "")
             log_entry["exception_stacktrace"] = getattr(record, "exception_stacktrace", "")
 
-        # Remove None values
-        log_entry = remove_undefined_fields(log_entry)
+        # Do NOT strip None values here: input_json/response_json must always be
+        # present, even as null, when there's no input/response (spec requirement,
+        # see specification/00-design-principles.md's "Always Include responseJSON
+        # Field" decision and 07-anti-patterns.md). Fields that should genuinely be
+        # omitted (e.g. span_id with no active span) are only added to log_entry
+        # above when they have a real value, so there's nothing left to strip.
 
         return json.dumps(log_entry, ensure_ascii=False)
 
@@ -440,9 +450,16 @@ class InternalSovdevLogger:
             "trace_id": temp_trace_id,
             "event_id": event_id,
             "log_type": log_type,
-            "input_json": input_json,
-            "response_json": response_json,
         }
+
+        # Omitted entirely when the caller didn't pass the argument at all;
+        # present as null when the caller explicitly passed None. See the
+        # _NOT_PROVIDED sentinel's module-level comment for why this can't
+        # just be "input_json": input_json.
+        if input_json is not _NOT_PROVIDED:
+            log_entry["input_json"] = input_json
+        if response_json is not _NOT_PROVIDED:
+            log_entry["response_json"] = response_json
 
         # Spread exception fields at top level if present
         if processed_exception:
@@ -570,8 +587,8 @@ class InternalSovdevLogger:
         function_name: str,
         message: str,
         peer_service: str,
-        input_json: Any = None,
-        response_json: Any = None,
+        input_json: Any = _NOT_PROVIDED,
+        response_json: Any = _NOT_PROVIDED,
         exception_object: Optional[BaseException] = None,
     ) -> None:
         """Main logging method - for transaction/request-response logs."""
@@ -870,8 +887,8 @@ def sovdev_log(
     function_name: str,
     message: str,
     peer_service: str,
-    input_json: Any = None,
-    response_json: Any = None,
+    input_json: Any = _NOT_PROVIDED,
+    response_json: Any = _NOT_PROVIDED,
     exception: Optional[BaseException] = None,
 ) -> None:
     """
@@ -882,8 +899,10 @@ def sovdev_log(
         function_name: Name of the function where logging occurs
         message: Human-readable description of what happened
         peer_service: Peer service identifier (use PEER_SERVICES.INTERNAL for internal operations)
-        input_json: Valid JSON object containing function input parameters (optional)
-        response_json: Valid JSON object containing function output/response data (optional)
+        input_json: Valid JSON object containing function input parameters. Omit entirely for no
+            input; pass None explicitly if you want "input_json": null in the output.
+        response_json: Valid JSON object containing function output/response data. Omit entirely
+            for no response yet; pass None explicitly if you want "response_json": null.
         exception: Exception/error object (optional, None if no exception)
     """
     # Extract string value from enum

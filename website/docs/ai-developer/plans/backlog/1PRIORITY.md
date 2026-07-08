@@ -30,7 +30,7 @@ tool, not a roadmap.
 
 ## Tier 1 — next up
 
-- [INVESTIGATE-multi-language-conformance.md](INVESTIGATE-multi-language-conformance.md) — **accepted 2026-07-08.** [`PLAN-001-master-comparison-mode.md`](../completed/PLAN-001-master-comparison-mode.md) **completed** (branch `feature/master-comparison-mode`, committed but not yet merged): `compare-with-master.sh`/`compare-log-files.py` built and verified against the real devcontainer; Loki severity-schema gap closed. Found two real bugs in the current Python implementation (`response_json` dropped, `exception_message` whitespace) for the next plan to fix. Next: `PLAN-002-python-conformance.md` (fix those, re-run until clean, execute the promotion step to flip `README.md`). `PLAN-003` (cut `llm-work-templates/` scaffolding) and `PLAN-004` (schema-driven field-name generation) follow. Python must pass before any other language is attempted.
+- [INVESTIGATE-multi-language-conformance.md](INVESTIGATE-multi-language-conformance.md) — **accepted 2026-07-08.** [`PLAN-001-master-comparison-mode.md`](../completed/PLAN-001-master-comparison-mode.md) and [`PLAN-002-python-conformance.md`](../completed/PLAN-002-python-conformance.md) **both completed** (branches `feature/master-comparison-mode` + `feature/python-conformance`, committed but not yet merged/pushed). **Python is now conformant and promoted**: `compare-with-master.sh python` passes with zero mismatches, `python/README.md` exists, `README.md` shows Python as "✅ Available". Next: `PLAN-003-spec-scaffolding-cleanup.md` (cut `llm-work-templates/`) and `PLAN-004-schema-driven-field-generation.md` follow — then decide whether Go/C#/Rust/PHP restart from scratch or from their archived `terchris/implementation-tests/` state.
 
 ## Tier 2 — real, not urgent
 

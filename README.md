@@ -2,7 +2,7 @@
 
 **Multi-language structured logging with zero-effort observability**
 
-One log call. Complete observability. Currently available for TypeScript, with Go, Python, C#, Rust, PHP, and more planned.
+One log call. Complete observability. Currently available for TypeScript and Python, with Go, C#, Rust, PHP, and more planned.
 
 ---
 
@@ -74,8 +74,8 @@ Help them get home to their family. Help yourself build a reputation as someone 
 | Language | Status | Documentation |
 |----------|--------|---------------|
 | **TypeScript** | ✅ Available | [typescript/README.md](typescript/README.md) |
+| **Python** | ✅ Available | [python/README.md](python/README.md) |
 | **Go** | 📅 Planned | - |
-| **Python** | 📅 Planned | - |
 | **C#** | 📅 Planned | - |
 | **Rust** | 📅 Planned | - |
 | **PHP** | 📅 Planned | - |
@@ -88,7 +88,7 @@ Help them get home to their family. Help yourself build a reputation as someone 
 **You want to USE sovdev-logger in your application**
 
 **→ Quick Start:**
-1. Currently available: [TypeScript](typescript/README.md) (Go, Python, and other languages planned)
+1. Currently available: [TypeScript](typescript/README.md), [Python](python/README.md) (Go and other languages planned)
 2. Read [Configuration Guide](docs/README-configuration.md)
 3. See [Examples](#example-typescript) below or in [Log Data Structure](docs/logging-data.md)
 4. [Verify logs in Grafana](docs/README-observability-architecture.md)
@@ -104,14 +104,15 @@ Help them get home to their family. Help yourself build a reputation as someone 
 5. Study [typescript/src/logger.ts](typescript/src/logger.ts) - Reference implementation
 
 **Current implementations:**
-- ✅ TypeScript (complete) - [typescript/](typescript/)
-- 📅 Go (planned)
-- 📅 Python (planned)
+- ✅ TypeScript (master implementation) - [typescript/](typescript/)
+- ✅ Python (conformant — verified against TypeScript, see below) - [python/](python/)
+- 📅 Go, C#, Rust, PHP (planned)
 
 **Validation (run in DevContainer):**
 ```bash
 # From inside DevContainer at /workspace/
-cd /workspace/specification/tools && ./run-company-lookup-validate.sh {language}
+cd /workspace/specification/tools && ./run-full-validation.sh {language}
+./compare-with-master.sh {language}   # the authoritative "identical output" check
 ```
 
 ---
@@ -126,11 +127,15 @@ npm install @sovdev/logger
 
 See [typescript/README.md](typescript/README.md) for complete documentation.
 
+### Python
+
+```bash
+pip install -r requirements.txt  # from the python/ directory — not yet on PyPI as a standalone package
+```
+
+See [python/README.md](python/README.md) for complete documentation.
+
 ### Go (Planned)
-
-Coming soon.
-
-### Python (Planned)
 
 Coming soon.
 
@@ -335,8 +340,8 @@ process.on('beforeExit', async () => {
 ### Quick Start by Language
 
 - **TypeScript**: [typescript/README.md](typescript/README.md) - Complete API reference, examples, patterns
-- **Go**: Planned for 2025
-- **Python**: Planned for 2025
+- **Python**: [python/README.md](python/README.md) - Complete API reference, examples, patterns
+- **Go**: Planned
 
 ### Detailed Documentation
 
@@ -369,9 +374,10 @@ This repository implements a multi-language logging library with identical outpu
 
 **Development Status:**
 
-- ✅ **Specification v1.1.0** - Complete implementation guide
-- ✅ **TypeScript** - Complete, reference implementation (snake_case API)
-- 📅 **Go, Python, C#, Rust, PHP** - Planned for 2025
+- ✅ **Specification v2.0.0** - Complete implementation guide
+- ✅ **TypeScript** - Complete, master implementation (snake_case API)
+- ✅ **Python** - Conformant, verified field-for-field against TypeScript via `specification/tools/compare-with-master.sh`
+- 📅 **Go, C#, Rust, PHP** - Planned
 
 **All implementations follow:**
 - Identical API (8 functions)
