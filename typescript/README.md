@@ -1334,7 +1334,7 @@ All log fields use snake_case (lowercase with underscores) to ensure consistent 
 
 ```bash
 # Clone the repository
-git clone https://github.com/terchris/sovdev-logger.git
+git clone https://github.com/helpers-no/sovdev-logger.git
 cd sovdev-logger/typescript
 
 # Install dependencies
@@ -1392,4 +1392,4 @@ MIT
 
 ## Repository
 
-[https://github.com/terchris/sovdev-logger](https://github.com/terchris/sovdev-logger)
+[https://github.com/helpers-no/sovdev-logger](https://github.com/helpers-no/sovdev-logger)

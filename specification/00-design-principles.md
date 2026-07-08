@@ -41,6 +41,9 @@ Every log entry is a structured JSON object with standardized fields:
 - **Graceful Degradation**: System continues working if OpenTelemetry export fails
 
 ### 5. OpenTelemetry Integration
+
+See [Why OTLP](https://sovdev-logger.sovereignsky.no/general/why-otlp) for why this project is built on OpenTelemetry/OTLP specifically, including the real costs — this section covers what the integration provides, not why it was chosen.
+
 Full OpenTelemetry SDK integration providing:
 - **Logs**: OTLP log export with semantic conventions
 - **Metrics**: Automatic counters and histograms from log calls

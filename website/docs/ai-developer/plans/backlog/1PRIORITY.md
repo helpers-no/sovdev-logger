@@ -24,13 +24,13 @@ tool, not a roadmap.
   it; one completes → strike it and promote dependents; a child PLAN ships
   → re-rank the parent. Full re-rank quarterly or after every 3 ships.
 
-**Last triaged:** 2026-07-08 — maintainer accepted the recommendation on the first investigation; queued for PLAN drafting.
+**Last triaged:** 2026-07-08 — first investigation's four child plans shipped and merged; second investigation (documentation strategy) accepted, queued for PLAN drafting.
 
 ---
 
 ## Tier 1 — next up
 
-- [INVESTIGATE-multi-language-conformance.md](INVESTIGATE-multi-language-conformance.md) — **accepted 2026-07-08.** All four child plans **completed**: [`PLAN-001`](../completed/PLAN-001-master-comparison-mode.md)/[`PLAN-002`](../completed/PLAN-002-python-conformance.md) merged; [`PLAN-003`](../completed/PLAN-003-spec-scaffolding-cleanup.md)/[`PLAN-004`](../completed/PLAN-004-schema-driven-field-generation.md) committed to `main` locally, not pushed. `compare-with-master.sh` exists and is the real completion gate; Python is conformant and promoted; `07-anti-patterns.md` is a 51-line table; `specification/llm-work-templates/` and `.claude/skills/` are gone, replaced by `specification/implementation-guide.md`; `python/src/logger.py`'s field names are now schema-generated, not hand-typed (TypeScript deliberately doesn't adopt this — its bare object-literal keys already make the target bug class a syntax error). Only remaining open item from this investigation: decide whether Go/C#/Rust/PHP restart from scratch or from their archived `terchris/implementation-tests/` state — not yet a drafted plan, no urgency signal from the maintainer yet.
+- [INVESTIGATE-documentation-strategy.md](INVESTIGATE-documentation-strategy.md) — **accepted 2026-07-08.** [`PLAN-005-documentation-restructure.md`](../completed/PLAN-005-documentation-restructure.md) **completed**: `website/docs/general/`, `using/`, `contributor/` now exist (replacing the homepage's long-unfulfilled migration placeholder, structured on the sibling `mimer` project's model), `general/why-otlp.md` makes the general/honest OTLP case, Azure-specific content lives in `using/azure-integration.md`, the root README shrank 387 → 95 lines, `implementation-guide.md` has the diff-against-canonical rule, and `specification/tools/check-doc-consistency.py` catches remote/table drift mechanically going forward. Next: a follow-up plan (not yet created) to migrate `specification/`'s and `docs/`'s remaining prose into `using/`/`contributor/`.
 
 ## Tier 2 — real, not urgent
 
@@ -46,7 +46,7 @@ _(none yet)_
 
 ## Tier 5 — raw ideas
 
-_(none yet)_
+- Decide whether Go/C#/Rust/PHP restart from scratch or from their archived `terchris/implementation-tests/` state — the one remaining open item from `INVESTIGATE-multi-language-conformance.md` (now otherwise fully shipped, all four child plans merged); no INVESTIGATE written for this yet, no urgency signal from the maintainer.
 
 ## Retire candidates
 

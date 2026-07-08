@@ -59,7 +59,7 @@ sovdev_initialize('company-lookup-service', '1.0.0', PEER_SERVICES['mappings'])
 ```go
 // Go
 import (
-  "github.com/norwegianredcross/sovdev-logger/go/sovdevlogger"
+  "github.com/helpers-no/sovdev-logger/go/sovdevlogger"
 )
 
 peerServices := sovdevlogger.CreatePeerServices(map[string]string{
@@ -115,7 +115,7 @@ sovdev_log(
 
 **Go Example:**
 ```go
-import "github.com/norwegianredcross/sovdev-logger/go/sovdevlogger"
+import "github.com/helpers-no/sovdev-logger/go/sovdevlogger"
 
 // When calling external API
 sovdevlogger.SovdevLog(

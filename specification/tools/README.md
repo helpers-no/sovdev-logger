@@ -476,6 +476,7 @@ All scripts run inside the DevContainer at `/workspace/specification/tools/`.
 | [**run-full-validation.sh**](run-full-validation.sh) | **RECOMMENDED** - Complete E2E validation | `./run-full-validation.sh python` |
 | [**compare-with-master.sh**](compare-with-master.sh) | Step 9: diff a candidate's file log against TypeScript's, field by field | `./compare-with-master.sh python` |
 | [**generate-field-constants.py**](generate-field-constants.py) | Generate field-name constants from `schemas/log-entry-schema.json` (run before implementing a new language — see `implementation-guide.md` step 2) | `python3 generate-field-constants.py --lang python` |
+| [**check-doc-consistency.py**](check-doc-consistency.py) | Catch doc drift: inconsistent GitHub remotes across READMEs, a Supported Languages table that doesn't match which `{language}/README.md` files exist | `python3 check-doc-consistency.py` |
 | [**run-company-lookup.sh**](run-company-lookup.sh) | Quick smoke test | `./run-company-lookup.sh python` |
 | [**validate-log-format.sh**](validate-log-format.sh) | Validate log file format | `./validate-log-format.sh python/test/logs/dev.log` |
 | [**query-loki.sh**](query-loki.sh) | Query Loki for logs | `./query-loki.sh sovdev-test-company-lookup-python` |

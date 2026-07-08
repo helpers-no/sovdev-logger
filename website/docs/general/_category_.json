@@ -1,0 +1,8 @@
+{
+  "label": "General documentation",
+  "position": 1,
+  "link": {
+    "type": "doc",
+    "id": "general/index"
+  }
+}
