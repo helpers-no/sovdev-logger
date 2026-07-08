@@ -463,7 +463,7 @@ Compares the candidate's `logs/dev.log` against TypeScript's, field by field, fo
 
 **If it fails:** the error output names the exact entry and field, with TypeScript's expected value and your candidate's actual value — fix the implementation, don't adjust the comparator's normalization rules to make a real mismatch disappear.
 
-**This step, not Step 8's Grafana panels, is the authoritative check for "identical output across languages."** See `website/docs/ai-developer/plans/active/PLAN-001-master-comparison-mode.md` for the full design rationale.
+**This step, not Step 8's Grafana panels, is the authoritative check for "identical output across languages."** See `website/docs/ai-developer/plans/completed/PLAN-001-master-comparison-mode.md` for the full design rationale.
 
 ---
 
@@ -474,6 +474,8 @@ All scripts run inside the DevContainer at `/workspace/specification/tools/`.
 | Script | Purpose | Usage |
 |--------|---------|-------|
 | [**run-full-validation.sh**](run-full-validation.sh) | **RECOMMENDED** - Complete E2E validation | `./run-full-validation.sh python` |
+| [**compare-with-master.sh**](compare-with-master.sh) | Step 9: diff a candidate's file log against TypeScript's, field by field | `./compare-with-master.sh python` |
+| [**generate-field-constants.py**](generate-field-constants.py) | Generate field-name constants from `schemas/log-entry-schema.json` (run before implementing a new language — see `implementation-guide.md` step 2) | `python3 generate-field-constants.py --lang python` |
 | [**run-company-lookup.sh**](run-company-lookup.sh) | Quick smoke test | `./run-company-lookup.sh python` |
 | [**validate-log-format.sh**](validate-log-format.sh) | Validate log file format | `./validate-log-format.sh python/test/logs/dev.log` |
 | [**query-loki.sh**](query-loki.sh) | Query Loki for logs | `./query-loki.sh sovdev-test-company-lookup-python` |

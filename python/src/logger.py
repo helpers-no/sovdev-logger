@@ -54,6 +54,12 @@ try:
 except ImportError:
     from log_levels import SOVDEV_LOGLEVELS, SovdevLogLevel  # type: ignore[no-redef]
 
+# Import generated field-name constants (see specification/tools/generate-field-constants.py)
+try:
+    from .field_names import FieldNames
+except ImportError:
+    from field_names import FieldNames  # type: ignore[no-redef]
+
 # =============================================================================
 # SPAN CONTEXT STORAGE
 # =============================================================================
@@ -156,32 +162,32 @@ class JSONFormatter(logging.Formatter):
         """Format log record as JSON."""
         # Extract our custom fields
         log_entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "level": record.levelname.lower(),
-            "service_name": getattr(record, "service_name", "unknown"),
-            "service_version": getattr(record, "service_version", "1.0.0"),
-            "peer_service": getattr(record, "peer_service", "unknown"),
-            "function_name": getattr(record, "function_name", "unknown"),
-            "log_type": getattr(record, "log_type", "transaction"),
-            "message": record.getMessage(),
-            "trace_id": getattr(record, "trace_id", ""),
-            "event_id": getattr(record, "event_id", ""),
+            FieldNames.TIMESTAMP: datetime.now(timezone.utc).isoformat(),
+            FieldNames.LEVEL: record.levelname.lower(),
+            FieldNames.SERVICE_NAME: getattr(record, FieldNames.SERVICE_NAME, "unknown"),
+            FieldNames.SERVICE_VERSION: getattr(record, FieldNames.SERVICE_VERSION, "1.0.0"),
+            FieldNames.PEER_SERVICE: getattr(record, FieldNames.PEER_SERVICE, "unknown"),
+            FieldNames.FUNCTION_NAME: getattr(record, FieldNames.FUNCTION_NAME, "unknown"),
+            FieldNames.LOG_TYPE: getattr(record, FieldNames.LOG_TYPE, "transaction"),
+            FieldNames.MESSAGE: record.getMessage(),
+            FieldNames.TRACE_ID: getattr(record, FieldNames.TRACE_ID, ""),
+            FieldNames.EVENT_ID: getattr(record, FieldNames.EVENT_ID, ""),
         }
 
         # Add optional fields
-        if hasattr(record, "span_id"):
-            log_entry["span_id"] = record.span_id
+        if hasattr(record, FieldNames.SPAN_ID):
+            log_entry[FieldNames.SPAN_ID] = record.span_id
 
-        if hasattr(record, "input_json"):
-            log_entry["input_json"] = record.input_json
+        if hasattr(record, FieldNames.INPUT_JSON):
+            log_entry[FieldNames.INPUT_JSON] = record.input_json
 
-        if hasattr(record, "response_json"):
-            log_entry["response_json"] = record.response_json
+        if hasattr(record, FieldNames.RESPONSE_JSON):
+            log_entry[FieldNames.RESPONSE_JSON] = record.response_json
 
-        if hasattr(record, "exception_type"):
-            log_entry["exception_type"] = record.exception_type
-            log_entry["exception_message"] = getattr(record, "exception_message", "")
-            log_entry["exception_stacktrace"] = getattr(record, "exception_stacktrace", "")
+        if hasattr(record, FieldNames.EXCEPTION_TYPE):
+            log_entry[FieldNames.EXCEPTION_TYPE] = record.exception_type
+            log_entry[FieldNames.EXCEPTION_MESSAGE] = getattr(record, FieldNames.EXCEPTION_MESSAGE, "")
+            log_entry[FieldNames.EXCEPTION_STACKTRACE] = getattr(record, FieldNames.EXCEPTION_STACKTRACE, "")
 
         # Do NOT strip None values here: input_json/response_json must always be
         # present, even as null, when there's no input/response (spec requirement,
@@ -406,9 +412,9 @@ class InternalSovdevLogger:
 
         # Standardize exception type to "Error" for cross-language consistency
         return {
-            "exception_type": "Error",  # Always "Error" regardless of actual Python type
-            "exception_message": str(exception_object),
-            "exception_stacktrace": limited_stack,
+            FieldNames.EXCEPTION_TYPE: "Error",  # Always "Error" regardless of actual Python type
+            FieldNames.EXCEPTION_MESSAGE: str(exception_object),
+            FieldNames.EXCEPTION_STACKTRACE: limited_stack,
         }
 
     def create_log_entry(
@@ -440,26 +446,26 @@ class InternalSovdevLogger:
 
         # Create the complete log entry with snake_case fields
         log_entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "level": level.lower(),
-            "service_name": self.service_name,
-            "service_version": self.service_version,
-            "peer_service": resolved_peer_service,
-            "function_name": function_name,
-            "message": message,
-            "trace_id": temp_trace_id,
-            "event_id": event_id,
-            "log_type": log_type,
+            FieldNames.TIMESTAMP: datetime.now(timezone.utc).isoformat(),
+            FieldNames.LEVEL: level.lower(),
+            FieldNames.SERVICE_NAME: self.service_name,
+            FieldNames.SERVICE_VERSION: self.service_version,
+            FieldNames.PEER_SERVICE: resolved_peer_service,
+            FieldNames.FUNCTION_NAME: function_name,
+            FieldNames.MESSAGE: message,
+            FieldNames.TRACE_ID: temp_trace_id,
+            FieldNames.EVENT_ID: event_id,
+            FieldNames.LOG_TYPE: log_type,
         }
 
         # Omitted entirely when the caller didn't pass the argument at all;
         # present as null when the caller explicitly passed None. See the
         # _NOT_PROVIDED sentinel's module-level comment for why this can't
-        # just be "input_json": input_json.
+        # just be an unconditional assignment.
         if input_json is not _NOT_PROVIDED:
-            log_entry["input_json"] = input_json
+            log_entry[FieldNames.INPUT_JSON] = input_json
         if response_json is not _NOT_PROVIDED:
-            log_entry["response_json"] = response_json
+            log_entry[FieldNames.RESPONSE_JSON] = response_json
 
         # Spread exception fields at top level if present
         if processed_exception:
@@ -493,19 +499,19 @@ class InternalSovdevLogger:
                 span_context = active_span.get_span_context()
                 if span_context and span_context.trace_id:
                     # Override log trace_id with the active span's trace ID
-                    log_entry["trace_id"] = format(span_context.trace_id, "032x")
+                    log_entry[FieldNames.TRACE_ID] = format(span_context.trace_id, "032x")
                 if span_context and span_context.span_id:
                     # Extract span ID for operation-level correlation
-                    log_entry["span_id"] = format(span_context.span_id, "016x")
+                    log_entry[FieldNames.SPAN_ID] = format(span_context.span_id, "016x")
 
             # Emit metrics automatically
             if global_metrics:
                 attributes = {
-                    "service_name": log_entry["service_name"],
-                    "service_version": log_entry["service_version"],
-                    "peer_service": log_entry["peer_service"],
+                    FieldNames.SERVICE_NAME: log_entry[FieldNames.SERVICE_NAME],
+                    FieldNames.SERVICE_VERSION: log_entry[FieldNames.SERVICE_VERSION],
+                    FieldNames.PEER_SERVICE: log_entry[FieldNames.PEER_SERVICE],
                     "log_level": level.lower(),
-                    "log_type": log_entry["log_type"],
+                    FieldNames.LOG_TYPE: log_entry[FieldNames.LOG_TYPE],
                 }
 
                 # Increment active operations
@@ -515,10 +521,10 @@ class InternalSovdevLogger:
                 global_metrics.operation_counter.add(1, attributes)
 
                 # Track errors separately
-                if level.upper() in ["ERROR", "FATAL"] or log_entry.get("exception_type"):
+                if level.upper() in ["ERROR", "FATAL"] or log_entry.get(FieldNames.EXCEPTION_TYPE):
                     error_attributes = {
                         **attributes,
-                        "exception_type": log_entry.get("exception_type", "Unknown"),
+                        FieldNames.EXCEPTION_TYPE: log_entry.get(FieldNames.EXCEPTION_TYPE, "Unknown"),
                     }
                     global_metrics.error_counter.add(1, error_attributes)
 
@@ -527,40 +533,40 @@ class InternalSovdevLogger:
 
             # Create LogRecord with extra fields
             extra = {
-                "service_name": log_entry["service_name"],
-                "service_version": log_entry["service_version"],
-                "peer_service": log_entry["peer_service"],
-                "function_name": log_entry["function_name"],
-                "log_type": log_entry["log_type"],
-                "trace_id": log_entry["trace_id"],
-                "event_id": log_entry["event_id"],
-                "timestamp": log_entry["timestamp"],  # Add timestamp for Loki
+                FieldNames.SERVICE_NAME: log_entry[FieldNames.SERVICE_NAME],
+                FieldNames.SERVICE_VERSION: log_entry[FieldNames.SERVICE_VERSION],
+                FieldNames.PEER_SERVICE: log_entry[FieldNames.PEER_SERVICE],
+                FieldNames.FUNCTION_NAME: log_entry[FieldNames.FUNCTION_NAME],
+                FieldNames.LOG_TYPE: log_entry[FieldNames.LOG_TYPE],
+                FieldNames.TRACE_ID: log_entry[FieldNames.TRACE_ID],
+                FieldNames.EVENT_ID: log_entry[FieldNames.EVENT_ID],
+                FieldNames.TIMESTAMP: log_entry[FieldNames.TIMESTAMP],  # Add timestamp for Loki
             }
 
             # Add optional fields
-            if "span_id" in log_entry:
-                extra["span_id"] = log_entry["span_id"]
-            if "input_json" in log_entry:
-                extra["input_json"] = log_entry["input_json"]
-            if "response_json" in log_entry:
-                extra["response_json"] = log_entry["response_json"]
-            if "exception_type" in log_entry:
-                extra["exception_type"] = log_entry["exception_type"]
-                extra["exception_message"] = log_entry["exception_message"]
-                extra["exception_stacktrace"] = log_entry["exception_stacktrace"]
+            if FieldNames.SPAN_ID in log_entry:
+                extra[FieldNames.SPAN_ID] = log_entry[FieldNames.SPAN_ID]
+            if FieldNames.INPUT_JSON in log_entry:
+                extra[FieldNames.INPUT_JSON] = log_entry[FieldNames.INPUT_JSON]
+            if FieldNames.RESPONSE_JSON in log_entry:
+                extra[FieldNames.RESPONSE_JSON] = log_entry[FieldNames.RESPONSE_JSON]
+            if FieldNames.EXCEPTION_TYPE in log_entry:
+                extra[FieldNames.EXCEPTION_TYPE] = log_entry[FieldNames.EXCEPTION_TYPE]
+                extra[FieldNames.EXCEPTION_MESSAGE] = log_entry[FieldNames.EXCEPTION_MESSAGE]
+                extra[FieldNames.EXCEPTION_STACKTRACE] = log_entry[FieldNames.EXCEPTION_STACKTRACE]
 
             if base_logger:
-                base_logger.log(python_level, log_entry["message"], extra=extra)
+                base_logger.log(python_level, log_entry[FieldNames.MESSAGE], extra=extra)
 
             # Record operation duration and decrement active operations
             if global_metrics:
                 duration = (time.time() - start_time) * 1000  # Convert to milliseconds
                 attributes = {
-                    "service_name": log_entry["service_name"],
-                    "service_version": log_entry["service_version"],
-                    "peer_service": log_entry["peer_service"],
+                    FieldNames.SERVICE_NAME: log_entry[FieldNames.SERVICE_NAME],
+                    FieldNames.SERVICE_VERSION: log_entry[FieldNames.SERVICE_VERSION],
+                    FieldNames.PEER_SERVICE: log_entry[FieldNames.PEER_SERVICE],
                     "log_level": level.lower(),
-                    "log_type": log_entry["log_type"],
+                    FieldNames.LOG_TYPE: log_entry[FieldNames.LOG_TYPE],
                 }
                 global_metrics.operation_duration.record(duration, attributes)
                 global_metrics.active_operations.add(-1, attributes)
@@ -573,11 +579,11 @@ class InternalSovdevLogger:
             # Decrement active operations on error
             if global_metrics:
                 attributes = {
-                    "service_name": log_entry["service_name"],
-                    "service_version": log_entry["service_version"],
-                    "peer_service": log_entry["peer_service"],
+                    FieldNames.SERVICE_NAME: log_entry[FieldNames.SERVICE_NAME],
+                    FieldNames.SERVICE_VERSION: log_entry[FieldNames.SERVICE_VERSION],
+                    FieldNames.PEER_SERVICE: log_entry[FieldNames.PEER_SERVICE],
                     "log_level": level.lower(),
-                    "log_type": log_entry["log_type"],
+                    FieldNames.LOG_TYPE: log_entry[FieldNames.LOG_TYPE],
                 }
                 global_metrics.active_operations.add(-1, attributes)
 
@@ -670,7 +676,7 @@ def configure_metrics(
                 ResourceAttributes.DEPLOYMENT_ENVIRONMENT: os.environ.get(
                     "NODE_ENV", "development"
                 ),
-                "session_id": session_id,
+                FieldNames.SESSION_ID: session_id,
             }
         )
 
@@ -719,7 +725,7 @@ def configure_opentelemetry(
                 ResourceAttributes.DEPLOYMENT_ENVIRONMENT: os.environ.get(
                     "NODE_ENV", "development"
                 ),
-                "session_id": session_id,
+                FieldNames.SESSION_ID: session_id,
             }
         )
 
@@ -900,9 +906,9 @@ def sovdev_log(
         message: Human-readable description of what happened
         peer_service: Peer service identifier (use PEER_SERVICES.INTERNAL for internal operations)
         input_json: Valid JSON object containing function input parameters. Omit entirely for no
-            input; pass None explicitly if you want "input_json": null in the output.
+            input; pass None explicitly if you want the input_json field to be null in the output.
         response_json: Valid JSON object containing function output/response data. Omit entirely
-            for no response yet; pass None explicitly if you want "response_json": null.
+            for no response yet; pass None explicitly if you want the response_json field to be null.
         exception: Exception/error object (optional, None if no exception)
     """
     # Extract string value from enum
