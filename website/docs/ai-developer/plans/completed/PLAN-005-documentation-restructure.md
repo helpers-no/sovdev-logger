@@ -10,7 +10,9 @@
 
 **Completed**: 2026-07-08
 
-**Investigation**: [INVESTIGATE-documentation-strategy.md](../backlog/INVESTIGATE-documentation-strategy.md) — Option C, accepted 2026-07-08, all five open questions decided, destination later redirected to `website/docs/` with `mimer` as the structural model
+**Addendum (found during [PLAN-006](PLAN-006-documentation-content-migration.md)):** every `https://sovdev-logger.sovereignsky.no/...` link written in this plan was missing a `/docs/` path segment — the docs plugin's route base path was left at the classic-preset default (`docs`) while `docs/index.md`'s own `slug: /` clearly intended the site root. Never caught here because fully-qualified URLs aren't checked by Docusaurus's broken-link validator. Fixed in PLAN-006 by setting `routeBasePath: '/'` (not by patching each link), which makes every link this plan wrote correct without further edits here.
+
+**Investigation**: [INVESTIGATE-documentation-strategy.md](INVESTIGATE-documentation-strategy.md) — Option C, accepted 2026-07-08, all five open questions decided, destination later redirected to `website/docs/` with `mimer` as the structural model
 
 **Goal**: `website/docs/` has `general/`, `using/`, and `contributor/` sections (each with an index hub and `_category_.json`, mirroring `mimer`'s pattern), replacing the placeholder homepage's unfulfilled migration promise. `general/` contains the honest, general "why OTLP" doc this project has never had. The root `README.md` shrinks to a short pitch pointing at the site instead of duplicating it. `specification/implementation-guide.md` states the diff-against-canonical rule for future language READMEs. A small automated script catches the class of doc drift (inconsistent GitHub remotes, a Supported Languages table that doesn't match reality) found repeatedly by accident in prior plans.
 
@@ -20,7 +22,7 @@
 
 ## Problem
 
-Confirmed directly (file reads, greps) while researching the investigation this plan implements — see [INVESTIGATE-documentation-strategy.md](../backlog/INVESTIGATE-documentation-strategy.md) for the full evidence, including the `mimer` precedent. Summarized here for what this plan specifically acts on:
+Confirmed directly (file reads, greps) while researching the investigation this plan implements — see [INVESTIGATE-documentation-strategy.md](INVESTIGATE-documentation-strategy.md) for the full evidence, including the `mimer` precedent. Summarized here for what this plan specifically acts on:
 
 ### The Docusaurus site already promises this and never delivered
 

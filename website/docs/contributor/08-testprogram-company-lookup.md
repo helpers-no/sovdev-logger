@@ -1,3 +1,10 @@
+---
+title: "Test program: company lookup"
+sidebar_label: "Test program: company lookup"
+sidebar_position: 12
+description: "E2E test specification (MUST implement)."
+---
+
 # Test Program: Company-Lookup E2E Application
 
 ## Overview
@@ -630,7 +637,7 @@ sovdev_log(SOVDEV_LOGLEVELS.INFO, 'lookupCompany', 'Success!',
 
 ### Required Project Structure
 
-Every language implementation MUST follow the standardized directory structure documented in `specification/06-test-scenarios.md`.
+Every language implementation MUST follow the standardized directory structure documented in `06-test-scenarios.md`.
 
 **⚠️ CRITICAL FILES REQUIRED:**
 - `run-test.sh` - Entry point script (MUST exist)
@@ -654,16 +661,16 @@ These files are NOT optional. Without them, validation tools will fail.
 ```
 
 **For complete requirements**, see:
-- **Project structure**: `specification/06-test-scenarios.md` - "Required Project Structure" section
-- **run-test.sh requirements**: `specification/06-test-scenarios.md` - "Critical Requirements" section
-- **.env configuration**: `specification/06-test-scenarios.md` - "Critical Requirements" section
+- **Project structure**: `06-test-scenarios.md` - "Required Project Structure" section
+- **run-test.sh requirements**: `06-test-scenarios.md` - "Critical Requirements" section
+- **.env configuration**: `06-test-scenarios.md` - "Critical Requirements" section
 
 ### Validation Tools
 
 **How to validate this test:**
 
 **📚 Primary documentation** (AUTHORITATIVE):
-- **Complete tool reference & 🔢 9-step validation sequence**: [`tools/README.md`](./tools/README.md)
+- **Complete tool reference & 🔢 9-step validation sequence**: [`tools/README.md`](https://github.com/helpers-no/sovdev-logger/blob/main/specification/tools/README.md)
 - **Quick start guide**: [`06-test-scenarios.md`](./06-test-scenarios.md) - "Quick Start: Testing Your Implementation"
 
 **👨‍💻 For LLM implementers**:

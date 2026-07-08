@@ -1,3 +1,10 @@
+---
+title: Development loop
+sidebar_label: Development loop
+sidebar_position: 5
+description: "Iterative development workflow."
+---
+
 # Development Loop
 
 ---
@@ -300,7 +307,7 @@ This runs Steps 1-7 automatically. You MUST still do Step 8 manually.
 
 ### For LLMs: Tracking Progress
 
-There's no per-language ROADMAP file to maintain anymore — `specification/tools/compare-with-master.sh {language}` is the completion gate (see [PLAN-003](../website/docs/ai-developer/plans/backlog/PLAN-003-spec-scaffolding-cleanup.md)). Use your own task-tracking tooling if useful; there's no repo-enforced checklist to update.
+There's no per-language ROADMAP file to maintain anymore — `specification/tools/compare-with-master.sh {language}` is the completion gate (see [PLAN-003](../ai-developer/plans/completed/PLAN-003-spec-scaffolding-cleanup.md)). Use your own task-tracking tooling if useful; there's no repo-enforced checklist to update.
 
 ---
 
@@ -327,7 +334,7 @@ Edit source files using your preferred tools:
 - ✅ Stops bad patterns from propagating across language implementations
 - ✅ **Critical for LLM-generated code** - prevents "going off the rails"
 
-**For complete linting philosophy and rules**, see: [`specification/10-code-quality.md`](./10-code-quality.md)
+**For complete linting philosophy and rules**, see: [`10-code-quality.md`](./10-code-quality.md)
 
 ---
 
@@ -394,7 +401,7 @@ cd python && make lint       # Runs flake8, black --check, mypy
 cd python && make lint-fix   # Runs black (auto-format)
 ```
 
-**See:** `specification/10-code-quality.md` for Python-specific rules
+**See:** `10-code-quality.md` for Python-specific rules
 
 ---
 
@@ -402,7 +409,7 @@ cd python && make lint-fix   # Runs black (auto-format)
 
 Follow the same pattern:
 1. Study `typescript/.eslintrc.json` (reference implementation)
-2. Read `specification/10-code-quality.md` (universal rules)
+2. Read `10-code-quality.md` (universal rules)
 3. Create language-specific configuration files
 4. Create `Makefile` with `lint` and `lint-fix` targets
 5. Ensure exit code 0 on success, non-zero on errors
@@ -414,7 +421,7 @@ Follow the same pattern:
 When implementing a new language:
 
 1. **Read this step** - You'll see "Step 2: Lint Code (MANDATORY)"
-2. **Read the specification** - `specification/10-code-quality.md` explains WHY and WHAT
+2. **Read the specification** - `10-code-quality.md` explains WHY and WHAT
 3. **Study TypeScript** - Look at `typescript/.eslintrc.json` and `typescript/Makefile`
 4. **Adapt to your language** - Use language-appropriate tools (flake8 for Python, golangci-lint for Go, etc.)
 5. **Create Makefile** - Consistent interface: `make lint` works for all languages
@@ -641,7 +648,7 @@ All validation tools support this workflow:
 - **[05-environment-configuration.md](./05-environment-configuration.md)** - DevContainer setup and configuration
 - **[06-test-scenarios.md](./06-test-scenarios.md)** - Test scenarios and verification procedures
 - **[08-testprogram-company-lookup.md](./08-testprogram-company-lookup.md)** - Company-lookup E2E test specification
-- **[tools/README.md](./tools/README.md)** - Complete validation tool documentation
+- **[tools/README.md](https://github.com/helpers-no/sovdev-logger/blob/main/specification/tools/README.md)** - Complete validation tool documentation
 
 ---
 

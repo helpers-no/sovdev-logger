@@ -1,3 +1,10 @@
+---
+title: Design principles
+sidebar_label: Design principles
+sidebar_position: 2
+description: "Core philosophy and design goals."
+---
+
 # Sovdev Logger Design Principles
 
 ## Core Philosophy

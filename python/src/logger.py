@@ -191,10 +191,11 @@ class JSONFormatter(logging.Formatter):
 
         # Do NOT strip None values here: input_json/response_json must always be
         # present, even as null, when there's no input/response (spec requirement,
-        # see specification/00-design-principles.md's "Always Include responseJSON
-        # Field" decision and 07-anti-patterns.md). Fields that should genuinely be
-        # omitted (e.g. span_id with no active span) are only added to log_entry
-        # above when they have a real value, so there's nothing left to strip.
+        # see the contributor docs' "Design principles" page's "Always Include
+        # responseJSON Field" decision and "Anti-patterns"). Fields that should
+        # genuinely be omitted (e.g. span_id with no active span) are only added
+        # to log_entry above when they have a real value, so there's nothing
+        # left to strip.
 
         return json.dumps(log_entry, ensure_ascii=False)
 

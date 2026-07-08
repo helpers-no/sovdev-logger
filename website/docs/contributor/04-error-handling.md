@@ -1,3 +1,10 @@
+---
+title: Error handling
+sidebar_label: Error handling
+sidebar_position: 8
+description: "Exception handling, credential removal, stack trace limits."
+---
+
 # Error Handling and Exception Processing
 
 ## Overview
@@ -364,7 +371,7 @@ function processException(error: Error): {
 **Scenario:** OTLP collector is unreachable or returns errors.
 
 **Required Behavior:**
-- ✅ Log warning to console: "Failed to export logs to OTLP: <error>"
+- ✅ Log warning to console: "Failed to export logs to OTLP: `<error>`"
 - ✅ Continue writing to console output
 - ✅ Continue writing to file output
 - ✅ Do NOT throw exception to user code
@@ -385,7 +392,7 @@ try {
 **Scenario:** Cannot write to log file (permissions, disk full, etc.).
 
 **Required Behavior:**
-- ✅ Log warning to console: "Failed to write to log file: <error>"
+- ✅ Log warning to console: "Failed to write to log file: `<error>`"
 - ✅ Continue writing to console output
 - ✅ Continue OTLP export
 - ✅ Do NOT throw exception to user code

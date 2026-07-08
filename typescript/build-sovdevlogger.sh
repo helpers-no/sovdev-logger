@@ -32,7 +32,8 @@
 # Related:
 #   - package.json: Contains build scripts and dependencies
 #   - tsconfig.json: TypeScript compiler configuration
-#   - specification/09-development-loop.md: Development workflow documentation
+#   - Contributor docs "Development loop" page: Development workflow documentation
+#     https://sovdev-logger.sovereignsky.no/contributor/development-loop
 
 set -e  # Exit on error
 set -o pipefail  # Catch errors in pipes

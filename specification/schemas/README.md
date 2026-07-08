@@ -198,8 +198,8 @@ The OTEL SDK automatically adds `observed_timestamp`. Your implementation must a
 
 ## Related Documentation
 
-- **Field definitions:** See `specification/02-field-definitions.md` for detailed field descriptions
-- **API contract:** See `specification/01-api-contract.md` for logging API specification
+- **Field definitions:** See [Field definitions](https://sovdev-logger.sovereignsky.no/contributor/field-definitions) for detailed field descriptions
+- **API contract:** See [API contract](https://sovdev-logger.sovereignsky.no/contributor/api-contract) for logging API specification
 - **Validators:** See `specification/tests/README.md` for Python validators that use these schemas
 - **Tools:** See `specification/tools/README.md` for shell scripts that orchestrate validation
 

@@ -1,8 +1,15 @@
+---
+title: Anti-patterns
+sidebar_label: Anti-patterns
+sidebar_position: 11
+description: "Common mistakes to avoid (table)."
+---
+
 # Anti-Patterns
 
 ## Purpose
 
-This document lists common mistakes discovered during sovdev-logger development. Following these patterns ensures consistent behavior across all language implementations. Compressed into a table per [PLAN-003](../../website/docs/ai-developer/plans/backlog/PLAN-003-spec-scaffolding-cleanup.md) — the pattern content itself is unchanged, only the format is (previously: ~50 lines of prose/code-example per row, now: one row per pattern). The original bad/correct code examples and full "why this matters" prose are in this file's git history (pre-2026-07-08 commits) if a specific one is ever needed.
+This document lists common mistakes discovered during sovdev-logger development. Following these patterns ensures consistent behavior across all language implementations. Compressed into a table per [PLAN-003](../ai-developer/plans/completed/PLAN-003-spec-scaffolding-cleanup.md) — the pattern content itself is unchanged, only the format is (previously: ~50 lines of prose/code-example per row, now: one row per pattern). The original bad/correct code examples and full "why this matters" prose are in this file's git history (pre-2026-07-08 commits) if a specific one is ever needed.
 
 "Current status" below reflects the state of `python/src/logger.py` and `typescript/src/logger.ts` as of 2026-07-08, re-verified against the code while writing this table — not carried forward from when each pattern was first documented.
 

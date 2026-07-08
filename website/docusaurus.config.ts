@@ -31,6 +31,13 @@ const config: Config = {
 
   markdown: {
     mermaid: true,
+    // 'detect': .md files parse as plain CommonMark (no JSX/expression
+    // parsing), .mdx files get full MDX. Needed once real content started
+    // migrating in from specification/ and docs/ -- legacy markdown is full
+    // of bare `<placeholder>` tags and `{...}` in prose/table cells that
+    // Docusaurus's actual default (format: 'mdx' for every file regardless
+    // of extension) misparses as JSX/JS expressions.
+    format: 'detect',
   },
 
   presets: [
@@ -40,6 +47,11 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           editUrl: `https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/tree/main/website/`,
+          // This site is only documentation -- docs/index.md (slug: /) is
+          // meant to be the actual homepage, not live under /docs/ behind a
+          // separate generic landing page. Requires removing src/pages/index.tsx
+          // (Docusaurus won't allow two things claiming route "/").
+          routeBasePath: '/',
         },
         blog: false,
         theme: {
@@ -58,7 +70,7 @@ const config: Config = {
         language: ['en'],
         highlightSearchTermsOnTargetPage: true,
         explicitSearchResultPath: true,
-        docsRouteBasePath: '/docs',
+        docsRouteBasePath: '/',
         indexBlog: false,
       },
     ],
@@ -97,7 +109,7 @@ const config: Config = {
           items: [
             {
               label: 'Docs',
-              to: '/docs/',
+              to: '/',
             },
           ],
         },

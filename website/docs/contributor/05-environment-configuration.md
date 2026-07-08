@@ -1,3 +1,10 @@
+---
+title: Environment configuration
+sidebar_label: Environment configuration
+sidebar_position: 9
+description: "Environment variables, DevContainer setup, language toolchain."
+---
+
 # Development Environment Configuration
 
 ## Overview

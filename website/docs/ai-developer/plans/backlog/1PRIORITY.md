@@ -24,13 +24,13 @@ tool, not a roadmap.
   it; one completes → strike it and promote dependents; a child PLAN ships
   → re-rank the parent. Full re-rank quarterly or after every 3 ships.
 
-**Last triaged:** 2026-07-08 — first investigation's four child plans shipped and merged; second investigation (documentation strategy) accepted, queued for PLAN drafting.
+**Last triaged:** 2026-07-08 — both investigations fully shipped (all six child plans across the two complete); nothing queued in Tier 1.
 
 ---
 
 ## Tier 1 — next up
 
-- [INVESTIGATE-documentation-strategy.md](INVESTIGATE-documentation-strategy.md) — **accepted 2026-07-08.** [`PLAN-005-documentation-restructure.md`](../completed/PLAN-005-documentation-restructure.md) **completed**: `website/docs/general/`, `using/`, `contributor/` now exist (replacing the homepage's long-unfulfilled migration placeholder, structured on the sibling `mimer` project's model), `general/why-otlp.md` makes the general/honest OTLP case, Azure-specific content lives in `using/azure-integration.md`, the root README shrank 387 → 95 lines, `implementation-guide.md` has the diff-against-canonical rule, and `specification/tools/check-doc-consistency.py` catches remote/table drift mechanically going forward. Next: a follow-up plan (not yet created) to migrate `specification/`'s and `docs/`'s remaining prose into `using/`/`contributor/`.
+_(none yet — both investigations' active work is done; see Tier 5 for the one remaining open item)_
 
 ## Tier 2 — real, not urgent
 

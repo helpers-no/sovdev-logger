@@ -1,3 +1,10 @@
+---
+title: Code quality
+sidebar_label: Code quality
+sidebar_position: 13
+description: "Code linting standards and quality rules (MANDATORY)."
+---
+
 # Code Quality Standards - Linting Rules
 
 **Version:** 1.0
@@ -550,8 +557,8 @@ For each language implementation, verify:
 
 - **Reference Implementation:** `typescript/.eslintrc.json` - Study this first
 - **TypeScript Documentation:** `typescript/package.json` - See lint scripts
-- **Development Loop:** `specification/09-development-loop.md` - Step 2: Lint
-- **Implementation Guide:** `specification/implementation-guide.md` - The end-to-end process
+- **Development Loop:** `09-development-loop.md` - Step 2: Lint
+- **Implementation Guide:** `implementation-guide.md` - The end-to-end process
 
 ---
 

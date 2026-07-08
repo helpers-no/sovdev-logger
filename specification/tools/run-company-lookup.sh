@@ -177,7 +177,7 @@ check_test_script_exists() {
             echo "  └── ${TEST_PATH}/"
             echo "      └── ${TEST_SCRIPT}"
             echo ""
-            echo "See specification/06-test-scenarios.md for required structure"
+            echo "See https://sovdev-logger.sovereignsky.no/contributor/test-scenarios for required structure"
             return 1
         fi
     else
@@ -190,7 +190,7 @@ check_test_script_exists() {
             echo "  └── ${TEST_PATH}/"
             echo "      └── ${TEST_SCRIPT}"
             echo ""
-            echo "See specification/06-test-scenarios.md for required structure"
+            echo "See https://sovdev-logger.sovereignsky.no/contributor/test-scenarios for required structure"
             return 1
         fi
     fi

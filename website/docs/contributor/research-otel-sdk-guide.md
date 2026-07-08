@@ -1,3 +1,10 @@
+---
+title: OpenTelemetry SDK guide
+sidebar_label: OpenTelemetry SDK guide
+sidebar_position: 3
+description: "OpenTelemetry SDK differences between languages."
+---
+
 # OpenTelemetry SDK Implementation Guide
 
 ---

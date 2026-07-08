@@ -42,7 +42,7 @@ Full API reference, examples, and configuration live in each language's own READ
 
 **Implementing sovdev-logger in a new language:**
 
-1. Read [`specification/implementation-guide.md`](specification/implementation-guide.md) — the end-to-end process: contract → TypeScript → anti-patterns → implement → `compare-with-master.sh`
+1. Read [Implementation guide](https://sovdev-logger.sovereignsky.no/contributor/implementation-guide) — the end-to-end process: contract → TypeScript → anti-patterns → implement → `compare-with-master.sh`
 2. Study [`typescript/src/logger.ts`](typescript/src/logger.ts) — the master implementation
 3. Run `specification/tools/compare-with-master.sh {language}` until it passes — the actual completion gate, not a checklist
 
@@ -52,13 +52,13 @@ See the [contributor docs](https://sovdev-logger.sovereignsky.no/contributor) fo
 
 ## Documentation
 
-- **Docs site**: [sovdev-logger.sovereignsky.no](https://sovdev-logger.sovereignsky.no) — why OTLP, usage guides, the specification (migration in progress)
+- **Docs site**: [sovdev-logger.sovereignsky.no](https://sovdev-logger.sovereignsky.no) — why OTLP, usage guides, the specification
 - **TypeScript**: [typescript/README.md](typescript/README.md) — complete API reference, examples, patterns (canonical — other languages diff against this)
 - **Python**: [python/README.md](python/README.md) — complete API reference, notes differences from TypeScript
-- **Configuration**: [docs/README-configuration.md](docs/README-configuration.md) — environment variables, OTLP setup, file logging
-- **Log data structure**: [docs/logging-data.md](docs/logging-data.md) — field reference, logging patterns, correlation strategies
-- **Observability architecture**: [docs/README-observability-architecture.md](docs/README-observability-architecture.md) — dashboard setup, verification
-- **Loggeloven compliance**: [docs/README-loggeloven.md](docs/README-loggeloven.md) — Norwegian Red Cross logging requirements
+- **Configuration**: [Configuration](https://sovdev-logger.sovereignsky.no/using/configuration) — environment variables, OTLP setup, file logging
+- **Log data structure**: [Log data structure](https://sovdev-logger.sovereignsky.no/using/logging-data) — field reference, logging patterns, correlation strategies
+- **Observability architecture**: [Observability architecture](https://sovdev-logger.sovereignsky.no/using/observability-architecture) — dashboard setup, verification
+- **Loggeloven compliance**: [Loggeloven compliance](https://sovdev-logger.sovereignsky.no/using/loggeloven) — Norwegian Red Cross logging requirements
 
 ---
 

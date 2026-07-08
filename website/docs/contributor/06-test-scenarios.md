@@ -1,3 +1,10 @@
+---
+title: Test scenarios
+sidebar_label: Test scenarios
+sidebar_position: 10
+description: "Test scenarios and verification procedures."
+---
+
 # Test Scenarios for Sovdev Logger
 
 ## Overview
@@ -51,7 +58,7 @@ All sovdev-logger implementations are tested the same way, regardless of languag
 - ✅ **Fast**: Quick smoke test in 5 seconds, full validation in 30 seconds
 - ✅ **Consistent**: Same verification process for all languages
 
-**📚 For complete tool documentation**, see **[`tools/README.md`](./tools/README.md)** (authoritative source)
+**📚 For complete tool documentation**, see **[`tools/README.md`](https://github.com/helpers-no/sovdev-logger/blob/main/specification/tools/README.md)** (authoritative source)
 
 **📝 For detailed company-lookup test specification**, see [`08-testprogram-company-lookup.md`](./08-testprogram-company-lookup.md)
 

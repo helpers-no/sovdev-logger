@@ -1,3 +1,10 @@
+---
+title: Field definitions
+sidebar_label: Field definitions
+sidebar_position: 6
+description: "Required fields in all log outputs."
+---
+
 # Sovdev Logger Field Definitions
 
 ## Overview

@@ -56,7 +56,7 @@ Validate your implementation at these checkpoints:
 
 **Important**: Validation tools check the OUTPUT of your implementation. Build and run your code FIRST, then validate.
 
-**See complete workflow**: `specification/09-development-loop.md` → "Validation-First Development" section
+**See complete workflow**: [Development loop](https://sovdev-logger.sovereignsky.no/contributor/development-loop) → "Validation-First Development" section
 
 ---
 
@@ -79,7 +79,7 @@ Before using these tools, ensure:
        └── logs/
    ```
 
-   **For complete project structure requirements**, see [`specification/06-test-scenarios.md`](../06-test-scenarios.md) → "Required Project Structure"
+   **For complete project structure requirements**, see [Test scenarios](https://sovdev-logger.sovereignsky.no/contributor/test-scenarios) → "Required Project Structure"
 
 3. **Monitoring stack is running** (for Loki/Prometheus/Tempo queries):
    ```bash
@@ -237,7 +237,7 @@ sleep 10  # Wait for OTLP propagation
 **If FAIL:**
 - Metrics not exported
 - Check OTEL SDK metric configuration
-- See `specification/research-otel-sdk-guide.md` for label issues
+- See [OpenTelemetry SDK guide](https://sovdev-logger.sovereignsky.no/contributor/research-otel-sdk-guide) for label issues
 
 **⛔ DO NOT PROCEED to Step 4 until metrics are in Prometheus with correct labels**
 

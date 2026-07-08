@@ -15,10 +15,8 @@ sovdev-logger/
 ├── README.md                   — product overview (read this first)
 ├── LICENSE
 │
-├── specification/               — language-agnostic spec; the source of truth
-│   ├── 00-design-principles.md … 10-code-quality.md
-│   ├── implementation-guide.md  — the end-to-end process for implementing a new language
-│   ├── README.md                — how to use the spec
+├── specification/               — functional code only; prose moved to the docs site's Contributor section (PLAN-006)
+│   ├── README.md                — pointer to the Contributor docs + what's still here
 │   ├── schemas/                 — output schemas implementations must match
 │   ├── tests/                   — cross-language test scenarios
 │   ├── tools/                   — validation / query tooling, incl. compare-with-master.sh
@@ -56,12 +54,12 @@ sovdev-logger/
 
 This is a **library**, not a CLI tool — there's no `sovdev-logger` command. A developer (human or LLM) implementing sovdev-logger in a new language works from the specification directly, not from an automatically-invoked workflow:
 
-1. Read `specification/implementation-guide.md` — contract → TypeScript → anti-patterns table → implement
+1. Read the [Implementation guide](https://sovdev-logger.sovereignsky.no/contributor/implementation-guide) — contract → TypeScript → anti-patterns table → implement
 2. Run `specification/tools/compare-with-master.sh {language}` until it passes — this is the completion gate, not a self-reported checklist
 
 There used to be a `.claude/skills/` directory with hand-holding routers (mandatory checkpoints, per-language ROADMAP generation) built for an earlier, weaker model. It was deleted 2026-07-08 — see [PLAN-003](plans/completed/PLAN-003-spec-scaffolding-cleanup.md) — once `compare-with-master.sh` made the checklist-enforcement approach redundant.
 
-Read `specification/README.md` before starting any implementation work.
+Read the [Contributor documentation](https://sovdev-logger.sovereignsky.no/contributor) before starting any implementation work — migrated from `specification/` in [PLAN-006](plans/completed/PLAN-006-documentation-content-migration.md).
 
 ---
 

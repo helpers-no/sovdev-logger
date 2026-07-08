@@ -1,3 +1,10 @@
+---
+title: API contract
+sidebar_label: API contract
+sidebar_position: 4
+description: "Public API that all languages MUST implement."
+---
+
 # Sovdev Logger API Contract
 
 ## Overview

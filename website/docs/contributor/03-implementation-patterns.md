@@ -1,3 +1,10 @@
+---
+title: Implementation patterns
+sidebar_label: Implementation patterns
+sidebar_position: 7
+description: "Required patterns (snake_case, directory structure)."
+---
+
 # Implementation Patterns for Sovdev Logger
 
 ## Overview
@@ -132,7 +139,7 @@ The `company-lookup` application is a **standardized E2E test** that:
 Every language implementation should produce functionally identical logs when running `company-lookup`.
 
 **For complete specification**, see:
-- **Test program specification**: `specification/08-testprogram-company-lookup.md` - Complete documentation of the company-lookup E2E test including expected behavior, log output, cross-language requirements, and validation procedures
+- **Test program specification**: `08-testprogram-company-lookup.md` - Complete documentation of the company-lookup E2E test including expected behavior, log output, cross-language requirements, and validation procedures
 
 ---
 
@@ -193,7 +200,7 @@ Each script is self-documented with comments explaining its purpose and usage:
 - **Python**: `python/build-sovdevlogger.sh` - Editable install and wheel building
 - **Go**: `go/build-sovdevlogger.sh` - Dependency management and build verification
 
-**Usage in development workflow**: See `specification/09-development-loop.md` for how these scripts integrate with the development loop.
+**Usage in development workflow**: See `09-development-loop.md` for how these scripts integrate with the development loop.
 
 ---
 
