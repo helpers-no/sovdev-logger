@@ -237,7 +237,7 @@ sleep 10  # Wait for OTLP propagation
 **If FAIL:**
 - Metrics not exported
 - Check OTEL SDK metric configuration
-- See `specification/llm-work-templates/research-otel-sdk-guide.md` for label issues
+- See `specification/research-otel-sdk-guide.md` for label issues
 
 **⛔ DO NOT PROCEED to Step 4 until metrics are in Prometheus with correct labels**
 

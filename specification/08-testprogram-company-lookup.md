@@ -663,12 +663,11 @@ These files are NOT optional. Without them, validation tools will fail.
 **How to validate this test:**
 
 **📚 Primary documentation** (AUTHORITATIVE):
-- **Complete tool reference & 🔢 8-step validation sequence**: [`tools/README.md`](./tools/README.md)
+- **Complete tool reference & 🔢 9-step validation sequence**: [`tools/README.md`](./tools/README.md)
 - **Quick start guide**: [`06-test-scenarios.md`](./06-test-scenarios.md) - "Quick Start: Testing Your Implementation"
 
 **👨‍💻 For LLM implementers**:
-- **Systematic workflow**: [`llm-work-templates/ROADMAP-template.md`](./llm-work-templates/ROADMAP-template.md) - Task 9 (E2E Test Implementation)
-- **Validation guide**: [`llm-work-templates/validation-sequence.md`](./llm-work-templates/validation-sequence.md) - 8-step validation sequence
+- **End-to-end process**: [`implementation-guide.md`](./implementation-guide.md)
 
 **Quick validation workflow for company-lookup**:
 

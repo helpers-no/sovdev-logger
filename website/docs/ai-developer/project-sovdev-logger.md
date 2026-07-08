@@ -2,7 +2,7 @@
 
 `sovdev-logger` is a **specification-first, multi-language structured logging library**. One log call gives structured logs, metrics, and distributed traces — correlated automatically — against any OpenTelemetry-compatible backend (Azure Monitor, Grafana Cloud, Datadog, New Relic, Honeycomb, or self-hosted).
 
-The specification is the source of truth: every language implementation must produce **identical output** for the same log call. TypeScript is the reference implementation; Go, Python, C#, Rust, and PHP are planned or in progress.
+The specification is the source of truth: every language implementation must produce **identical output** for the same log call. TypeScript is the reference implementation; Python is conformant (verified via `compare-with-master.sh`); Go, C#, Rust, and PHP are planned.
 
 For the user-facing description and quickstart, read the repo-root [`README.md`](https://github.com/helpers-no/sovdev-logger/blob/main/README.md) first.
 
@@ -17,20 +17,20 @@ sovdev-logger/
 │
 ├── specification/               — language-agnostic spec; the source of truth
 │   ├── 00-design-principles.md … 10-code-quality.md
-│   ├── README.md                — how to use the spec (points at the Claude Code skills)
+│   ├── implementation-guide.md  — the end-to-end process for implementing a new language
+│   ├── README.md                — how to use the spec
 │   ├── schemas/                 — output schemas implementations must match
 │   ├── tests/                   — cross-language test scenarios
-│   ├── tools/                   — validation / query tooling (see validation-tools skill)
-│   └── llm-work-templates/      — templates for tracking an in-progress implementation
+│   ├── tools/                   — validation / query tooling, incl. compare-with-master.sh
+│   └── llm-work-templates-archive/  — superseded ROADMAP/checklist scaffolding, kept for reference (see PLAN-003)
 │
 ├── typescript/                  — reference implementation
 │   ├── src/                     — logger.ts, logLevels.ts, peerServices.ts, index.ts
 │   └── test/
 │
-├── python/                      — implementation in progress
+├── python/                      — conformant implementation (verified against TypeScript)
 │   ├── src/
-│   ├── test/
-│   └── llm-work/                 — this implementation's working notes (SDK comparison, issues/fixes)
+│   └── test/
 │
 ├── docs/                        — logging concepts, observability architecture, Microsoft OTel notes
 │
@@ -54,23 +54,14 @@ sovdev-logger/
 
 ## How it's used
 
-This is a **library**, not a CLI tool — there's no `sovdev-logger` command. A developer (human or LLM) implementing sovdev-logger in a new language works from the specification, not from asking around:
+This is a **library**, not a CLI tool — there's no `sovdev-logger` command. A developer (human or LLM) implementing sovdev-logger in a new language works from the specification directly, not from an automatically-invoked workflow:
 
-```text
-"implement sovdev-logger in {language}"   → invokes the implement-language skill
-"validate the implementation"             → invokes the validate-implementation skill
-```
+1. Read `specification/implementation-guide.md` — contract → TypeScript → anti-patterns table → implement
+2. Run `specification/tools/compare-with-master.sh {language}` until it passes — this is the completion gate, not a self-reported checklist
 
-See `.claude/skills/` in the repo root — these are **project-specific Claude Code skills** (distinct from the generic `website/docs/ai-developer/` framework docs in this folder):
+There used to be a `.claude/skills/` directory with hand-holding routers (mandatory checkpoints, per-language ROADMAP generation) built for an earlier, weaker model. It was deleted 2026-07-08 — see [PLAN-003](plans/completed/PLAN-003-spec-scaffolding-cleanup.md) — once `compare-with-master.sh` made the checklist-enforcement approach redundant.
 
-| Skill | Purpose |
-|---|---|
-| `implement-language` | Systematic 4-phase implementation of sovdev-logger in a new language, with a ROADMAP.md task list and completion-criteria enforcement |
-| `validate-implementation` | Runs the full validation suite: file logs → OTLP → Grafana → labels |
-| `validation-tools` | Points at the right debugging/query tool for a given validation question |
-| `development-loop` | The 6-step iterative development workflow for fast feedback during active development |
-
-Read `specification/README.md` before starting any implementation work — it explains how the skills and the spec fit together.
+Read `specification/README.md` before starting any implementation work.
 
 ---
 

@@ -333,15 +333,14 @@ The dashboard should show your test logs with all required structured fields and
 - [Configuration Guide](./README-configuration.md) - Environment variables and setup
 - [Log Data Structure](./logging-data.md) - Field reference and patterns
 - [TypeScript README](../typescript/README.md) - TypeScript-specific guide
+- [Python README](../python/README.md) - Python-specific guide
 - [Go README](../go/README.md) - Go-specific guide (coming soon)
-- [Python README](../python/README.md) - Python-specific guide (coming soon)
 
 **For Library Implementers:**
 - [Specification](../specification/README.md) - Complete implementation requirements
+- [Implementation Guide](../specification/implementation-guide.md) - The end-to-end process for implementing a new language
 - [Environment Configuration](../specification/05-environment-configuration.md) - DevContainer setup and architecture
-- [OTEL SDK Guide](../specification/llm-work-templates/research-otel-sdk-guide.md) - Critical SDK differences across languages
-- [Implementation Workflow](../specification/llm-work-templates/ROADMAP-template.md) - 13-task systematic workflow
-- [Validation Guide](../specification/llm-work-templates/validation-sequence.md) - 8-step validation sequence
+- [OTEL SDK Guide](../specification/research-otel-sdk-guide.md) - Critical SDK differences across languages
 
 **For Compliance:**
 - [Loggeloven Requirements](./README-loggeloven.md) - Norwegian Red Cross logging requirements

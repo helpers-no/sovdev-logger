@@ -1,4 +1,8 @@
-# LLM Work Templates - Task Management System
+# LLM Work Templates - Task Management System (ARCHIVED)
+
+> **⚠️ Superseded 2026-07-08.** This 13-task ROADMAP/CLAUDE/enforcement system was built (2025-10-31) to stop a model from skipping validation steps or claiming "done" without checking — a real problem at the time, since nothing automatically verified an implementation's output. `specification/tools/compare-with-master.sh` ([PLAN-001](../../website/docs/ai-developer/plans/completed/PLAN-001-master-comparison-mode.md)) now does that directly: it diffs a candidate language's output against TypeScript's for the same scenario, so "did the model honestly complete 13 checkboxes" is no longer the question — "does the comparison pass" is. See [PLAN-003](../../website/docs/ai-developer/plans/backlog/PLAN-003-spec-scaffolding-cleanup.md) for the full rationale and `specification/implementation-guide.md` for what replaced this.
+>
+> Kept here rather than deleted, in case something in it turns out to still be load-bearing for a future language implementation. Not maintained — treat everything below as a historical snapshot, not current guidance.
 
 **Version:** 2.0.0
 **Created:** 2025-10-31

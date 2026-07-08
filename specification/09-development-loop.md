@@ -298,13 +298,9 @@ This runs Steps 1-7 automatically. You MUST still do Step 8 manually.
 
 ---
 
-### For LLMs: Task Management Integration
+### For LLMs: Tracking Progress
 
-**⚠️ IMPORTANT:** Track implementation progress using the task management system.
-
-**Progress Tracking:** `{language}/llm-work/ROADMAP.md` (13 tasks across 4 phases)
-
-**For complete task management workflow**, see `specification/llm-work-templates/README.md`
+There's no per-language ROADMAP file to maintain anymore — `specification/tools/compare-with-master.sh {language}` is the completion gate (see [PLAN-003](../website/docs/ai-developer/plans/backlog/PLAN-003-spec-scaffolding-cleanup.md)). Use your own task-tracking tooling if useful; there's no repo-enforced checklist to update.
 
 ---
 

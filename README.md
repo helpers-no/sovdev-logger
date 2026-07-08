@@ -98,10 +98,10 @@ Help them get home to their family. Help yourself build a reputation as someone 
 
 **→ Implementation Guide:**
 1. **Understand the development environment** - [specification/05-environment-configuration.md](specification/05-environment-configuration.md)
-2. Read [specification/README.md](specification/README.md) - Complete implementation guide
-3. Read [specification/llm-work-templates/research-otel-sdk-guide.md](specification/llm-work-templates/research-otel-sdk-guide.md) ⚠️ **CRITICAL**: OTEL SDK differences
-4. Initialize workspace with [specification/llm-work-templates/ROADMAP-template.md](specification/llm-work-templates/ROADMAP-template.md) - 13-task workflow
-5. Study [typescript/src/logger.ts](typescript/src/logger.ts) - Reference implementation
+2. Read [specification/implementation-guide.md](specification/implementation-guide.md) - The end-to-end process: contract → TypeScript → anti-patterns → implement → `compare-with-master.sh`
+3. Read [specification/research-otel-sdk-guide.md](specification/research-otel-sdk-guide.md) - OTEL SDK differences between languages
+4. Study [typescript/src/logger.ts](typescript/src/logger.ts) - Reference implementation
+5. Run `specification/tools/compare-with-master.sh {language}` until it passes - the actual completion gate, not a checklist
 
 **Current implementations:**
 - ✅ TypeScript (master implementation) - [typescript/](typescript/)
