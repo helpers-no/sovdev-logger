@@ -443,6 +443,30 @@ sleep 10  # Wait for OTLP propagation
 
 ---
 
+### Step 9: Master Comparison — Does It Match TypeScript? (NEW)
+
+**Tool:** `compare-with-master.sh`
+
+**Prerequisites:**
+- ✅ TypeScript's E2E test has been run (`typescript/test/e2e/company-lookup/run-test.sh`)
+- ✅ Your candidate language's E2E test has been run
+
+**Purpose:** Steps 1-8 confirm your implementation is internally consistent and well-formed. They do **not** confirm it matches TypeScript's actual output — the two are different questions, and only the second one is "identical output across all implementations." This step is the automated, re-runnable answer to that question, replacing what used to be a one-off hand-written comparison document.
+
+```bash
+cd specification/tools && ./compare-with-master.sh {language}
+```
+
+Compares the candidate's `logs/dev.log` against TypeScript's, field by field, for the same fixed company-lookup scenario. Per-run values (`timestamp`, `trace_id`, `span_id`, `event_id`, `session_id`), the language-specific `service_name` suffix, and `exception_stacktrace` content are excluded by design — everything else must match exactly.
+
+**Expected result:** exit code 0, `✅ MATCH — output is identical to TypeScript's`
+
+**If it fails:** the error output names the exact entry and field, with TypeScript's expected value and your candidate's actual value — fix the implementation, don't adjust the comparator's normalization rules to make a real mismatch disappear.
+
+**This step, not Step 8's Grafana panels, is the authoritative check for "identical output across languages."** See `website/docs/ai-developer/plans/active/PLAN-001-master-comparison-mode.md` for the full design rationale.
+
+---
+
 ## Quick Reference
 
 All scripts run inside the DevContainer at `/workspace/specification/tools/`.

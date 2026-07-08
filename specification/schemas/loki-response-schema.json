@@ -56,6 +56,16 @@
               "type": "string",
               "minLength": 1,
               "description": "Service version (REQUIRED: snake_case)"
+            },
+            "severity_text": {
+              "type": "string",
+              "enum": ["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"],
+              "description": "OpenTelemetry severity text, uppercase (REQUIRED by Grafana Panel 4 — see specification/02-field-definitions.md). Confirmed gap: previously unconstrained, so a bad conversion like 'SOVDEV_LOGLEVELS.ERROR' passed schema validation silently."
+            },
+            "severity_number": {
+              "type": "string",
+              "pattern": "^([1-9]|1[0-9]|2[0-4])$",
+              "description": "OpenTelemetry severity number, 1-24 per the OTel SeverityNumber spec (REQUIRED by Grafana Panel 4). Typed as string, not integer: Loki stream labels are always strings (map[string]string), matching this schema's existing patternProperties convention for every other label."
             }
           },
           "patternProperties": {

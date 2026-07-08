@@ -161,9 +161,10 @@ cp typescript/test/e2e/company-lookup/.env {language}/test/e2e/company-lookup/
 
 ## Validation & Success Criteria
 
-### Main Validation Command
+### Main Validation Commands
 ```bash
 ./specification/tools/run-full-validation.sh {language}
+./specification/tools/compare-with-master.sh {language}
 ```
 
 ### Success Criteria
@@ -174,7 +175,7 @@ An implementation is **complete and correct** when:
 2. ✅ **CRITICAL:** Grafana dashboard shows data in ALL 3 panels (TypeScript + new language)
 3. ✅ Metric labels match TypeScript exactly (peer_service, log_type, log_level with underscores)
 4. ✅ Duration values in milliseconds (histogram unit specified)
-5. ✅ Output structure identical to TypeScript reference
+5. ✅ **`compare-with-master.sh {language}` passes** — output is field-for-field identical to TypeScript's for the same E2E run, not just visually similar. This is the automated, re-runnable check for "identical output across languages"; Grafana dashboard checks (criterion 2) confirm the observability pipeline works, they don't confirm the output itself matches.
 6. ✅ All tasks in ROADMAP.md marked complete (13/13, 100%)
 
 **For detailed validation procedures**, see:

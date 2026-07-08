@@ -24,13 +24,13 @@ tool, not a roadmap.
   it; one completes → strike it and promote dependents; a child PLAN ships
   → re-rank the parent. Full re-rank quarterly or after every 3 ships.
 
-**Last triaged:** not yet triaged — no investigations open yet.
+**Last triaged:** 2026-07-08 — maintainer accepted the recommendation on the first investigation; queued for PLAN drafting.
 
 ---
 
 ## Tier 1 — next up
 
-_(none yet)_
+- [INVESTIGATE-multi-language-conformance.md](INVESTIGATE-multi-language-conformance.md) — **accepted 2026-07-08.** [`PLAN-001-master-comparison-mode.md`](../completed/PLAN-001-master-comparison-mode.md) **completed** (branch `feature/master-comparison-mode`, committed but not yet merged): `compare-with-master.sh`/`compare-log-files.py` built and verified against the real devcontainer; Loki severity-schema gap closed. Found two real bugs in the current Python implementation (`response_json` dropped, `exception_message` whitespace) for the next plan to fix. Next: `PLAN-002-python-conformance.md` (fix those, re-run until clean, execute the promotion step to flip `README.md`). `PLAN-003` (cut `llm-work-templates/` scaffolding) and `PLAN-004` (schema-driven field-name generation) follow. Python must pass before any other language is attempted.
 
 ## Tier 2 — real, not urgent
 
