@@ -69,11 +69,11 @@ The sovdev-logger devcontainer can't resolve `otel.localhost` directly (it's a h
 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://host.docker.internal/v1/logs
 OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://host.docker.internal/v1/metrics
 OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://host.docker.internal/v1/traces
-OTEL_EXPORTER_OTLP_HEADERS='{"Host":"otel.localhost"}'
+OTEL_EXPORTER_OTLP_HEADERS=Host=otel.localhost
 OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 ```
 
-**The single quotes around `OTEL_EXPORTER_OTLP_HEADERS`'s value are load-bearing.** `run-test.sh` loads `.env` with `source`, and bash strips unquoted/double-quoted `"` characters during word-splitting — an unquoted `{"Host":"otel.localhost"}` becomes the invalid JSON `{Host:otel.localhost}` by the time the SDK sees it. This doesn't fail loudly: `JSON.parse` throws inside `configure_opentelemetry()`, which is caught and logged as a warning, so the app keeps running — but the `TracerProvider` never initializes, and every `sovdev_start_span()` call downstream fails with `"TracerProvider not initialized. Call sovdev_initialize() first."` This is exactly what happened the first time — all 4 company lookups failed, not just the one that's supposed to fail. Fixing the quoting fixed all of it in one move.
+`OTEL_EXPORTER_OTLP_HEADERS` is the standard OpenTelemetry format — comma-separated `key=value` pairs, no quoting needed. (This used to be documented as a JSON value requiring load-bearing single quotes to survive bash's `source` — that was working around a real bug in sovdev-logger itself, not a genuine OTel requirement; see [`INVESTIGATE-otlp-headers-standard-compliance.md`](../../ai-developer/plans/backlog/INVESTIGATE-otlp-headers-standard-compliance.md) for the full story and [Troubleshooting](#troubleshooting) below.)
 
 ## 5. Run the TypeScript test and verify data actually arrived
 
@@ -103,13 +103,15 @@ Python's E2E test (`python/test/e2e/company-lookup/`) uses the exact same UIS en
 dct-exec bash -c "cd /workspace/python/test/e2e/company-lookup && bash run-test.sh"
 ```
 
-**The single-quoting requirement from step 4 does not apply here.** TypeScript's `run-test.sh` loads `.env` with bash's `source`, which needs the quotes to protect the JSON in `OTEL_EXPORTER_OTLP_HEADERS` from word-splitting. Python's test loads `.env` with `python-dotenv`'s `load_dotenv()` (in `company-lookup.py`), which doesn't do shell-style parsing — the unquoted value works as-is:
+`OTEL_EXPORTER_OTLP_HEADERS` uses the same real OTel spec format as TypeScript (comma-separated `key=value`, no quoting needed here regardless):
 
 ```bash
-OTEL_EXPORTER_OTLP_HEADERS={"Host":"otel.localhost"}
+OTEL_EXPORTER_OTLP_HEADERS=Host=otel.localhost
 ```
 
-Confirmed empirically, not assumed: this exact unquoted value was tested first (before trying a quoted one), and it worked on the first run — 17 log entries, correct 3-success/1-failure pattern, `TracerProvider` initialized correctly. Verified the data landed the same way as TypeScript, using `--compare-with` for the same exact trace_id/event_id cross-check (not just "service found"):
+**Quoting is never load-bearing for Python either way** — TypeScript's `run-test.sh` loads `.env` with bash's `source`, which word-splits unquoted values containing a space or embedded quote character. Python's test loads `.env` with `python-dotenv`'s `load_dotenv()` (in `company-lookup.py`), which doesn't do shell-style parsing — so even a value containing a space (e.g. a Basic Auth token) works unquoted here.
+
+Confirmed empirically, not assumed: re-ran the test after porting Python's header handling to stop `json.loads`-parsing this env var itself (letting the OTel SDK's own `parse_env_headers()` read it natively, matching the real spec) — clean run, 17 log entries, correct 3-success/1-failure pattern, `TracerProvider` initialized correctly. Verified the data landed the same way as TypeScript, using `--compare-with` for the same exact trace_id/event_id cross-check (not just "service found"):
 
 ```bash
 dct-exec bash -c "cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-python --compare-with /workspace/python/test/e2e/company-lookup/logs/dev.log"
@@ -127,3 +129,5 @@ All three matched exactly (17/17 log entries, 4/4 spans, 5/5 metric groups), and
 - All three `query-*.sh` scripts strip known kubectl noise (audit banners, "pod deleted" messages) from the raw output before parsing it as JSON — because `kubectl run -i` doesn't emit that noise consistently, a leftover blacklist-style filter can still let stray text through and break JSON parsing, or (in Loki's case) an empty/broken response used to be silently reported as "found" because the failure check compared against the literal string `"0"`, which an empty response doesn't satisfy. Prefer `--compare-with` over the presence-only check for exactly this reason — a real trace_id/event_id mismatch fails loudly, "found: yes" does not.
 
 **Prometheus `--compare-with` reports 0 matches even though the run clearly succeeded.** Check how much time has passed since the run. Metrics from a one-shot process are pushed once at flush time; the OTel Collector only exposes them for a short window afterward. Re-run the test and check Prometheus within a couple of minutes.
+
+**Historical: `OTEL_EXPORTER_OTLP_HEADERS` used to require single-quoting, and flush would silently drop telemetry with any Basic-Auth-style header.** sovdev-logger used to document (and require) this env var as JSON — its own contract was wrong. The underlying OTel SDK reads this same, reserved env var name natively, expecting the real spec format (comma-separated `key=value`), independently of whatever the app explicitly passed to its exporters. For UIS's `Host` header this only caused a silent config-validation no-op; for any header value containing `=` (e.g. Basic Auth tokens, since base64 padding uses `=`) it crashed flush with `ERR_INVALID_HTTP_TOKEN`, silently dropping that flush's telemetry. Fixed — see [`INVESTIGATE-otlp-headers-standard-compliance.md`](../../ai-developer/plans/backlog/INVESTIGATE-otlp-headers-standard-compliance.md) for the full root-cause trace through the actual OTel SDK source.

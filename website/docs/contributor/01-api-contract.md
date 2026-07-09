@@ -933,14 +933,13 @@ sovdev_validate_config(): {
 2. `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` - Logs endpoint URL
 3. `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` - Metrics endpoint URL
 4. `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` - Traces endpoint URL
-5. `OTEL_EXPORTER_OTLP_HEADERS` - HTTP headers (must be JSON format)
+5. `OTEL_EXPORTER_OTLP_HEADERS` - HTTP headers, in the standard OpenTelemetry format: comma-separated `key=value` pairs (the W3C Baggage HTTP header format), e.g. `Authorization=Basic dXNlcjpwYXNz`. **Not JSON** — the underlying OTel SDK reads this same env var natively and expects this exact format; passing JSON collides with that native parsing (see [`INVESTIGATE-otlp-headers-standard-compliance.md`](../ai-developer/plans/backlog/INVESTIGATE-otlp-headers-standard-compliance.md) for the full root cause).
 
 **Checks for Optional Variables**:
 - `OTEL_EXPORTER_OTLP_PROTOCOL` - Protocol type (default: grpc, recommended: http/protobuf)
 
 **Validates**:
-- Headers contain `Host` header (required for Traefik routing)
-- Headers are valid JSON format
+- Only that `OTEL_EXPORTER_OTLP_HEADERS` is set — its required contents are backend-specific (a `Host` header for Traefik-routed local setups, an `Authorization` header for token-authenticated cloud backends, none at all for a bare local collector), so no specific header name is universally required
 
 **Behavior**:
 - MUST check all required environment variables

@@ -685,10 +685,13 @@ def configure_metrics(
         metric_endpoint = os.environ.get(
             "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "http://localhost:4318/v1/metrics"
         )
-        headers_str = os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "{}")
-        headers = json.loads(headers_str) if headers_str else {}
-
-        metric_exporter = OTLPMetricExporter(endpoint=metric_endpoint, headers=headers)
+        # No explicit `headers` passed: the OTel SDK's OTLPMetricExporter reads
+        # OTEL_EXPORTER_OTLP_HEADERS itself via parse_env_headers(), which expects
+        # the real spec format (comma-separated key=value, W3C Baggage HTTP header
+        # format) — not JSON. Passing an explicit headers dict here would fully
+        # override that native parsing (Python's exporters use `headers or
+        # parse_env_headers(...)`, not an additive merge like the JS SDK).
+        metric_exporter = OTLPMetricExporter(endpoint=metric_endpoint)
 
         # Create periodic metric reader (export every 10 seconds)
         metric_reader = PeriodicExportingMetricReader(
@@ -730,17 +733,16 @@ def configure_opentelemetry(
             }
         )
 
-        # Parse OTLP headers
-        headers_str = os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "{}")
-        headers = json.loads(headers_str) if headers_str else {}
-
         # TRACE EXPORTER AND PROVIDER
         trace_endpoint = os.environ.get(
             "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
             os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318/v1/traces"),
         )
 
-        trace_exporter = OTLPSpanExporter(endpoint=trace_endpoint, headers=headers)
+        # No explicit `headers` passed — see the comment in configure_metrics()
+        # above for why: the SDK's own OTEL_EXPORTER_OTLP_HEADERS parsing (real
+        # spec format) is used instead of us pre-parsing it ourselves.
+        trace_exporter = OTLPSpanExporter(endpoint=trace_endpoint)
 
         tracer_provider = TracerProvider(resource=resource)
         # Configure BatchSpanProcessor with shorter delay for short-lived apps
@@ -766,7 +768,7 @@ def configure_opentelemetry(
 
         if log_endpoint or os.environ.get("NODE_ENV", "development") == "development":
             log_exporter = OTLPLogExporter(
-                endpoint=log_endpoint or "http://localhost:4318/v1/logs", headers=headers
+                endpoint=log_endpoint or "http://localhost:4318/v1/logs"
             )
 
             logger_provider = LoggerProvider(resource=resource)

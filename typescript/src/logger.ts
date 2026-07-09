@@ -721,12 +721,11 @@ function configure_metrics(
       session_id: session_id, // Session grouping for execution tracking
     });
 
-    // Configure metric exporter with cumulative temporality for Prometheus compatibility
+    // Configure metric exporter with cumulative temporality for Prometheus compatibility.
+    // No explicit `headers` here — OTEL_EXPORTER_OTLP_HEADERS is a standard OTel env
+    // var (key1=value1,key2=value2 format); the exporter reads it natively.
     const metric_exporter = new OTLPMetricExporter({
       url: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || 'http://localhost:4318/v1/metrics',
-      headers: process.env.OTEL_EXPORTER_OTLP_HEADERS
-        ? JSON.parse(process.env.OTEL_EXPORTER_OTLP_HEADERS)
-        : {},
       temporalityPreference: 1, // 1 = CUMULATIVE (Prometheus compatible)
     });
 
@@ -818,11 +817,10 @@ function configure_opentelemetry(
       process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
       'http://localhost:4318/v1/traces';
 
+    // No explicit `headers` here — OTEL_EXPORTER_OTLP_HEADERS is a standard OTel env
+    // var (key1=value1,key2=value2 format); the exporter reads it natively.
     const trace_exporter = new OTLPTraceExporter({
       url: trace_endpoint,
-      headers: process.env.OTEL_EXPORTER_OTLP_HEADERS
-        ? JSON.parse(process.env.OTEL_EXPORTER_OTLP_HEADERS)
-        : {},
     });
 
     const tracer_provider = new BasicTracerProvider({ resource });
@@ -848,11 +846,10 @@ function configure_opentelemetry(
     const log_endpoint = process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT;
 
     if (log_endpoint || environment === 'development') {
+      // No explicit `headers` here — OTEL_EXPORTER_OTLP_HEADERS is a standard OTel env
+      // var (key1=value1,key2=value2 format); the exporter reads it natively.
       const log_exporter = new OTLPLogExporter({
         url: log_endpoint || 'http://localhost:4318/v1/logs',
-        headers: process.env.OTEL_EXPORTER_OTLP_HEADERS
-          ? JSON.parse(process.env.OTEL_EXPORTER_OTLP_HEADERS)
-          : {},
       });
 
       const log_record_processor = new BatchLogRecordProcessor(log_exporter);
@@ -979,11 +976,12 @@ export function sovdev_validate_config(): {
   if (!metricsEndpoint) missing.push('OTEL_EXPORTER_OTLP_METRICS_ENDPOINT');
   if (!tracesEndpoint) missing.push('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT');
 
-  // Check headers (required for Traefik routing)
+  // Check headers are set. What headers are actually needed is backend-specific
+  // (a Host header for Traefik-routed local setups, an Authorization header for
+  // token-authenticated cloud backends, none at all for a bare local collector) —
+  // this check only confirms the variable exists, not its contents.
   if (!headers) {
     missing.push('OTEL_EXPORTER_OTLP_HEADERS');
-  } else if (!headers.includes('Host')) {
-    warnings.push('OTEL_EXPORTER_OTLP_HEADERS does not contain Host header (required for Traefik routing)');
   }
 
   // Check protocol (optional but recommended)
@@ -1107,6 +1105,31 @@ function generateOtlpTracesPayload(): string {
 }
 
 /**
+ * Parse OTEL_EXPORTER_OTLP_HEADERS per the actual OpenTelemetry spec (the W3C
+ * Baggage HTTP header format): comma-separated key=value pairs, e.g.
+ * "Authorization=Basic dXNlcjpwYXNz,X-Custom=foo". NOT JSON — this is the
+ * same format the OTel SDK's own exporters read natively from this env var,
+ * so this parser exists only for this module's own diagnostics (config
+ * validation, connectivity testing), not for configuring the exporters
+ * themselves (see configure_opentelemetry — no headers passed explicitly,
+ * the SDK reads the env var on its own).
+ */
+function parseOtlpHeaders(raw: string): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const pair of raw.split(',')) {
+    const [keyValuePart] = pair.split(';'); // strip baggage metadata, if any
+    const trimmed = keyValuePart.trim();
+    if (!trimmed) continue;
+    const separatorIndex = trimmed.indexOf('=');
+    if (separatorIndex <= 0) continue;
+    const key = trimmed.substring(0, separatorIndex).trim();
+    const value = trimmed.substring(separatorIndex + 1).trim();
+    if (key && value) headers[key] = value;
+  }
+  return headers;
+}
+
+/**
  * Helper function to test a single OTLP endpoint
  * Sends minimal valid OTLP payload to verify endpoint is reachable
  *
@@ -1120,14 +1143,7 @@ async function testEndpoint(
 ): Promise<{ reachable: boolean; error?: string }> {
   return new Promise((resolve) => {
     try {
-      // Parse headers from JSON string
-      let headerObj: Record<string, string> = {};
-      try {
-        headerObj = JSON.parse(headers);
-      } catch {
-        resolve({ reachable: false, error: 'Invalid OTEL_EXPORTER_OTLP_HEADERS format (must be JSON)' });
-        return;
-      }
+      const headerObj = parseOtlpHeaders(headers);
 
       // Determine payload type based on endpoint URL
       let payload: string;

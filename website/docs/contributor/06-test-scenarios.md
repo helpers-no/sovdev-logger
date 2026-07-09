@@ -112,10 +112,10 @@ All sovdev-logger implementations **MUST** follow this standardized directory st
   OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1/v1/logs
   OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://127.0.0.1/v1/metrics
   OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1/v1/traces
-  OTEL_EXPORTER_OTLP_HEADERS='{"Host":"otel.localhost"}'
+  OTEL_EXPORTER_OTLP_HEADERS=Host=otel.localhost
   ```
 
-**Critical**: JSON values (like OTEL_EXPORTER_OTLP_HEADERS) MUST be wrapped in single quotes to preserve double quotes during shell parsing. Using `export $(grep ... | xargs)` will strip inner quotes and mangle JSON. Use `set -a && source .env && set +a` instead.
+**Note**: `OTEL_EXPORTER_OTLP_HEADERS` is the standard OpenTelemetry format — comma-separated `key=value` pairs, not JSON (see [`INVESTIGATE-otlp-headers-standard-compliance.md`](../ai-developer/plans/backlog/INVESTIGATE-otlp-headers-standard-compliance.md)). No quoting gymnastics needed as a result, but still load `.env` with `set -a && source .env && set +a` rather than `export $(grep ... | xargs)`, which mishandles values containing spaces regardless.
 
 **5. logs/ Directory**
 - Output directory for file-based logs
