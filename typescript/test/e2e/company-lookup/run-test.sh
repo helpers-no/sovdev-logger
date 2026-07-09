@@ -11,9 +11,10 @@
 #   5. Return exit code for CI/CD integration
 #
 # Usage:
-#   ./run-test.sh                    # From typescript/test/e2e/company-lookup/
-#   ./run-test.sh --skip-validation  # Skip log validation (used by full validation script)
-#   npm test                         # From typescript/ directory (recommended)
+#   ./run-test.sh                              # From typescript/test/e2e/company-lookup/
+#   ./run-test.sh --skip-validation             # Skip log validation (used by full validation script)
+#   ./run-test.sh --env-file .env.grafana-cloud # Load a different backend's config without overwriting .env
+#   npm test                                    # From typescript/ directory (recommended)
 #
 # Environment:
 #   - Must run inside devcontainer (uses /workspace paths)
@@ -44,9 +45,23 @@ set -o pipefail
 
 # Parse arguments
 SKIP_VALIDATION=false
-if [ "$1" == "--skip-validation" ]; then
-  SKIP_VALIDATION=true
-fi
+ENV_FILE=".env"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --skip-validation)
+      SKIP_VALIDATION=true
+      shift
+      ;;
+    --env-file)
+      ENV_FILE="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 1
+      ;;
+  esac
+done
 
 # Track test results
 TEST_EXIT=0
@@ -57,13 +72,15 @@ echo "Cleaning up old log files..."
 rm -rf ./logs/*.log
 echo ""
 
-# Load .env file if it exists
-if [ -f .env ]; then
-  echo "Loading environment variables from .env file..."
+# Load the chosen env file if it exists (defaults to .env)
+if [ -f "$ENV_FILE" ]; then
+  echo "Loading environment variables from ${ENV_FILE}..."
   # Use set -a to automatically export all variables
   set -a
-  source .env
+  source "$ENV_FILE"
   set +a
+else
+  echo "⚠️  Env file not found: ${ENV_FILE}" >&2
 fi
 
 # Run the company lookup example with OTLP configuration
