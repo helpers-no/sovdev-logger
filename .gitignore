@@ -87,6 +87,7 @@ terchris/
 
 # DevContainer Toolbox - devcontainer.json backups from dev-update
 .devcontainer/backup/
+.devcontainer.backup/
 
 # Docusaurus
 website/.docusaurus/

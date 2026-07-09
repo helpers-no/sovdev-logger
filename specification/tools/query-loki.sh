@@ -216,13 +216,13 @@ if ! command -v kubectl &> /dev/null; then
     exit 1
 fi
 
-# Check if Loki pod exists
-if ! kubectl get pod -n monitoring loki-0 &> /dev/null; then
+# Check if Loki service exists
+if ! kubectl get svc -n monitoring loki &> /dev/null; then
     if [[ "$JSON_MODE" == false ]]; then
-        echo -e "${RED}❌ Loki pod not found in monitoring namespace${NC}" >&2
+        echo -e "${RED}❌ Loki service not found in monitoring namespace${NC}" >&2
         echo -e "${YELLOW}   Make sure the monitoring stack is deployed${NC}" >&2
     else
-        echo '{"error": "Loki pod not found in monitoring namespace"}' >&2
+        echo '{"error": "Loki service not found in monitoring namespace"}' >&2
     fi
     exit 1
 fi
@@ -238,16 +238,48 @@ if [[ "$JSON_MODE" == false ]]; then
     echo -e "${BLUE}📡 Querying Loki...${NC}"
 fi
 
-# Execute query using kubectl exec
-QUERY_RESULT=$(kubectl exec -n monitoring loki-0 -- \
-    wget -q -O - \
-    --post-data "query=${LOGQL_QUERY}&start=${START_NS}&end=${END_NS}&limit=${LIMIT}" \
-    http://localhost:3100/loki/api/v1/query_range 2>&1) || {
+# Execute query using kubectl run with curl (the loki image itself has no shell
+# or wget — it's a distroless-style image with only the loki binary — so a
+# disposable curlimages/curl pod is used instead, same as query-tempo.sh /
+# query-prometheus.sh)
+QUERY_RAW=$(kubectl run curl-loki-query --image=curlimages/curl --rm -i --restart=Never -n monitoring -- \
+    curl -s -G "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/query_range" \
+    --data-urlencode "query=${LOGQL_QUERY}" \
+    --data-urlencode "start=${START_NS}" \
+    --data-urlencode "end=${END_NS}" \
+    --data-urlencode "limit=${LIMIT}" 2>&1) || {
     if [[ "$JSON_MODE" == false ]]; then
         echo -e "${RED}❌ Failed to query Loki${NC}" >&2
-        echo -e "${YELLOW}   Error: ${QUERY_RESULT}${NC}" >&2
+        echo -e "${YELLOW}   Error: ${QUERY_RAW}${NC}" >&2
     else
-        echo "{\"error\": \"Failed to query Loki\", \"details\": \"${QUERY_RESULT}\"}" >&2
+        echo "{\"error\": \"Failed to query Loki\", \"details\": \"${QUERY_RAW}\"}" >&2
+    fi
+    exit 1
+}
+
+# Extract the JSON object from the raw output. `kubectl run -i` can prepend or
+# append non-JSON noise (audit banners, "pod deleted" messages, TTY hints) —
+# which noise appears is not deterministic, so rather than blacklist known
+# strings, pull out the first complete JSON object wherever it starts.
+QUERY_RESULT=$(printf '%s' "$QUERY_RAW" | python3 -c '
+import sys, json
+raw = sys.stdin.read()
+start = raw.find("{")
+if start == -1:
+    print(raw, end="")
+    sys.exit(1)
+try:
+    obj, _ = json.JSONDecoder().raw_decode(raw, start)
+    print(json.dumps(obj))
+except json.JSONDecodeError:
+    print(raw, end="")
+    sys.exit(1)
+') || {
+    if [[ "$JSON_MODE" == false ]]; then
+        echo -e "${RED}❌ Failed to parse Loki response${NC}" >&2
+        echo -e "${YELLOW}   Raw output: ${QUERY_RESULT}${NC}" >&2
+    else
+        echo "{\"error\": \"Failed to parse Loki response\", \"details\": \"${QUERY_RESULT}\"}" >&2
     fi
     exit 1
 }

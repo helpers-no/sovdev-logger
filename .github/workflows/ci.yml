@@ -23,7 +23,10 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18, 20, 22]
+        # Node 18 (EOL April 2025) and Node 20 (EOL April 2026) are no longer
+        # supported upstream — test against the currently-supported LTS
+        # versions instead: 22 (Maintenance LTS until 2028) and 24 (Active LTS).
+        node-version: [22, 24]
 
     steps:
       - name: Checkout code
@@ -42,14 +45,14 @@ jobs:
       - name: Build TypeScript
         run: npm run build
 
-      - name: Run unit tests
-        run: npm run test:unit
-
-      - name: Run integration tests
-        run: npm run test:integration
-
-      # E2E tests require Kubernetes + observability stack (Loki/Prometheus/Tempo)
-      # These are only run locally, not in CI
+      # There is no separate unit/integration test tier: `npm run test:unit`
+      # and `npm run test:integration` were never implemented for any
+      # language (see specification/06-test-scenarios.md — test/e2e/company-lookup/
+      # is the only REQUIRED test path). The project's actual correctness gate
+      # is the E2E company-lookup test verified against a real OTLP backend
+      # (Loki/Tempo/Prometheus), which needs a live Kubernetes cluster CI
+      # doesn't have — see contributor/testing/uis.md. Run it locally via
+      # `dct-exec` and `specification/tools/compare-with-master.sh`.
       # - name: Run E2E tests
       #   run: npm run test:e2e
 
@@ -76,10 +79,10 @@ jobs:
           npm install ./$PACKAGE
 
           # Verify import works
-          node -e "const logger = require('@sovdev/logger'); console.log('✅ Package imports successfully');"
+          node -e "const logger = require('@norwegianredcross/sovdev-logger'); console.log('✅ Package imports successfully');"
 
       - name: Upload build artifacts
-        if: matrix.node-version == 20
+        if: matrix.node-version == 22
         uses: actions/upload-artifact@v4
         with:
           name: typescript-build
@@ -100,7 +103,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: typescript/package-lock.json
 
@@ -150,7 +153,7 @@ jobs:
           echo "## TypeScript Library" >> $GITHUB_STEP_SUMMARY
 
           if [[ "${{ needs.test-typescript.result }}" == "success" ]]; then
-            echo "✅ **Tests**: Passed (Node 18, 20, 22)" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Tests**: Passed (Node 22, 24)" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Tests**: Failed" >> $GITHUB_STEP_SUMMARY
           fi

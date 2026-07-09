@@ -31,6 +31,10 @@ For people (human or LLM) **implementing or maintaining** a sovdev-logger langua
 - **[Test program: company lookup](08-testprogram-company-lookup.md)** — the E2E test every implementation must pass
 - **[Code quality](10-code-quality.md)** — linting standards and quality rules
 
+## Testing
+
+- **[Testing backends](testing/index.md)** — how to stand up a real OTLP backend (starting with [UIS](testing/uis.md)) and point a language's E2E test at it
+
 ## Functional code (not migrated — lives in the repo)
 
 `specification/schemas/`, `specification/tests/`, and `specification/tools/` (including `compare-with-master.sh`, the actual completion gate) are functional code, not documentation — see them directly in the [repo](https://github.com/helpers-no/sovdev-logger/tree/main/specification).

@@ -235,9 +235,38 @@ SEARCH_RAW=$(kubectl run curl-tempo-search --image=curlimages/curl --rm -i --res
     exit 1
 }
 
-# Filter out kubectl pod messages (appended to JSON without newline)
-# Common kubectl messages: pod deletion, namespace info, warnings, etc.
-SEARCH_RESULT=$(echo "$SEARCH_RAW" | sed 's/pod ".*" deleted//g' | sed 's/If you don.*//g' | sed 's/ from monitoring namespace//g' | sed 's/Error from server.*//g')
+# Extract the JSON object from the raw output. `kubectl run -i` can prepend or
+# append non-JSON noise (audit banners, "pod deleted" messages, TTY hints,
+# and sometimes a duplicated replay of the output when it falls back from
+# attach to streaming logs) — which noise appears is not deterministic, so
+# rather than blacklist known strings, pull out the first complete JSON
+# object wherever it starts.
+extract_json() {
+    python3 -c '
+import sys, json
+raw = sys.stdin.read()
+start = raw.find("{")
+if start == -1:
+    print(raw, end="")
+    sys.exit(1)
+try:
+    obj, _ = json.JSONDecoder().raw_decode(raw, start)
+    print(json.dumps(obj))
+except json.JSONDecodeError:
+    print(raw, end="")
+    sys.exit(1)
+'
+}
+
+SEARCH_RESULT=$(printf '%s' "$SEARCH_RAW" | extract_json) || {
+    if [[ "$JSON_MODE" == false ]]; then
+        echo -e "${RED}❌ Failed to parse Tempo response${NC}" >&2
+        echo -e "${YELLOW}   Raw output: ${SEARCH_RESULT}${NC}" >&2
+    else
+        echo "{\"error\": \"Failed to parse Tempo response\", \"details\": \"${SEARCH_RESULT}\"}" >&2
+    fi
+    exit 1
+}
 
 # Check if query returned traces
 TRACE_COUNT=$(echo "$SEARCH_RESULT" | jq -r '.traces | length' 2>/dev/null || echo "0")
@@ -289,8 +318,12 @@ if [[ "$JSON_MODE" == true ]] && { [[ "$VALIDATE_MODE" == true ]] || [[ -n "$COM
             continue
         }
 
-        # Filter kubectl messages
-        TRACE_DETAIL=$(echo "$TRACE_DETAIL_RAW" | sed 's/pod ".*" deleted//g' | sed 's/If you don.*//g' | sed 's/ from monitoring namespace//g' | sed 's/Error from server.*//g')
+        # Extract the JSON object (see extract_json() above for why)
+        TRACE_DETAIL=$(printf '%s' "$TRACE_DETAIL_RAW" | extract_json) || {
+            DETAILED_TRACES=$(echo "$DETAILED_TRACES" | jq ". += [$ORIGINAL_TRACE]")
+            TRACE_INDEX=$((TRACE_INDEX + 1))
+            continue
+        }
 
         # Transform Tempo API response to validator-expected format
         # Convert base64 IDs to hex for comparison with log files

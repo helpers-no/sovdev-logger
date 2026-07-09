@@ -266,9 +266,34 @@ else
     }
 fi
 
-# Filter out kubectl pod messages (appended to JSON without newline)
-# Common kubectl messages: pod deletion, namespace info, warnings, etc.
-QUERY_RESULT=$(echo "$QUERY_RAW" | sed 's/pod ".*" deleted//g' | sed 's/If you don.*//g' | sed 's/ from monitoring namespace//g' | sed 's/Error from server.*//g')
+# Extract the JSON object from the raw output. `kubectl run -i` can prepend or
+# append non-JSON noise (audit banners, "pod deleted" messages, TTY hints,
+# and sometimes a duplicated replay of the output when it falls back from
+# attach to streaming logs) — which noise appears is not deterministic, so
+# rather than blacklist known strings, pull out the first complete JSON
+# object wherever it starts.
+QUERY_RESULT=$(printf '%s' "$QUERY_RAW" | python3 -c '
+import sys, json
+raw = sys.stdin.read()
+start = raw.find("{")
+if start == -1:
+    print(raw, end="")
+    sys.exit(1)
+try:
+    obj, _ = json.JSONDecoder().raw_decode(raw, start)
+    print(json.dumps(obj))
+except json.JSONDecodeError:
+    print(raw, end="")
+    sys.exit(1)
+') || {
+    if [[ "$JSON_MODE" == false ]]; then
+        echo -e "${RED}❌ Failed to parse Prometheus response${NC}" >&2
+        echo -e "${YELLOW}   Raw output: ${QUERY_RESULT}${NC}" >&2
+    else
+        echo "{\"error\": \"Failed to parse Prometheus response\", \"details\": \"${QUERY_RESULT}\"}" >&2
+    fi
+    exit 1
+}
 
 # Check if query was successful
 if ! echo "$QUERY_RESULT" | jq -e '.status == "success"' &> /dev/null; then
