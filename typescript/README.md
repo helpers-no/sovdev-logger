@@ -1,4 +1,4 @@
-# @sovdev/logger
+# @terchris/sovdev-logger
 
 **One log call. Complete observability.**
 
@@ -65,7 +65,7 @@ sovdev_log(INFO, FUNCTIONNAME, 'Payment processed', PEER_SERVICES.PAYMENT_GATEWA
 ### 1. Install
 
 ```bash
-npm install @sovdev/logger
+npm install @terchris/sovdev-logger
 ```
 
 ### 2. Basic Usage (Console + File Logging)
@@ -73,7 +73,7 @@ npm install @sovdev/logger
 Create `test.ts`:
 
 ```typescript
-import { sovdev_initialize, sovdev_log, sovdev_flush, SOVDEV_LOGLEVELS, create_peer_services } from '@sovdev/logger';
+import { sovdev_initialize, sovdev_log, sovdev_flush, SOVDEV_LOGLEVELS, create_peer_services } from '@terchris/sovdev-logger';
 
 // INTERNAL is auto-generated, just pass empty object if no external systems
 const PEER_SERVICES = create_peer_services({});
@@ -454,7 +454,7 @@ async function importUsers(users: User[]) {
 **Use Case**: Process one company through multiple steps (lookup → validate → save). You want all 3 operations grouped together in Grafana.
 
 ```typescript
-import { sovdev_generate_trace_id } from '@sovdev/logger';
+import { sovdev_generate_trace_id } from '@terchris/sovdev-logger';
 
 async function processCompany(orgNumber: string) {
   const FUNCTIONNAME = 'processCompany';
@@ -884,7 +884,7 @@ Validate that all required OpenTelemetry environment variables are set and prope
 **Example:**
 
 ```typescript
-import { sovdev_validate_config, sovdev_initialize } from '@sovdev/logger';
+import { sovdev_validate_config, sovdev_initialize } from '@terchris/sovdev-logger';
 
 // Validate configuration before initialization
 const validation = sovdev_validate_config();
@@ -937,7 +937,7 @@ Test connectivity to all three OTLP endpoints by sending properly formatted test
 **Example:**
 
 ```typescript
-import { sovdev_test_otlp_connection, sovdev_initialize } from '@sovdev/logger';
+import { sovdev_test_otlp_connection, sovdev_initialize } from '@terchris/sovdev-logger';
 
 // Test connectivity before initialization
 console.log('🔌 Testing OTLP connectivity...');
@@ -997,7 +997,7 @@ Each signal type has different structure and backend routing requirements. This 
 **No configuration needed!** Just install and use:
 
 ```bash
-npm install @sovdev/logger
+npm install @terchris/sovdev-logger
 ```
 
 The library will:
@@ -1032,7 +1032,7 @@ npm install @azure/monitor-opentelemetry
 Update your app initialization:
 
 ```typescript
-import { sovdev_initialize, sovdev_log, sovdev_flush, SOVDEV_LOGLEVELS, create_peer_services } from '@sovdev/logger';
+import { sovdev_initialize, sovdev_log, sovdev_flush, SOVDEV_LOGLEVELS, create_peer_services } from '@terchris/sovdev-logger';
 import { useAzureMonitor } from '@azure/monitor-opentelemetry';
 
 // Initialize Azure Monitor (reads APPLICATIONINSIGHTS_CONNECTION_STRING from env)

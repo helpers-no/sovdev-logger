@@ -30,7 +30,7 @@ All sovdev-logger implementations require service identification using OpenTelem
 #### Initialization (TypeScript/JavaScript)
 
 ```typescript
-import { sovdev_initialize, create_peer_services } from '@sovdev/logger';
+import { sovdev_initialize, create_peer_services } from '@terchris/sovdev-logger';
 
 // Define peer services (external systems you call)
 const PEER_SERVICES = create_peer_services({
@@ -97,7 +97,7 @@ Peer services track which external systems your service interacts with:
 
 **TypeScript Example:**
 ```typescript
-import { sovdev_log, SOVDEV_LOGLEVELS } from '@sovdev/logger';
+import { sovdev_log, SOVDEV_LOGLEVELS } from '@terchris/sovdev-logger';
 
 // When calling external API
 sovdev_log(

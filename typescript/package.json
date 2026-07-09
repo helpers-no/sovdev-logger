@@ -1,5 +1,5 @@
 {
-  "name": "@norwegianredcross/sovdev-logger",
+  "name": "@terchris/sovdev-logger",
   "version": "1.0.0",
   "description": "Structured logging library for OpenTelemetry with Loggeloven compliance - Norwegian Red Cross standards",
   "main": "dist/index.js",

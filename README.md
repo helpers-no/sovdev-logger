@@ -34,7 +34,7 @@ See **[Why OTLP](https://sovdev-logger.sovereignsky.no/general/why-otlp)** for w
 **Using the library in your application:**
 
 ```bash
-npm install @sovdev/logger           # TypeScript — see typescript/README.md
+npm install @terchris/sovdev-logger           # TypeScript — see typescript/README.md
 pip install -r requirements.txt      # Python, from the python/ directory — see python/README.md
 ```
 
