@@ -73,7 +73,7 @@ npm install @terchris/sovdev-logger
 Create `test.ts`:
 
 ```typescript
-import { sovdev_initialize, sovdev_log, sovdev_flush, SOVDEV_LOGLEVELS, create_peer_services } from '@terchris/sovdev-logger';
+import { sovdev_initialize, sovdev_log, sovdev_shutdown, SOVDEV_LOGLEVELS, create_peer_services } from '@terchris/sovdev-logger';
 
 // INTERNAL is auto-generated, just pass empty object if no external systems
 const PEER_SERVICES = create_peer_services({});
@@ -97,8 +97,11 @@ async function main() {
     output
   );
 
-  // Flush before exit (CRITICAL!)
-  await sovdev_flush();
+  // Shut down before exit (CRITICAL!) — flushes and terminates the SDK.
+  // This is a short script, so this is the true end of the process. In a
+  // long-running server, call sovdev_flush() instead wherever you need
+  // telemetry out sooner — it's safe to call repeatedly, unlike this.
+  await sovdev_shutdown();
 }
 
 main().catch(console.error);
@@ -535,30 +538,32 @@ Complete flow for this company visible in one view!
 
 ## Common Mistakes
 
-### ❌ Forgetting to Flush
+### ❌ Forgetting to Shut Down
 
 ```typescript
 async function main() {
   sovdev_log(INFO, FUNCTIONNAME, 'Test', PEER_SERVICES.INTERNAL, input);
-  // Missing: await sovdev_flush();
+  // Missing: await sovdev_shutdown();
 }
-// Result: Last logs lost!
+// Result: Last logs lost, and the process may hang instead of exiting!
 ```
 
-**Fix**: Always call `await sovdev_flush()` before exit.
+**Fix**: In a short script, always call `await sovdev_shutdown()` before exit — not `sovdev_flush()`, which never terminates the SDK and won't let the process exit cleanly on its own.
 
 ```typescript
 async function main() {
   sovdev_log(INFO, FUNCTIONNAME, 'Test', PEER_SERVICES.INTERNAL, input);
-  await sovdev_flush();  // ✅
+  await sovdev_shutdown();  // ✅
 }
 
 main().catch(async (error) => {
   console.error('Fatal error:', error);
-  await sovdev_flush(); // ✅ Flush even on error!
+  await sovdev_shutdown(); // ✅ Shut down even on error!
   process.exit(1);
 });
 ```
+
+**In a long-running server**, don't call `sovdev_shutdown()` per-request — call `sovdev_flush()` if you want telemetry out sooner (safe to call repeatedly), and `sovdev_shutdown()` exactly once, in your shutdown handler (e.g. on `SIGTERM`). See [Onboarding a new system](https://sovdev-logger.sovereignsky.no/using/onboarding) for the full server pattern.
 
 ### ❌ Not Using FUNCTIONNAME Constant
 
@@ -817,13 +822,27 @@ for (let i = 0; i < users.length; i++) {
 async sovdev_flush(): Promise<void>
 ```
 
-Flush logs to ensure they are sent to OTLP collector. **Must be called before application exit.**
+Force-export any buffered logs, metrics, and traces to the OTLP collector right now.
+
+**Safe to call any number of times, at any point in a process's life — this does not shut anything down.** Use it in a long-running server whenever you want telemetry out sooner than the normal batch interval (e.g. defensively after logging something important). For the true end of a process, use `sovdev_shutdown()` instead — see below.
+
+(Prior to this being split into two functions, `sovdev_flush()` used to also shut down the SDK, which meant calling it more than once silently stopped metrics from being recorded — logs kept working, metrics didn't, with no error either way. That's fixed: `sovdev_flush()` alone is now always safe to repeat.)
+
+---
+
+### sovdevShutdown
+
+```typescript
+async sovdev_shutdown(): Promise<void>
+```
+
+Force-flush, then permanently shut down the OTel SDK and every provider. **Call this exactly once — the last thing before your process exits.** After this call, logging/metrics/tracing stop working for the rest of the process's life.
 
 **Why This Is Critical:**
 
-OpenTelemetry uses a `BatchLogRecordProcessor` which batches logs for performance. When your application exits, any logs still in the batch buffer will be lost unless you explicitly flush them.
+OpenTelemetry uses a `BatchLogRecordProcessor` which batches logs for performance. When your application exits, any logs still in the batch buffer will be lost unless you flush them first — and in a short script, the background batch timers also need to be cleared (which `sovdev_shutdown()` does) for the process to exit naturally instead of hanging.
 
-**Best Practice:**
+**Best Practice (short scripts / jobs):**
 
 ```typescript
 async function main() {
@@ -831,16 +850,18 @@ async function main() {
 
   // ... your application code ...
 
-  // Always flush before exit
-  await sovdev_flush();
+  // Always shut down before exit
+  await sovdev_shutdown();
 }
 
 main().catch(async (error) => {
   console.error('Fatal error:', error);
-  await sovdev_flush(); // Flush even on error!
+  await sovdev_shutdown(); // Shut down even on error!
   process.exit(1);
 });
 ```
+
+**Long-running servers**: never call `sovdev_shutdown()` per-request. Call `sovdev_flush()` (freely, repeatedly) if you want telemetry out sooner, and `sovdev_shutdown()` exactly once, in your process's shutdown handler (e.g. on `SIGTERM`).
 
 ---
 
@@ -1054,6 +1075,9 @@ async function main() {
   const FUNCTIONNAME = 'main';
   sovdev_log(SOVDEV_LOGLEVELS.INFO, FUNCTIONNAME, 'Application started', PEER_SERVICES.INTERNAL);
 
+  // App Service keeps running after this — use sovdev_flush() here (safe to
+  // call repeatedly), NOT sovdev_shutdown(). Wire sovdev_shutdown() to the
+  // app's actual termination instead (e.g. a SIGTERM handler).
   await sovdev_flush();
 }
 ```

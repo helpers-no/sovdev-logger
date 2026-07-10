@@ -68,7 +68,7 @@ import sys
 sys.path.insert(0, 'src')  # or however you've placed the package on your path
 
 from logger import (
-    sovdev_initialize, sovdev_log, sovdev_flush,
+    sovdev_initialize, sovdev_log, sovdev_shutdown,
     SOVDEV_LOGLEVELS, create_peer_services,
 )
 
@@ -92,7 +92,7 @@ def main():
         output_json,
     )
 
-    sovdev_flush()  # CRITICAL — see "Common Mistakes" below
+    sovdev_shutdown()  # CRITICAL — see "Common Mistakes" below
 
 if __name__ == '__main__':
     main()
@@ -225,24 +225,26 @@ def import_users(users):
 
 ## Common Mistakes
 
-### ❌ Forgetting to Flush
+### ❌ Forgetting to Shut Down
 
 ```python
 def main():
     sovdev_log(SOVDEV_LOGLEVELS.INFO, FUNCTIONNAME, 'Test', PEER_SERVICES.INTERNAL, input_json)
-    # Missing: sovdev_flush()
+    # Missing: sovdev_shutdown()
 # Result: last logs lost!
 ```
 
-**Fix**: always call `sovdev_flush()` before exit — note it's **synchronous** in Python, unlike TypeScript's `await sovdev_flush()`.
+**Fix**: in a short script, always call `sovdev_shutdown()` before exit — not `sovdev_flush()`, which never shuts anything down. Both are **synchronous** in Python, unlike TypeScript's `await sovdev_shutdown()`.
 
 ```python
 def main():
     try:
         sovdev_log(SOVDEV_LOGLEVELS.INFO, FUNCTIONNAME, 'Test', PEER_SERVICES.INTERNAL, input_json)
     finally:
-        sovdev_flush()  # ✅ Runs even if the try block raises
+        sovdev_shutdown()  # ✅ Runs even if the try block raises
 ```
+
+**In a long-running server**, don't call `sovdev_shutdown()` per-request — call `sovdev_flush()` if you want telemetry out sooner (safe to call repeatedly), and `sovdev_shutdown()` exactly once, in your shutdown handler.
 
 ### ❌ Not Using a FUNCTIONNAME Constant
 
@@ -351,7 +353,19 @@ else:
 def sovdev_flush() -> None
 ```
 
-Flush all pending logs, metrics, and traces before exit. **Synchronous** (no `await` — unlike TypeScript's `async sovdev_flush()`). Blocks up to 30 seconds. Safe to call from `finally` blocks and signal handlers.
+Force-export any buffered logs, metrics, and traces right now. **Safe to call any number of times** — this does not shut anything down. Use it in a long-running server whenever you want telemetry out sooner than the normal batch interval. For the true end of a process, use `sovdev_shutdown()` instead. **Synchronous** (no `await` — unlike TypeScript's `async sovdev_flush()`). Blocks up to 30 seconds. Safe to call from `finally` blocks and signal handlers.
+
+---
+
+### sovdev_shutdown
+
+```python
+def sovdev_shutdown() -> None
+```
+
+Force-flush, then permanently shut down every telemetry provider. **Call this exactly once — the last thing before your process exits.** After this call, logging/metrics/tracing stop working for the rest of the process's life. **Synchronous** (no `await` — unlike TypeScript's `async sovdev_shutdown()`). Blocks up to 30 seconds.
+
+**Long-running servers**: never call `sovdev_shutdown()` per-request. Call `sovdev_flush()` (freely, repeatedly) if you want telemetry out sooner, and `sovdev_shutdown()` exactly once, in your process's shutdown handler.
 
 ---
 
