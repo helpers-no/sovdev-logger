@@ -12,6 +12,7 @@ tools/
 │   ├── uis/             # Bash + kubectl: local UIS (Urbalurba Infrastructure Stack) backend
 │   └── grafana-cloud/   # TypeScript: Grafana Cloud backend (HTTP Basic Auth, no kubectl)
 ├── codegen/             # Schema-driven code generation (field-name constants per language)
+├── dashboards/          # Grafana dashboard definitions owned by sovdev-logger, and the script that pushes them
 └── repo-maintenance/    # Repo hygiene scripts (doc consistency checks, etc.)
 ```
 

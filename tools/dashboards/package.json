@@ -1,0 +1,12 @@
+{
+  "name": "sovdev-logger-dashboards",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Grafana dashboard definitions for sovdev-logger, owned by this repo, and the script that pushes them to a Grafana instance's HTTP API.",
+  "type": "module",
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "tsx": "^4.20.6",
+    "@types/node": "^22.0.0"
+  }
+}
