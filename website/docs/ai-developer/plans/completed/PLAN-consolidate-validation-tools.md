@@ -128,7 +128,7 @@ Moved (see Phase 1) — plus:
 - `website/docs/contributor/09-development-loop.md` (substantial rewrite)
 - `website/docs/contributor/03-implementation-patterns.md`, `05-environment-configuration.md`, `06-test-scenarios.md`, `07-anti-patterns.md`, `08-testprogram-company-lookup.md`, `implementation-guide.md`, `index.md`, `research-otel-sdk-guide.md`
 - `website/docs/using/observability-architecture.md`
-- `website/docs/ai-developer/plans/backlog/INVESTIGATE-grafana-cloud-validator.md`
+- `website/docs/ai-developer/plans/completed/INVESTIGATE-grafana-cloud-validator.md`
 - `README.md`, `python/README.md`
 - `.github/workflows/ci.yml`
 - `python/src/logger.py`, `python/src/field_names.py` (regenerated)

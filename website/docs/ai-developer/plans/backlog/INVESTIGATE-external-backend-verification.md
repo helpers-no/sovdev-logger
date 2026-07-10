@@ -129,5 +129,5 @@ If forced to name a lean: Option B's core argument — Azure is the real target,
 
 - [ ] Maintainer decides sequencing ([Q2](#questions-to-answer)) and Azure preview-readiness tolerance ([Q3](#questions-to-answer))
 - [ ] Draft a child PLAN per backend chosen, each scoped like `uis.md`: setup/account creation (external, maintainer does this — not automatable), `.env` config, new TypeScript verification tooling for that backend's actual query API (official SDK where one exists — `@azure/monitor-query-logs`, `@google-cloud/logging` — plain authenticated `fetch` where it doesn't), `--compare-with`-style exact-data verification, troubleshooting
-- [ ] Grafana Cloud's tooling design is already scoped in detail: see [`INVESTIGATE-grafana-cloud-validator.md`](INVESTIGATE-grafana-cloud-validator.md)
+- [x] Grafana Cloud's tooling design is already scoped in detail and now fully shipped: see [`INVESTIGATE-grafana-cloud-validator.md`](../completed/INVESTIGATE-grafana-cloud-validator.md)
 - [ ] Update `website/docs/contributor/testing/index.md`'s "Planned pages" list as each backend actually ships

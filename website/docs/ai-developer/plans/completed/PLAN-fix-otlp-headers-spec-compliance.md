@@ -6,13 +6,14 @@ Removes sovdev-logger's custom JSON-based `OTEL_EXPORTER_OTLP_HEADERS` handling 
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active — Phase 1 and 2 done; Phase 3 (version bump + republish) remains
+## Status: Completed
 
-**Investigation**: [INVESTIGATE-otlp-headers-standard-compliance.md](../backlog/INVESTIGATE-otlp-headers-standard-compliance.md) — full root-cause diagnosis, traced through the actual installed OTel SDK source, not assumed.
+**Investigation**: [INVESTIGATE-otlp-headers-standard-compliance.md](INVESTIGATE-otlp-headers-standard-compliance.md) — full root-cause diagnosis, traced through the actual installed OTel SDK source, not assumed.
 
 **Goal**: Bring `OTEL_EXPORTER_OTLP_HEADERS` handling into line with the OTel spec (comma-separated `key=value` pairs, the W3C Baggage HTTP header format) across the contract doc and both language implementations, and verify the fix against both local UIS (regression) and Grafana Cloud (the case that surfaced the bug).
 
 **Last Updated**: 2026-07-10
+**Completed**: 2026-07-10
 
 ---
 
@@ -58,36 +59,36 @@ Already published: `@terchris/sovdev-logger@1.0.0` is live on npm with this bug 
 - [x] Extra (not originally scoped, added at the user's request): verified Python against Grafana Cloud too, not just local UIS. Needed the Grafana Cloud tooling from `feat/grafana-cloud-validation` (not yet merged) — brought `tools/validation/` onto this branch via `git checkout feat/grafana-cloud-validation -- tools/` (working-tree only, not committed here yet — see note below). Found and fixed two gaps along the way:
   - **`python/test/e2e/company-lookup/run-test.sh` had no `--env-file` flag** (TypeScript's got one on the other branch, to point at `.env.grafana-cloud` without overwriting `.env`). Added the same flag; Python's `run-test.sh` sources the chosen file into real shell env vars before invoking `python3`, and since `company-lookup.py`'s `load_dotenv()` defaults to `override=False`, the already-exported vars win — no changes needed to `company-lookup.py` itself.
   - **`python/` had no `.gitignore`** — root `.gitignore` only covers `.env`/`.env.local`/`.env.*.local`, not `.env.grafana-cloud`-style names (TypeScript is covered by its own `typescript/.gitignore`'s `.env.*` pattern). This meant the generated credential-bearing `.env.grafana-cloud` was untracked but **not actually ignored** — a real gap, fixed by adding `python/.gitignore` mirroring TypeScript's pattern before anything got staged.
-  - `tools/validation/grafana/generate-e2e-env.ts` needed no changes — it's already language-agnostic (output path + service name are CLI args), and the quoted `Authorization=Basic <token>` value it writes works fine under `python-dotenv` too (which handles quoted values, unlike bash's `source` where quoting was load-bearing).
+  - `generate-e2e-env.ts` (path since renamed `tools/validation/grafana-cloud/generate-e2e-env.ts`) needed no changes — it's already language-agnostic (output path + service name are CLI args), and the quoted `Authorization=Basic <token>` value it writes works fine under `python-dotenv` too (which handles quoted values, unlike bash's `source` where quoting was load-bearing).
 
 ### Validation
 
 - [x] Re-ran Python's E2E test against local UIS (`dct-exec bash -c "cd /workspace/python/test/e2e/company-lookup && bash run-test.sh"`) — **passes**, all three flushes succeed, 17/17 log entries, correct 3-success/1-failure pattern
-- [x] Ran `dct-exec bash -c "cd /workspace/specification/tools && bash compare-with-master.sh python"` — **clean match**, all 17 entries identical to TypeScript's output
+- [x] Ran `dct-exec bash -c "cd /workspace/specification/tools && bash compare-with-master.sh python"` — **clean match**, all 17 entries identical to TypeScript's output (path since moved to `tools/validation/uis/compare-with-master.sh` — see `PLAN-consolidate-validation-tools.md`)
 - [x] Re-ran `query-loki.sh`/`query-tempo.sh`/`query-prometheus.sh` with `--compare-with` against this run's real output (not relying on a stale pre-fix run) — **17/17 logs, 4/4 traces, 5/5 metric groups**, exact match
 - [x] `mypy src/logger.py` — same 4 pre-existing errors as before this change (confirmed via `git stash`/re-run comparison, all four are unrelated `LogRecord` attribute-typing issues elsewhere in the file), zero new errors introduced
 - [x] Ran Python's E2E test against Grafana Cloud (`bash run-test.sh --env-file .env.grafana-cloud`) — clean flush, no auth errors
 - [x] Re-ran `query-loki.ts`/`query-tempo.ts`/`query-prometheus.ts` (the Grafana Cloud tooling) with `--compare-with` against this run's real output — **17/17 logs, 4/4 traces (after one retry — Tempo indexing lag, same known behavior as TypeScript), 5/5 metric groups**, exact match. Python now verified equivalent to TypeScript on both backends.
 - [x] User confirms Phase 2 complete
 
-**Note on cross-branch state**: this Grafana Cloud verification needed `tools/validation/` from `feat/grafana-cloud-validation`, pulled into this branch's working tree but not committed here — that directory's real home is the other branch. `python/test/e2e/company-lookup/run-test.sh`'s new `--env-file` flag and the new `python/.gitignore`, however, are genuine fixes that belong wherever Python's E2E tests live, regardless of branch. Whether/how to reconcile this before either branch merges is an open question, not yet decided.
+**Note on cross-branch state (resolved)**: this Grafana Cloud verification needed `tools/validation/` from `feat/grafana-cloud-validation`, pulled into this branch's working tree at the time but not committed here. Both branches have since merged to `main` (PRs #18 and #19), and the tooling was later moved again and reorganized by `PLAN-consolidate-validation-tools.md` — the reconciliation question this note originally raised is fully resolved.
 
 ---
 
-## Phase 3: Version bump and republish — IN PROGRESS
+## Phase 3: Version bump and republish — DONE
 
 Python has no published package (no PyPI, no `[project]` version in `pyproject.toml`) — this phase is TypeScript-only, matching its original scope.
 
 ### Tasks
 
-- [x] 3.1 Version: `1.0.1` — patch, no public API surface change, per [INVESTIGATE-otlp-headers-standard-compliance.md](../backlog/INVESTIGATE-otlp-headers-standard-compliance.md)'s [Q3]
+- [x] 3.1 Version: `1.0.1` — patch, no public API surface change, per [INVESTIGATE-otlp-headers-standard-compliance.md](INVESTIGATE-otlp-headers-standard-compliance.md)'s [Q3]
 - [x] 3.2 Bumped `typescript/package.json` (and regenerated `package-lock.json` via `npm install --package-lock-only` to keep it in sync) to `1.0.1`; `npx tsc --noEmit` clean
-- [ ] 3.3 `npm publish` (maintainer runs this themselves — requires a live npm OTP, same as the original publish)
+- [x] 3.3 `npm publish --access public` — run by the maintainer from inside the devcontainer (`dct-exec bash`, an interactive shell), since the host Mac has no `npm` and publish needs a real terminal for login/OTP. `npm login`'s default web-login flow initially failed to auto-open a browser (headless container, no `xdg-open` target) but succeeded on retry — the CLI still printed the login URL and waited even though the browser auto-open itself errored.
 
 ### Validation
 
-- [ ] `npm view @terchris/sovdev-logger` shows the new version
-- [ ] User confirms Phase 3 complete
+- [x] `npm view @terchris/sovdev-logger version` → `1.0.1`
+- [x] User confirms Phase 3 complete
 
 ---
 
@@ -107,7 +108,7 @@ Python has no published package (no PyPI, no `[project]` version in `pyproject.t
 - `website/docs/contributor/testing/uis.md`
 - `typescript/src/logger.ts`
 - `typescript/test/e2e/company-lookup/.env`, `.env.example`
-- `tools/validation/grafana/generate-e2e-env.ts`
+- `tools/validation/grafana-cloud/generate-e2e-env.ts`
 - `python/src/logger.py`
 - `python/test/e2e/company-lookup/.env`, `.env.example`
 - `typescript/package.json` (version bump)

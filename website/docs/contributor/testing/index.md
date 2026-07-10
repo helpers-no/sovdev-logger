@@ -12,7 +12,7 @@ description: "How to stand up a real OTLP backend to test sovdev-logger against,
 ## Pages
 
 - **[UIS (local)](uis.md)** — Urbalurba Infrastructure Stack, a full observability stack running on your own machine via Rancher Desktop. The first backend documented here, and the one used for local development.
-- **[Grafana Cloud](grafana-cloud.md)** — the same Loki/Tempo/Mimir stack UIS runs locally, hosted, for testing without local Kubernetes. Fully verified end-to-end (TypeScript) — see [`INVESTIGATE-grafana-cloud-validator.md`](../../ai-developer/plans/backlog/INVESTIGATE-grafana-cloud-validator.md).
+- **[Grafana Cloud](grafana-cloud.md)** — the same Loki/Tempo/Mimir stack UIS runs locally, hosted, for testing without local Kubernetes. Fully verified end-to-end (TypeScript) — see [`INVESTIGATE-grafana-cloud-validator.md`](../../ai-developer/plans/completed/INVESTIGATE-grafana-cloud-validator.md).
 
 ## Planned pages
 

@@ -6,7 +6,7 @@ Found while wiring up Grafana Cloud ingestion for `INVESTIGATE-grafana-cloud-val
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog — root cause fully diagnosed and verified against actual OTel SDK source; a few implementation judgment calls remain before starting
+## Status: Resolved — child plan shipped, `@terchris/sovdev-logger@1.0.1` published
 
 **Goal**: Bring sovdev-logger's `OTEL_EXPORTER_OTLP_HEADERS` handling into line with the actual OpenTelemetry specification (the W3C Baggage HTTP header format: `key1=value1,key2=value2`), removing the library's own custom JSON-based convention and the collision it causes — across both the contract doc and both language implementations.
 
@@ -92,6 +92,6 @@ Detect JSON (starts with `{`) vs. spec format at parse time, support both, docum
 
 ## Next Steps
 
-- [x] Drafted [`PLAN-fix-otlp-headers-spec-compliance.md`](../active/PLAN-fix-otlp-headers-spec-compliance.md) — the concrete, phased implementation plan (TypeScript → Python → version bump/republish)
-- [ ] Everything else tracked there — this INVESTIGATE stays in `backlog/` per [PLANS.md](../../PLANS.md)'s convention until the child PLAN ships, not moved to `completed/` yet
-- [ ] [Q3] (version bump) and [Q5] (validation/connectivity-test code scope) are decided inline in the PLAN's Phase 1/3 tasks — revisit here only if the maintainer wants to reopen either
+- [x] Drafted [`PLAN-fix-otlp-headers-spec-compliance.md`](../completed/PLAN-fix-otlp-headers-spec-compliance.md) — the concrete, phased implementation plan (TypeScript → Python → version bump/republish)
+- [x] Child plan shipped: all 3 phases done, `@terchris/sovdev-logger@1.0.1` published to npm — this INVESTIGATE moves to `completed/` alongside it
+- [x] [Q3] (version bump: `1.0.1`, patch) and [Q5] (validation/connectivity-test code: rewritten to the new format, not removed) decided inline in the PLAN's Phase 1/3 tasks

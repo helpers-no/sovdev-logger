@@ -118,7 +118,7 @@ All sovdev-logger implementations **MUST** follow this standardized directory st
   OTEL_EXPORTER_OTLP_HEADERS=Host=otel.localhost
   ```
 
-**Note**: `OTEL_EXPORTER_OTLP_HEADERS` is the standard OpenTelemetry format — comma-separated `key=value` pairs, not JSON (see [`INVESTIGATE-otlp-headers-standard-compliance.md`](../ai-developer/plans/backlog/INVESTIGATE-otlp-headers-standard-compliance.md)). No quoting gymnastics needed as a result, but still load `.env` with `set -a && source .env && set +a` rather than `export $(grep ... | xargs)`, which mishandles values containing spaces regardless.
+**Note**: `OTEL_EXPORTER_OTLP_HEADERS` is the standard OpenTelemetry format — comma-separated `key=value` pairs, not JSON (see [`INVESTIGATE-otlp-headers-standard-compliance.md`](../ai-developer/plans/completed/INVESTIGATE-otlp-headers-standard-compliance.md)). No quoting gymnastics needed as a result, but still load `.env` with `set -a && source .env && set +a` rather than `export $(grep ... | xargs)`, which mishandles values containing spaces regardless.
 
 **5. logs/ Directory**
 - Output directory for file-based logs

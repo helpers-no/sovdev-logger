@@ -233,7 +233,7 @@ OTEL_EXPORTER_OTLP_HEADERS=Host=otel.localhost
 
 **⚠️ CRITICAL:** The `Host: otel.localhost` header is required for Traefik routing. Without it, requests fail with 404 errors.
 
-**Format note:** `OTEL_EXPORTER_OTLP_HEADERS` is a standard OpenTelemetry env var — comma-separated `key=value` pairs (e.g. `Host=otel.localhost,Authorization=Basic ...`), **not JSON**. The OTel SDK reads this env var natively; a JSON value collides with that native parsing (see [`INVESTIGATE-otlp-headers-standard-compliance.md`](../ai-developer/plans/backlog/INVESTIGATE-otlp-headers-standard-compliance.md)).
+**Format note:** `OTEL_EXPORTER_OTLP_HEADERS` is a standard OpenTelemetry env var — comma-separated `key=value` pairs (e.g. `Host=otel.localhost,Authorization=Basic ...`), **not JSON**. The OTel SDK reads this env var natively; a JSON value collides with that native parsing (see [`INVESTIGATE-otlp-headers-standard-compliance.md`](../ai-developer/plans/completed/INVESTIGATE-otlp-headers-standard-compliance.md)).
 
 **Troubleshooting:** Some HTTP clients (e.g., Go) override custom Host headers. See `task-06-implement-otlp.md` subsection 6.12 for language-specific workarounds.
 

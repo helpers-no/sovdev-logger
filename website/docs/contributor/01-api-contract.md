@@ -933,7 +933,7 @@ sovdev_validate_config(): {
 2. `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` - Logs endpoint URL
 3. `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` - Metrics endpoint URL
 4. `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` - Traces endpoint URL
-5. `OTEL_EXPORTER_OTLP_HEADERS` - HTTP headers, in the standard OpenTelemetry format: comma-separated `key=value` pairs (the W3C Baggage HTTP header format), e.g. `Authorization=Basic dXNlcjpwYXNz`. **Not JSON** — the underlying OTel SDK reads this same env var natively and expects this exact format; passing JSON collides with that native parsing (see [`INVESTIGATE-otlp-headers-standard-compliance.md`](../ai-developer/plans/backlog/INVESTIGATE-otlp-headers-standard-compliance.md) for the full root cause).
+5. `OTEL_EXPORTER_OTLP_HEADERS` - HTTP headers, in the standard OpenTelemetry format: comma-separated `key=value` pairs (the W3C Baggage HTTP header format), e.g. `Authorization=Basic dXNlcjpwYXNz`. **Not JSON** — the underlying OTel SDK reads this same env var natively and expects this exact format; passing JSON collides with that native parsing (see [`INVESTIGATE-otlp-headers-standard-compliance.md`](../ai-developer/plans/completed/INVESTIGATE-otlp-headers-standard-compliance.md) for the full root cause).
 
 **Checks for Optional Variables**:
 - `OTEL_EXPORTER_OTLP_PROTOCOL` - Protocol type (default: grpc, recommended: http/protobuf)

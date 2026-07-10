@@ -8,7 +8,7 @@ description: "Verify sovdev-logger against Grafana Cloud's hosted Loki/Tempo/Mim
 # Testing against Grafana Cloud
 
 :::note Verified
-Fully verified end-to-end against a live stack: real E2E test telemetry, pushed via OTLP, confirmed landing correctly in all three signals with exact `--compare-with` data matching (Loki 17/17, Tempo 4/4, Prometheus 5/5). See [`INVESTIGATE-grafana-cloud-validator.md`](../../ai-developer/plans/backlog/INVESTIGATE-grafana-cloud-validator.md) for the full history.
+Fully verified end-to-end against a live stack: real E2E test telemetry, pushed via OTLP, confirmed landing correctly in all three signals with exact `--compare-with` data matching (Loki 17/17, Tempo 4/4, Prometheus 5/5). See [`INVESTIGATE-grafana-cloud-validator.md`](../../ai-developer/plans/completed/INVESTIGATE-grafana-cloud-validator.md) for the full history.
 :::
 
 Grafana Cloud's free tier hosts the same Loki (logs), Tempo (traces), and Mimir (Prometheus-compatible metrics) that [UIS](uis.md) runs locally — same query APIs, no self-hosted Kubernetes cluster required. This is the "I don't want to run Rancher Desktop just to try this library" path.
