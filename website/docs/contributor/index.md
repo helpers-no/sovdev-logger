@@ -35,6 +35,10 @@ For people (human or LLM) **implementing or maintaining** a sovdev-logger langua
 
 - **[Testing backends](testing/index.md)** — how to stand up a real OTLP backend (starting with [UIS](testing/uis.md)) and point a language's E2E test at it
 
+## Releasing
+
+- **[Publishing](publishing/index.md)** — how to release each language's package to its registry, one language at a time. So far: [TypeScript](publishing/typescript.md) (`@terchris/sovdev-logger` on npm).
+
 ## Functional code (not migrated — lives in the repo)
 
 [`tools/`](https://github.com/helpers-no/sovdev-logger/tree/main/tools) — schemas, validators, and the backend-specific query/comparison scripts (including `compare-with-master.sh`, the actual completion gate) — is functional code, not documentation. See [`tools/README.md`](https://github.com/helpers-no/sovdev-logger/blob/main/tools/README.md) for how it's organized (by OTLP backend: local UIS, Grafana Cloud, and future backends).
