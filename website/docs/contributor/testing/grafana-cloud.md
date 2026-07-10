@@ -34,14 +34,18 @@ The "Create new access policy" form, confirmed against a real one: **Display nam
 
 ## 3. Find your endpoint URLs and Instance IDs — confirmed non-uniform, don't guess
 
-Each service has its own connection page in the portal with its own hostname and numeric **Instance ID** (used as the HTTP Basic Auth username; the token from step 2 is the password). Confirmed on a real stack — the naming is **not** uniform, don't assume a shared pattern:
+Get here via your stack's management page — `https://grafana.com/orgs/<your-org-slug>/stacks/<stack-id>` (found by clicking your stack's name in the left nav, under **GRAFANA CLOUD**, not under Security). The number in that URL is Grafana's own stack ID, and it's the **same number** as the OTLP Instance ID below — confirmed directly (this project's stack: `.../stacks/484308`, OTLP Instance ID `484308`).
+
+Each service has its own card on that page with a **Configure** or **Details** link to its own connection page, its own hostname, and its own numeric **Instance ID** (used as the HTTP Basic Auth username; the token from step 2 is the password). Confirmed on a real stack — the naming is **not** uniform, don't assume a shared pattern:
 
 | Signal | Example host | Instance ID field |
 |---|---|---|
-| OTLP ingestion (all 3 signals, one endpoint) | `https://otlp-gateway-prod-<region>.grafana.net/otlp` | its own separate Instance ID, distinct from the three below |
+| OTLP ingestion (all 3 signals, one endpoint) | `https://otlp-gateway-prod-<region>.grafana.net/otlp` — reached via the **OpenTelemetry** card's **Configure** link, page URL `.../stacks/<stack-id>/otlp-info` | its own separate Instance ID (same number as the stack ID itself), distinct from the three below |
 | Loki (logs) | `https://logs-prod-<region>.grafana.net` | shown on the Loki connection page |
 | Tempo (traces) | `https://tempo-<region>.grafana.net` (no `-prod`, no numeric suffix — genuinely different shape from the other two) | shown on the Tempo connection page |
 | Prometheus/Mimir (metrics) | `https://prometheus-prod-01-<region>.grafana.net` | shown on the Prometheus connection page |
+
+The OTLP connection page also offers to generate a token directly ("Password / API Token — Generate now") — skip it; it's a simpler but less-scoped path than the Access Policy tokens from step 2. Use the Access Policy token as the password instead.
 
 ## 4. Configure `tools/validation/grafana/.env`
 

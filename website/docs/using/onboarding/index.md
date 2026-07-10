@@ -36,7 +36,14 @@ This step doesn't get delegated to an AI agent: minting credentials and touching
 
 ### 3. Find the OTLP endpoint and its Instance ID
 
-One endpoint handles all three signals: `https://otlp-gateway-prod-<region>.grafana.net/otlp` — find the exact value and its **Instance ID** on the OTLP connection page in the portal. This Instance ID is specific to OTLP ingestion; it's a *different* Instance ID than Loki, Tempo, or Prometheus each have on their own connection pages — confirmed non-uniform, don't assume a shared pattern or reuse another signal's ID here.
+From your stack's management page (**https://grafana.com/orgs/urbalurba/stacks/484308** — the number in that URL is Grafana's own stack ID, and it's the same number as the Instance ID below, confirmed), click **Configure** on the **OpenTelemetry** card. That page (`.../stacks/484308/otlp-info`) shows exactly what you need:
+
+- **OTLP Endpoint** — one endpoint handles all three signals: `https://otlp-gateway-prod-eu-west-0.grafana.net/otlp` for this stack (region varies by stack, don't assume `eu-west-0`)
+- **Instance ID** — shown directly on this page (`484308` for this stack)
+
+This Instance ID is specific to OTLP ingestion; it's a *different* Instance ID than Loki, Tempo, or Prometheus each have on their own connection pages (reachable from the same stack management page, one card per signal) — confirmed non-uniform, don't assume a shared pattern or reuse another signal's ID here.
+
+The same page also offers to generate a token directly ("Password / API Token — Generate now") — that's a separate, simpler path than the Access Policy in step 2, but skip it: it doesn't give you the scoped, independently-named, independently-revocable token this recipe is built around. Use the Access Policy token from step 2 as the password instead.
 
 ### 4. Configure the new system's OTLP exporter
 
@@ -59,13 +66,38 @@ echo -n "<otlp-instance-id>:<ollacrm-ingest-token>" | base64
 
 The header value **must stay quoted** wherever it's stored or sourced — `Authorization=Basic <token>` contains a space, and anything that word-splits on spaces (bash's `source`, for one) silently truncates it after the space, producing a confusing `401` with no useful error about why.
 
-### 5. Treat `OTEL_EXPORTER_OTLP_HEADERS` as a real secret
+### 5. Validate the token actually works — before wiring it into the real system
+
+Don't skip this. A portal saying "access policy created" and an SDK printing "flushed successfully" both prove nothing on their own — this project already found a real bug once where console output claimed success while data silently never arrived (see [`INVESTIGATE-long-running-server-flush.md`](../../ai-developer/plans/completed/INVESTIGATE-long-running-server-flush.md)). The only real proof is a readback that actually finds the data.
+
+Run a tiny, throwaway test through the exact env vars from step 4 — a distinct, disposable `service_name` like `<service-name>-ingest-validation` (not the real one, so this never pollutes the actual dashboard), one `sovdev_log()` call with a unique marker message, then `sovdev_shutdown()`. For example, using the published TypeScript package:
+
+```typescript
+import { sovdev_initialize, sovdev_log, sovdev_shutdown, SOVDEV_LOGLEVELS, create_peer_services } from '@terchris/sovdev-logger';
+
+sovdev_initialize('ollacrm-ingest-validation', '1.0.0', {});
+sovdev_log(SOVDEV_LOGLEVELS.INFO, 'validateIngest', 'MARKER-INGEST-VALIDATION', create_peer_services({}).INTERNAL, null, null, null);
+await sovdev_shutdown();
+```
+
+Then read it back — reuse the **existing** `sovdev-logger-verify` credentials (`tools/validation/grafana-cloud/query-loki.ts` / `query-prometheus.ts`); it already has stack-wide read access, so no new verify token is needed per system:
+
+```bash
+cd tools/validation/grafana-cloud
+set -a && source .env && set +a
+npx tsx query-loki.ts <service-name>-ingest-validation --json
+npx tsx query-prometheus.ts <service-name>-ingest-validation --json
+```
+
+Confirm the marker message and a metric both actually show up in the response — not just that the commands ran without error — before moving on. Delete the throwaway test script once confirmed.
+
+### 6. Treat `OTEL_EXPORTER_OTLP_HEADERS` as a real secret
 
 It contains the token from step 2. Store it in whatever secret manager the new system's own deploy pipeline already uses for real secrets — never as a plain environment variable alongside identifiers like `OTEL_SERVICE_NAME`. The other five variables are plain identifiers (URLs, a service name, a protocol string) and can live as ordinary env vars/config.
 
-### 6. Verify it shows up
+### 7. Verify it shows up in the real system
 
-Run the new system once, generating at least one log call. Open the dashboard — the new `service_name` appears automatically in the `$service_name` picker (multi-select, "All" selected by default) and in every panel's legend. Nothing about the dashboard changes: this is exactly what its template variable and per-peer-service panels were built for. See [Dashboard walkthrough](../dashboard-walkthrough/index.md) for what each panel means once you're looking at it.
+Once the new system is actually wired up (not the throwaway validation from step 5) and has generated at least one real log call, open the dashboard — the new `service_name` appears automatically in the `$service_name` picker (multi-select, "All" selected by default) and in every panel's legend. Nothing about the dashboard changes: this is exactly what its template variable and per-peer-service panels were built for. See [Dashboard walkthrough](../dashboard-walkthrough/index.md) for what each panel means once you're looking at it.
 
 ## What you're *not* doing
 
