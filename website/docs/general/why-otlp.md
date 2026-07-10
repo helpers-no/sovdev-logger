@@ -1,13 +1,13 @@
 ---
 title: Why OTLP
 sidebar_label: Why OTLP
-sidebar_position: 1
+sidebar_position: 2
 description: "Why sovdev-logger is built on OpenTelemetry/OTLP rather than a bespoke format or a vendor SDK, including the real costs."
 ---
 
 # Why OTLP
 
-sovdev-logger exists so one log call gives you structured logs, metrics, and distributed traces — correlated automatically — without hand-wiring three separate instrumentation libraries per language. That part of the pitch is on the [project README](https://github.com/helpers-no/sovdev-logger#readme). This page is about a narrower question: why build it on [OpenTelemetry](https://opentelemetry.io/) and its wire protocol, OTLP, specifically — instead of a bespoke JSON format or a vendor's own SDK.
+sovdev-logger exists so one log call gives you structured logs, metrics, and distributed traces — correlated automatically — without hand-wiring three separate instrumentation libraries per language. [Why Structured Logging](./why-structured-logging.md) covers the "structured" half. This page is about a narrower question: why build it on [OpenTelemetry](https://opentelemetry.io/) and its wire protocol, OTLP, specifically — instead of a bespoke JSON format or a vendor's own SDK.
 
 ## The case for OTLP
 

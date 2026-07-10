@@ -24,13 +24,13 @@ tool, not a roadmap.
   it; one completes → strike it and promote dependents; a child PLAN ships
   → re-rank the parent. Full re-rank quarterly or after every 3 ships.
 
-**Last triaged:** 2026-07-11 — both `INVESTIGATE-otlp-headers-standard-compliance.md` and `INVESTIGATE-grafana-cloud-validator.md` fully shipped (child plans merged, `@terchris/sovdev-logger@1.0.1` published) and moved to `completed/`; nothing queued in Tier 1/3.
+**Last triaged:** 2026-07-10 — `INVESTIGATE-dashboard-documentation.md` and its child `PLAN-dashboard-walkthrough-documentation.md` resolved (page shipped, reviewed against actual screenshots/source — found and fixed 5 real factual errors, plus a stale source-code comment) and moved to `completed/`. Tier 1 is now empty.
 
 ---
 
 ## Tier 1 — next up
 
-_(none yet)_
+_(none — promote from Tier 2/4 or start something new when ready)_
 
 ## Tier 2 — real, not urgent
 
@@ -46,7 +46,7 @@ _(none yet)_
 
 ## Tier 5 — raw ideas
 
-- Decide whether Go/C#/Rust/PHP restart from scratch or from their archived `terchris/implementation-tests/` state — the one remaining open item from `INVESTIGATE-multi-language-conformance.md` (now otherwise fully shipped, all four child plans merged); no INVESTIGATE written for this yet, no urgency signal from the maintainer.
+- Decide whether Go/C#/Rust/PHP restart from scratch or from their archived `terchris/implementation-tests/` state — the one remaining open item from [`INVESTIGATE-multi-language-conformance.md`](../completed/INVESTIGATE-multi-language-conformance.md) (resolved and moved to `completed/`, all four child plans merged); no INVESTIGATE written for this yet, no urgency signal from the maintainer.
 
 ## Retire candidates
 
