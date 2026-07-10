@@ -21,12 +21,16 @@ Kebab-case, unique across the whole stack (e.g. `ollacrm-api`). This is the labe
 
 ### 2. Create a dedicated Access Policy + token — you do this, not an agent
 
-Grafana Cloud portal → **Security → Access Policies → Create access policy**:
+Grafana Cloud portal → **Security → Access Policies → Create access policy** (this project's stack lives under the org slug `urbalurba` — the maintainer's own chosen name, not a Grafana term — so that's **https://grafana.com/orgs/urbalurba/access-policies**). The "Create new access policy" form has these fields, confirmed against a real one:
 
-- Name it `<service-name>-ingest` (e.g. `ollacrm-ingest`)
-- Scopes: `logs:write`, `metrics:write`, `traces:write`
-- **Realm: this one stack specifically, not "all stacks"**
-- Click **Add token**, name it to match, copy the value immediately — it's shown once
+- **Display name** and **Name** (a separate "unique identifier" field, shown right below Display name) — set both to `<service-name>-ingest` (e.g. `ollacrm-ingest`); there's no reason for them to differ
+- **Realms** — a multi-select dropdown, not free text. Pick this one stack (e.g. `urbalurba`) specifically, **not** "all stacks"
+- **Scopes** — a table: rows are resources (`metrics`, `logs`, `traces`, `profiles`, `alerts`, `rules`, `accesspolicies`), columns are `Read`/`Write`/`Delete` checkboxes. Check only **Write** for `metrics`, `logs`, and `traces` — leave every other checkbox unchecked
+- Click **Create access policy**, then on the resulting policy card click **Add token**, name it to match, and copy the value immediately — it's shown once
+
+![The "Create new access policy" form, filled in for ollacrm-ingest](./grafana-cloud-access-policy-form.png)
+
+*Screenshot captured 2026-07-10. This is Grafana Cloud's own UI, not something this project controls — if the form looks different when you get here, Grafana Labs has redesigned it since; follow the field descriptions above rather than the exact layout.*
 
 This step doesn't get delegated to an AI agent: minting credentials and touching access controls in the portal is a hard line this project already drew once — two separate Claude Code sessions have each independently declined to click "Create" here, even with explicit authorization.
 

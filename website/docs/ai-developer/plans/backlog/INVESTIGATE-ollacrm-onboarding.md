@@ -113,7 +113,7 @@ A new, independent Grafana Cloud account/stack, its own free-tier quota, its own
 
 Two genuinely different Grafana Cloud credential systems are involved here, confirmed by checking what's already in `tools/validation/grafana-cloud/.env.example` (only the first exists today):
 
-1. **Cloud Portal Access Policies** (Security → Access Policies) — stack-level tokens scoped to `logs:write`/`metrics:write`/`traces:write` etc., used for OTLP ingest and raw signal queries. This is what `sovdev-logger-ingest`/`sovdev-logger-verify` already are, and what `ollacrm-ingest` (per [Q1]) needs to be.
+1. **Cloud Portal Access Policies** (Security → Access Policies — this project's org slug is `urbalurba`, the maintainer's own chosen name: **https://grafana.com/orgs/urbalurba/access-policies**) — stack-level tokens scoped to `logs:write`/`metrics:write`/`traces:write` etc., used for OTLP ingest and raw signal queries. This is what `sovdev-logger-ingest`/`sovdev-logger-verify` already are, and what `ollacrm-ingest` (per [Q1]) needs to be.
 2. **A Grafana Service Account** (inside the Grafana Cloud instance itself — Administration → Users and access → Service accounts) — an app-level token for the Grafana HTTP API (`/api/dashboards/db`, `/api/datasources`), the same kind of credential `push-dashboard.ts` already takes as `GRAFANA_TOKEN` for local UIS. Nothing in this repo has one of these for Grafana Cloud yet.
 
 Per this project's own established precedent (`contributor/testing/grafana-cloud.md`: "Creating the access policies and generating tokens is something you have to do yourself"), both need to be created by the maintainer, not by an agent — minting credentials and touching access controls is a hard line this project has already drawn once.

@@ -23,12 +23,12 @@ Free tier: 14-day retention across logs/traces/metrics, with quotas generous eno
 
 ## 2. Create two Access Policies (least-privilege, confirmed working)
 
-Grafana Cloud's ingestion and query sides use separate credentials. In the Cloud Portal, go to **Security → Access Policies → Create access policy** and create two, each scoped to your stack specifically (**Realm: pick your stack, not "all stacks"**):
+Grafana Cloud's ingestion and query sides use separate credentials. In the Cloud Portal, go to **Security → Access Policies** — the URL is `https://grafana.com/orgs/<your-org-slug>/access-policies`, where `<your-org-slug>` is whatever you named your own Grafana Cloud org when you signed up (this project's org happens to be named `urbalurba`, after the local UIS stack's own name — that's not a Grafana Cloud term, just the maintainer's own choice, and yours will be different unless you deliberately reuse it). Click **Create access policy** and create two, each scoped to your stack specifically (**Realm: pick your stack, not "all stacks"**):
 
 1. **`sovdev-logger-ingest`** — scopes: `metrics:write`, `logs:write`, `traces:write`. Used by the app under test to push OTLP telemetry.
 2. **`sovdev-logger-verify`** — scopes: `metrics:read`, `logs:read`, `traces:read`. Used by the query tooling below to read it back.
 
-Scope names are a Read/Write/Delete matrix per resource, `<resource>:<action>` — confirmed directly from the picker (logs also has a `logs:delete` scope, not needed here). On each policy, click **Add token**, name it to match the policy, and copy the value immediately — it's shown once.
+The "Create new access policy" form, confirmed against a real one: **Display name** and a separate **Name** field ("used as a unique identifier") — set both the same, no reason for them to differ. **Realms** is a multi-select dropdown (not free text) — pick your one stack specifically. **Scopes** is a table: rows are resources (`metrics`, `logs`, `traces`, `profiles`, `alerts`, `rules`, `accesspolicies`), columns are `Read`/`Write`/`Delete` checkboxes — check only the cells you actually need (e.g. just `Write` for `metrics`/`logs`/`traces` on the ingest policy). On each policy, click **Add token**, name it to match the policy, and copy the value immediately — it's shown once.
 
 **Creating the access policies and generating tokens is something you have to do yourself.** Two separate Claude Code instances both independently declined to click "Create"/"Add token" on our behalf, even with explicit authorization — modifying access controls and minting long-lived credentials is treated as a hard line, not an "are you sure" prompt. Budget for doing this step by hand.
 
