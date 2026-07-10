@@ -8,7 +8,7 @@ Stop writing separate code for logs, metrics, and traces. Write one log entry an
 - ✅ **Distributed traces** (Azure Application Insights, Tempo)
 - ✅ **Service dependency maps** (automatic correlation)
 
-Output is field-for-field identical to the [TypeScript implementation](../typescript/README.md) — verified automatically by `specification/tools/compare-with-master.sh python`, not just documented.
+Output is field-for-field identical to the [TypeScript implementation](../typescript/README.md) — verified automatically by `tools/validation/uis/compare-with-master.sh python`, not just documented.
 
 ---
 
@@ -114,7 +114,7 @@ python3 test.py
 
 ## Log Structure (snake_case Fields)
 
-Identical structure to every other language implementation — same field names, same `snake_case` convention, verified by the same schema (`specification/schemas/log-entry-schema.json`) and the automated master-comparison check. See the [TypeScript README's Log Structure section](../typescript/README.md#log-structure-snake_case-fields) for the full field-by-field examples (basic entry, error entry, job status, job progress) — they apply identically here.
+Identical structure to every other language implementation — same field names, same `snake_case` convention, verified by the same schema (`tools/validation/schemas/log-entry-schema.json`) and the automated master-comparison check. See the [TypeScript README's Log Structure section](../typescript/README.md#log-structure-snake_case-fields) for the full field-by-field examples (basic entry, error entry, job status, job progress) — they apply identically here.
 
 **One thing worth calling out explicitly**: `input_json`/`response_json` are *omitted entirely* when you don't pass them at all, and present as `null` when you explicitly pass `None` — matching how the field-omission behaves in every language. Don't rely on Python's `None`-default alone to mean "omit"; if you want the field present as `null`, pass `None` explicitly rather than leaving the argument out (both currently produce the same practical result for most call sites, but the distinction matters if you're writing code that inspects raw log output).
 
@@ -418,11 +418,11 @@ cd test/e2e/company-lookup
 **Cross-language conformance** — the check that actually matters for "does this match TypeScript":
 
 ```bash
-cd specification/tools
+cd tools/validation/uis
 ./compare-with-master.sh python
 ```
 
-See [`specification/tools/README.md`](../specification/tools/README.md) for the complete validation sequence, and [`website/docs/ai-developer/plans/completed/PLAN-001-master-comparison-mode.md`](../website/docs/ai-developer/plans/completed/PLAN-001-master-comparison-mode.md) for how this conformance check works and what it does/doesn't cover.
+See [`tools/validation/uis/README.md`](../tools/validation/uis/README.md) for the complete validation sequence, and [`website/docs/ai-developer/plans/completed/PLAN-001-master-comparison-mode.md`](../website/docs/ai-developer/plans/completed/PLAN-001-master-comparison-mode.md) for how this conformance check works and what it does/doesn't cover.
 
 ### Contributing Workflow
 

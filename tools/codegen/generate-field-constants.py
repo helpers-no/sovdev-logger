@@ -2,7 +2,7 @@
 """
 Sovdev Logger - Field Name Constant Generator
 
-Reads specification/schemas/log-entry-schema.json's `properties` object --
+Reads tools/validation/schemas/log-entry-schema.json's `properties` object --
 the single source of truth for file-log field names -- and emits a
 per-language constants module. Prevents the field-*naming* bug class
 (typos, dots-vs-underscores, camelCase slips) at the point where it
@@ -27,15 +27,15 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCHEMA_PATH = REPO_ROOT / "specification" / "schemas" / "log-entry-schema.json"
+SCHEMA_PATH = REPO_ROOT / "tools" / "validation" / "schemas" / "log-entry-schema.json"
 
 DEFAULT_OUTPUT = {
     "python": REPO_ROOT / "python" / "src" / "field_names.py",
     "typescript": REPO_ROOT / "typescript" / "src" / "fieldNames.ts",
 }
 
-GENERATOR_REL_PATH = "specification/tools/generate-field-constants.py"
-SCHEMA_REL_PATH = "specification/schemas/log-entry-schema.json"
+GENERATOR_REL_PATH = "tools/codegen/generate-field-constants.py"
+SCHEMA_REL_PATH = "tools/validation/schemas/log-entry-schema.json"
 
 
 def load_field_names():

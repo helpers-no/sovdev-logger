@@ -98,11 +98,11 @@ if [ "$SKIP_VALIDATION" = false ]; then
   # Detect if running in devcontainer or on host
   if [ -f "/.dockerenv" ] || [ -n "$DEVCONTAINER" ]; then
     # Running inside devcontainer - use /workspace paths
-    VALIDATOR_SCRIPT="/workspace/specification/tools/validate-log-format.sh"
+    VALIDATOR_SCRIPT="/workspace/tools/validation/uis/validate-log-format.sh"
   else
     # Running on host - find script relative to this script's location
     SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-    VALIDATOR_SCRIPT="${SCRIPT_DIR}/../../../specification/tools/validate-log-format.sh"
+    VALIDATOR_SCRIPT="${SCRIPT_DIR}/../../../tools/validation/uis/validate-log-format.sh"
   fi
 
   # Validate dev.log

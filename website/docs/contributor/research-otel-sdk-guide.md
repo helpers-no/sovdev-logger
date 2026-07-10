@@ -124,15 +124,16 @@ validate-log-format.sh <language>/test/e2e/company-lookup/logs/dev.log
 
 **2. OTLP Export**
 ```bash
-run-full-validation.sh <language>
-query-prometheus.sh 'sovdev_operations_total{service_name=~".*<language>.*"}'
+query-loki.sh sovdev-test-company-lookup-<language> --compare-with logs/dev.log
+query-tempo.sh sovdev-test-company-lookup-<language> --compare-with logs/dev.log
+query-prometheus.sh sovdev-test-company-lookup-<language> --compare-with logs/dev.log
 ```
 
 **3. Grafana Dashboard (MOST CRITICAL)**
 ```bash
 # Run both tests
-run-full-validation.sh typescript
-run-full-validation.sh <language>
+run-company-lookup.sh typescript
+run-company-lookup.sh <language>
 
 # Open Grafana → http://grafana.localhost
 # Verify ALL 3 panels show data for BOTH languages:

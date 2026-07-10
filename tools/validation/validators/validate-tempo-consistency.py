@@ -35,7 +35,7 @@ Comparison Strategy:
     - Validator normalizes both formats for comparison
 
 Integration:
-    Can be integrated into run-company-lookup-validate.sh:
+    Already wired into ../uis/query-tempo.sh's --compare-with flag; for manual use:
     ```bash
     if python3 validate-trace-consistency.py logs/dev.log <(query-tempo.sh app --json); then
         print_success "Trace consistency validated"

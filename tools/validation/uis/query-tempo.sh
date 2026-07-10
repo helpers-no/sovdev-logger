@@ -382,7 +382,7 @@ if [[ "$JSON_MODE" == true ]]; then
 
     # STEP 2: Validate response against schema (if --validate flag provided)
     if [[ "$VALIDATE_MODE" == true ]]; then
-        VALIDATOR_SCRIPT="$SCRIPT_DIR/../tests/validate-tempo-response.py"
+        VALIDATOR_SCRIPT="$SCRIPT_DIR/../validators/validate-tempo-response.py"
 
         if [[ ! -f "$VALIDATOR_SCRIPT" ]]; then
             echo -e "${RED}❌ Validator script not found: ${VALIDATOR_SCRIPT}${NC}" >&2
@@ -406,7 +406,7 @@ if [[ "$JSON_MODE" == true ]]; then
 
     # STEP 3: Compare with log file for consistency (if --compare-with flag provided)
     if [[ -n "$COMPARE_WITH_FILE" ]]; then
-        CONSISTENCY_SCRIPT="$SCRIPT_DIR/../tests/validate-tempo-consistency.py"
+        CONSISTENCY_SCRIPT="$SCRIPT_DIR/../validators/validate-tempo-consistency.py"
 
         if [[ ! -f "$CONSISTENCY_SCRIPT" ]]; then
             echo -e "${RED}❌ Consistency validator not found: ${CONSISTENCY_SCRIPT}${NC}" >&2

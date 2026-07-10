@@ -47,12 +47,12 @@ jobs:
 
       # There is no separate unit/integration test tier: `npm run test:unit`
       # and `npm run test:integration` were never implemented for any
-      # language (see specification/06-test-scenarios.md — test/e2e/company-lookup/
+      # language (see website/docs/contributor/06-test-scenarios.md — test/e2e/company-lookup/
       # is the only REQUIRED test path). The project's actual correctness gate
       # is the E2E company-lookup test verified against a real OTLP backend
       # (Loki/Tempo/Prometheus), which needs a live Kubernetes cluster CI
       # doesn't have — see contributor/testing/uis.md. Run it locally via
-      # `dct-exec` and `specification/tools/compare-with-master.sh`.
+      # `dct-exec` and `tools/validation/uis/compare-with-master.sh`.
       # - name: Run E2E tests
       #   run: npm run test:e2e
 

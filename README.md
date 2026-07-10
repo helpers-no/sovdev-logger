@@ -44,7 +44,7 @@ Full API reference, examples, and configuration live in each language's own READ
 
 1. Read [Implementation guide](https://sovdev-logger.sovereignsky.no/contributor/implementation-guide) — the end-to-end process: contract → TypeScript → anti-patterns → implement → `compare-with-master.sh`
 2. Study [`typescript/src/logger.ts`](typescript/src/logger.ts) — the master implementation
-3. Run `specification/tools/compare-with-master.sh {language}` until it passes — the actual completion gate, not a checklist
+3. Run `tools/validation/uis/compare-with-master.sh {language}` until it passes — the actual completion gate, not a checklist
 
 See the [contributor docs](https://sovdev-logger.sovereignsky.no/contributor) for the full specification.
 
@@ -85,7 +85,7 @@ This repository implements a multi-language logging library with identical outpu
 
 - ✅ **Specification v2.1.0** - Complete implementation guide
 - ✅ **TypeScript** - Complete, master implementation (snake_case API)
-- ✅ **Python** - Conformant, verified field-for-field against TypeScript via `specification/tools/compare-with-master.sh`
+- ✅ **Python** - Conformant, verified field-for-field against TypeScript via `tools/validation/uis/compare-with-master.sh`
 - 📅 **Go, C#, Rust, PHP** - Planned
 
 **All implementations follow:**

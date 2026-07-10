@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 // query-loki.ts - Query Grafana Cloud's hosted Loki for logs from a specific service
 //
-// The Grafana Cloud counterpart to specification/tools/query-loki.sh (which
+// The Grafana Cloud counterpart to tools/validation/uis/query-loki.sh (which
 // queries a local UIS-hosted Loki instead). Same LogQL query, same
 // --json/--validate/--compare-with/--time-range/--limit flags — only the
 // transport differs (HTTP Basic Auth over the public internet instead of
@@ -13,7 +13,7 @@
 // Options:
 //   --json               Output raw JSON data for parsing/verification
 //   --compare-with FILE  Compare Grafana Cloud's response with a log file for
-//                        consistency (pipes to specification/tests/validate-loki-consistency.py,
+//                        consistency (pipes to tools/validation/validators/validate-loki-consistency.py,
 //                        unchanged — see lib/consistency-check.ts)
 //   --limit N            Limit results to N entries (default: 10)
 //   --time-range R       Time range: 1h, 30m, 24h, etc. (default: 1h)

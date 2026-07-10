@@ -19,8 +19,8 @@ These schemas ensure:
 
 These schemas are used by:
 
-1. **Python validators** in `specification/tests/`
-2. **Shell script tools** in `specification/tools/`
+1. **Python validators** in `tools/validation/validators/`
+2. **Shell script tools** in `tools/validation/uis/`
 3. **Development tools** (JSON Schema validators, IDEs)
 
 **Dependencies:**
@@ -36,10 +36,10 @@ Complete table of all JSON Schema files:
 
 | Schema | Purpose | Validates | Enforces | Used By |
 |--------|---------|-----------|----------|---------|
-| [**log-entry-schema.json**](log-entry-schema.json) | File log entry format | NDJSON log files (dev.log, error.log) | snake_case fields<br/>Required: timestamp, trace_id, etc.<br/>UUID formats<br/>Stack trace 350 char limit | [`validate-log-format.py`](../tests/validate-log-format.py) |
-| [**loki-response-schema.json**](loki-response-schema.json) | Loki API response format | Loki query_range responses<br/>**Validates stream labels** | snake_case fields in labels<br/>Required: timestamp (ISO 8601)<br/>Rejects serviceName/logType/etc.<br/>Rejects observed_timestamp-only logs | [`validate-loki-response.py`](../tests/validate-loki-response.py) |
-| [**prometheus-response-schema.json**](prometheus-response-schema.json) | Prometheus API response format | Prometheus query responses | snake_case metric labels<br/>service_name/log_type/log_level<br/>Metric value format | [`validate-prometheus-response.py`](../tests/validate-prometheus-response.py) |
-| [**tempo-response-schema.json**](tempo-response-schema.json) | Tempo API response format | Tempo search responses | traceID hex format (16-32 chars)<br/>spanID hex format (16 chars)<br/>Timestamp nanosecond format | [`validate-tempo-response.py`](../tests/validate-tempo-response.py) |
+| [**log-entry-schema.json**](log-entry-schema.json) | File log entry format | NDJSON log files (dev.log, error.log) | snake_case fields<br/>Required: timestamp, trace_id, etc.<br/>UUID formats<br/>Stack trace 350 char limit | [`validate-log-format.py`](../validators/validate-log-format.py) |
+| [**loki-response-schema.json**](loki-response-schema.json) | Loki API response format | Loki query_range responses<br/>**Validates stream labels** | snake_case fields in labels<br/>Required: timestamp (ISO 8601)<br/>Rejects serviceName/logType/etc.<br/>Rejects observed_timestamp-only logs | [`validate-loki-response.py`](../validators/validate-loki-response.py) |
+| [**prometheus-response-schema.json**](prometheus-response-schema.json) | Prometheus API response format | Prometheus query responses | snake_case metric labels<br/>service_name/log_type/log_level<br/>Metric value format | [`validate-prometheus-response.py`](../validators/validate-prometheus-response.py) |
+| [**tempo-response-schema.json**](tempo-response-schema.json) | Tempo API response format | Tempo search responses | traceID hex format (16-32 chars)<br/>spanID hex format (16 chars)<br/>Timestamp nanosecond format | [`validate-tempo-response.py`](../validators/validate-tempo-response.py) |
 
 ---
 
@@ -147,14 +147,14 @@ These schemas are the foundation of the validation pipeline:
               │
               ↓ (loaded by)
 ┌─────────────────────────────────────────────────────────────────┐
-│              Python Validators (specification/tests/)            │
+│              Python Validators (tools/validation/validators/)            │
 │  validate-log-format.py │ validate-loki-response.py │ ...       │
 └─────────────┬───────────────────────────────────────────────────┘
               │
               ↓ (called by)
 ┌─────────────────────────────────────────────────────────────────┐
-│         Shell Script Tools (specification/tools/)                │
-│  run-full-validation.sh │ validate-log-format.sh │ ...          │
+│         Shell Script Tools (tools/validation/uis/)                │
+│  query-loki.sh │ compare-with-master.sh │ validate-log-format.sh │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -171,7 +171,7 @@ These schemas are the foundation of the validation pipeline:
 **Cause:** Implementation writes `timestamp` to file logs but not to OTLP exports.
 
 **Solution:**
-1. Check Loki response: `./specification/tools/query-loki.sh 'your-service' --json`
+1. Check Loki response: `./tools/validation/uis/query-loki.sh 'your-service' --json`
 2. Verify stream labels contain `timestamp` field
 3. If only `observed_timestamp` present, add `timestamp` to resource/log attributes before OTLP export
 4. Re-run `validate-loki-response.py` to confirm fix
@@ -200,8 +200,8 @@ The OTEL SDK automatically adds `observed_timestamp`. Your implementation must a
 
 - **Field definitions:** See [Field definitions](https://sovdev-logger.sovereignsky.no/contributor/field-definitions) for detailed field descriptions
 - **API contract:** See [API contract](https://sovdev-logger.sovereignsky.no/contributor/api-contract) for logging API specification
-- **Validators:** See `specification/tests/README.md` for Python validators that use these schemas
-- **Tools:** See `specification/tools/README.md` for shell scripts that orchestrate validation
+- **Validators:** See `tools/validation/validators/README.md` for Python validators that use these schemas
+- **Tools:** See `tools/validation/uis/README.md` for shell scripts that orchestrate validation
 
 ---
 

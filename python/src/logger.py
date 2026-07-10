@@ -54,7 +54,7 @@ try:
 except ImportError:
     from log_levels import SOVDEV_LOGLEVELS, SovdevLogLevel  # type: ignore[no-redef]
 
-# Import generated field-name constants (see specification/tools/generate-field-constants.py)
+# Import generated field-name constants (see tools/codegen/generate-field-constants.py)
 try:
     from .field_names import FieldNames
 except ImportError:

@@ -5,7 +5,7 @@ Sovdev Logger - Tempo Response Validator
 Validates Tempo trace search responses against JSON Schema to ensure traces
 are properly stored and retrievable.
 
-Uses: specification/schemas/tempo-response-schema.json
+Uses: tools/validation/schemas/tempo-response-schema.json
 
 Usage:
     # Validate Tempo response (human-readable output)

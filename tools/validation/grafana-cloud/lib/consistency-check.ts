@@ -1,5 +1,5 @@
 // Pipes a query result to the existing Python consistency validators in
-// specification/tests/ — the exact-match comparison logic (trace_id/event_id
+// tools/validation/validators/ — the exact-match comparison logic (trace_id/event_id
 // against the source log file) is never reimplemented here. See
 // INVESTIGATE-grafana-cloud-validator.md's "Option A" decision: only the
 // fetch/auth layer is TypeScript; the proven, never-buggy comparison engines
@@ -12,8 +12,8 @@ import path from 'node:path';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-// specification/tests/ relative to tools/validation/grafana/lib/
-const SPECIFICATION_TESTS_DIR = path.resolve(HERE, '../../../../specification/tests');
+// tools/validation/validators/ relative to tools/validation/grafana-cloud/lib/
+const VALIDATORS_DIR = path.resolve(HERE, '../../validators');
 
 export interface ConsistencyCheckResult {
   exitCode: number;
@@ -26,7 +26,7 @@ export function runConsistencyCheck(
   logFile: string,
   queryResultJson: string,
 ): ConsistencyCheckResult {
-  const validatorScript = path.join(SPECIFICATION_TESTS_DIR, validatorFilename);
+  const validatorScript = path.join(VALIDATORS_DIR, validatorFilename);
   const result = spawnSync('python3', [validatorScript, logFile, '-'], {
     input: queryResultJson,
     encoding: 'utf-8',

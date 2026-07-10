@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 // query-tempo.ts - Query Grafana Cloud's hosted Tempo for traces
 //
-// The Grafana Cloud counterpart to specification/tools/query-tempo.sh.
+// The Grafana Cloud counterpart to tools/validation/uis/query-tempo.sh.
 // Confirmed empirically (see tools/validation/grafana/probe-tempo-prometheus.ts,
 // now answered): the real query path needs a "/tempo" prefix in front of the
 // Tempo API — GRAFANA_CLOUD_TEMPO_URL + "/tempo/api/search" returned 200,
@@ -15,7 +15,7 @@
 // Options:
 //   --json               Output raw JSON data
 //   --compare-with FILE  Compare with a log file for consistency (pipes to
-//                        specification/tests/validate-tempo-consistency.py)
+//                        tools/validation/validators/validate-tempo-consistency.py)
 //   --limit N            Limit results to N traces (default: 10)
 //   --time-range R       Time range: 1h, 30m, 5m, etc. (default: 1h)
 //   --help               Show this help message

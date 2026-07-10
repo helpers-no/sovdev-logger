@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 // query-prometheus.ts - Query Grafana Cloud's hosted Mimir (Prometheus-compatible) for metrics
 //
-// The Grafana Cloud counterpart to specification/tools/query-prometheus.sh.
+// The Grafana Cloud counterpart to tools/validation/uis/query-prometheus.sh.
 // Confirmed empirically (see tools/validation/grafana/probe-tempo-prometheus.ts,
 // now answered): the real query path needs Grafana Cloud's Cortex-style
 // "/api/prom" prefix in front of the standard Prometheus API —
@@ -19,7 +19,7 @@
 // Options:
 //   --json               Output raw JSON data
 //   --compare-with FILE  Compare with a log file for consistency (pipes to
-//                        specification/tests/validate-prometheus-consistency.py)
+//                        tools/validation/validators/validate-prometheus-consistency.py)
 //   --metric NAME        Metric name to query (default: sovdev_operations_total)
 //   --time-range R       Snapshot time R ago (e.g. 5m) instead of now — omit
 //                        for an instant "now" query (recommended, see above)

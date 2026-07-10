@@ -5,7 +5,7 @@ Sovdev Logger - Loki Response Validator
 Validates Loki query responses against JSON Schema to ensure logs are properly
 stored with correct field names (snake_case only) and all required fields.
 
-Uses: specification/schemas/loki-response-schema.json
+Uses: tools/validation/schemas/loki-response-schema.json
 
 Usage:
     # Validate Loki response (human-readable output)

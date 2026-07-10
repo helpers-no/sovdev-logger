@@ -1,5 +1,5 @@
 #!/bin/bash
-# filename: specification/tools/run-company-lookup.sh
+# filename: tools/validation/uis/run-company-lookup.sh
 # description: Run company-lookup E2E test for any language implementation
 #
 # Purpose:
@@ -17,15 +17,16 @@
 #   - Generates local log files (dev.log, error.log) for validation
 #
 #   For COMPLETE E2E verification including backend queries (Loki, Prometheus,
-#   Tempo), use run-full-validation.sh instead.
+#   Tempo), follow up with query-loki.sh/query-tempo.sh/query-prometheus.sh
+#   --compare-with, then compare-with-master.sh.
 #
 # Usage:
 #   ./run-company-lookup.sh <language>
 #
 #   From sovdev-logger root:
-#     ./specification/tools/run-company-lookup.sh typescript
-#     ./specification/tools/run-company-lookup.sh python
-#     ./specification/tools/run-company-lookup.sh go
+#     ./tools/validation/uis/run-company-lookup.sh typescript
+#     ./tools/validation/uis/run-company-lookup.sh python
+#     ./tools/validation/uis/run-company-lookup.sh go
 #
 # Arguments:
 #   language    Implementation language (typescript, python, go, etc.)
@@ -66,7 +67,7 @@
 #
 #   # Run from any directory
 #   cd /path/to/sovdev-logger
-#   ./specification/tools/run-company-lookup.sh typescript
+#   ./tools/validation/uis/run-company-lookup.sh typescript
 #
 # CI/CD Integration:
 #   - Returns proper exit codes for pipeline integration
@@ -75,7 +76,8 @@
 #   - Self-contained (doesn't require backend queries)
 #
 # Related Scripts:
-#   - run-full-validation.sh: Full E2E with backend verification
+#   - query-loki.sh / query-tempo.sh / query-prometheus.sh --compare-with: backend verification
+#   - compare-with-master.sh: cross-language conformance (the completion gate)
 #   - validate-log-format.sh: Standalone log validation
 #   - <language>/test/e2e/company-lookup/run-test.sh: Language-specific test
 #

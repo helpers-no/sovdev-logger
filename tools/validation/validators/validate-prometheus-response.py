@@ -5,7 +5,7 @@ Sovdev Logger - Prometheus Response Validator
 Validates Prometheus query responses against JSON Schema to ensure metrics are properly
 stored with correct label names (snake_case only) and all required labels.
 
-Uses: specification/schemas/prometheus-response-schema.json
+Uses: tools/validation/schemas/prometheus-response-schema.json
 
 Usage:
     # Validate Prometheus response (human-readable output)

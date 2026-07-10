@@ -88,9 +88,9 @@ Expected result: **17 log entries** (matching `08-testprogram-company-lookup.md`
 Passing schema validation only proves the file log is well-formed — it doesn't prove the data reached the backend, and it doesn't prove the backend has *this run's* data rather than some earlier run's. A query that merely checks "is this service name present" can be a false positive: it doesn't distinguish this run from a stale one, and (as found the hard way — see [Troubleshooting](#troubleshooting)) it can also report success on a genuinely empty or failed query if the tool doesn't check carefully. Use `--compare-with` instead, which cross-checks the backend's data against the actual log file by `trace_id`/`event_id`, so a mismatch or missing entry is a hard failure, not a maybe:
 
 ```bash
-dct-exec bash -c "cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-typescript --compare-with /workspace/typescript/test/e2e/company-lookup/logs/dev.log"
-dct-exec bash -c "cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-typescript --compare-with /workspace/typescript/test/e2e/company-lookup/logs/dev.log"
-dct-exec bash -c "cd /workspace/specification/tools && ./query-prometheus.sh sovdev-test-company-lookup-typescript --compare-with /workspace/typescript/test/e2e/company-lookup/logs/dev.log"
+dct-exec bash -c "cd /workspace/tools/validation/uis && ./query-loki.sh sovdev-test-company-lookup-typescript --compare-with /workspace/typescript/test/e2e/company-lookup/logs/dev.log"
+dct-exec bash -c "cd /workspace/tools/validation/uis && ./query-tempo.sh sovdev-test-company-lookup-typescript --compare-with /workspace/typescript/test/e2e/company-lookup/logs/dev.log"
+dct-exec bash -c "cd /workspace/tools/validation/uis && ./query-prometheus.sh sovdev-test-company-lookup-typescript --compare-with /workspace/typescript/test/e2e/company-lookup/logs/dev.log"
 ```
 
 Expect: Loki reports all 17 entries matching by trace_id/event_id; Tempo reports the 4 spanned entries matching (traces can take a few seconds to become searchable after ingestion — retry once if it comes back empty); Prometheus reports all 5 metric groups matching **only if queried within a few minutes of the run** — the OTel Collector only exposes a one-shot process's pushed metrics for a short window after it exits, so check promptly.
@@ -114,9 +114,9 @@ OTEL_EXPORTER_OTLP_HEADERS=Host=otel.localhost
 Confirmed empirically, not assumed: re-ran the test after porting Python's header handling to stop `json.loads`-parsing this env var itself (letting the OTel SDK's own `parse_env_headers()` read it natively, matching the real spec) — clean run, 17 log entries, correct 3-success/1-failure pattern, `TracerProvider` initialized correctly. Verified the data landed the same way as TypeScript, using `--compare-with` for the same exact trace_id/event_id cross-check (not just "service found"):
 
 ```bash
-dct-exec bash -c "cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-python --compare-with /workspace/python/test/e2e/company-lookup/logs/dev.log"
-dct-exec bash -c "cd /workspace/specification/tools && ./query-tempo.sh sovdev-test-company-lookup-python --compare-with /workspace/python/test/e2e/company-lookup/logs/dev.log"
-dct-exec bash -c "cd /workspace/specification/tools && ./query-prometheus.sh sovdev-test-company-lookup-python --compare-with /workspace/python/test/e2e/company-lookup/logs/dev.log"
+dct-exec bash -c "cd /workspace/tools/validation/uis && ./query-loki.sh sovdev-test-company-lookup-python --compare-with /workspace/python/test/e2e/company-lookup/logs/dev.log"
+dct-exec bash -c "cd /workspace/tools/validation/uis && ./query-tempo.sh sovdev-test-company-lookup-python --compare-with /workspace/python/test/e2e/company-lookup/logs/dev.log"
+dct-exec bash -c "cd /workspace/tools/validation/uis && ./query-prometheus.sh sovdev-test-company-lookup-python --compare-with /workspace/python/test/e2e/company-lookup/logs/dev.log"
 ```
 
 All three matched exactly (17/17 log entries, 4/4 spans, 5/5 metric groups), and a subsequent `compare-with-master.sh python` run still reported a clean match against TypeScript's output — testing against a live backend didn't change Python's behavior relative to the reference implementation.

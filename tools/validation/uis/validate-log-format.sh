@@ -1,5 +1,5 @@
 #!/bin/bash
-# filename: specification/tools/validate-log-format.sh
+# filename: tools/validation/uis/validate-log-format.sh
 # description: Validate log files against strict snake_case JSON schema
 #
 # Purpose:
@@ -17,11 +17,11 @@
 #
 #   From host:
 #     cd sovdev-logger
-#     ./specification/tools/validate-log-format.sh typescript/test/e2e/company-lookup/logs/dev.log
+#     ./tools/validation/uis/validate-log-format.sh typescript/test/e2e/company-lookup/logs/dev.log
 #
 #   From devcontainer:
 #     cd /workspace
-#     ./specification/tools/validate-log-format.sh typescript/test/e2e/company-lookup/logs/dev.log
+#     ./tools/validation/uis/validate-log-format.sh typescript/test/e2e/company-lookup/logs/dev.log
 #
 # Arguments:
 #   log-file-path    Path to log file (relative to sovdev-logger root)
@@ -33,8 +33,8 @@
 #
 # Environment:
 #   - Requires devcontainer-toolbox container running (when called from host)
-#   - Uses Python validator: specification/tests/validate-log-format.py
-#   - Uses JSON Schema: specification/schemas/log-entry-schema.json
+#   - Uses Python validator: tools/validation/validators/validate-log-format.py
+#   - Uses JSON Schema: tools/validation/schemas/log-entry-schema.json
 #   - Auto-detects if running inside devcontainer or on host
 #
 # Validation Checks:
@@ -92,7 +92,7 @@ NC='\033[0m' # No Color
 
 # Constants
 CONTAINER_NAME="devcontainer-toolbox"
-VALIDATOR_SCRIPT="/workspace/specification/tests/validate-log-format.py"
+VALIDATOR_SCRIPT="/workspace/tools/validation/validators/validate-log-format.py"
 
 # Determine script directory and sovdev-logger root
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"

@@ -63,7 +63,7 @@ Confirmed via two further research passes (Azure, Google Cloud) — Grafana Clou
 - `website/docs/contributor/testing/uis.md` — the completed, working local-UIS verification page this investigation extends the pattern from (setup, `.env` config, `--compare-with` exact-data verification, troubleshooting).
 - `website/docs/contributor/testing/index.md` — already lists Azure and Google Cloud as "Planned pages," confirming this was anticipated, just not scoped until now.
 - `website/docs/using/azure-integration.md` — already documents Azure Monitor as a real deployment scenario (SDK config, endpoint, auth token), written from the *user* perspective (how to configure it) rather than the *contributor* perspective (how to verify it actually works) this investigation is about.
-- `specification/tools/query-loki.sh` / `query-tempo.sh` / `query-prometheus.sh` — the pattern each new backend's scripts would follow structurally (human-readable + `--json` + `--validate` + `--compare-with` modes), even though the query mechanics inside them would be entirely new per backend.
+- `tools/validation/uis/query-loki.sh` / `query-tempo.sh` / `query-prometheus.sh` — the pattern each new backend's scripts would follow structurally (human-readable + `--json` + `--validate` + `--compare-with` modes), even though the query mechanics inside them would be entirely new per backend.
 
 ---
 

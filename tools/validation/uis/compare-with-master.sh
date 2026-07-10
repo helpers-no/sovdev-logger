@@ -1,5 +1,5 @@
 #!/bin/bash
-# filename: specification/tools/compare-with-master.sh
+# filename: tools/validation/uis/compare-with-master.sh
 # description: Compare a candidate language's E2E output against TypeScript's (the master)
 #
 # Purpose:
@@ -28,7 +28,7 @@
 #
 # Environment:
 #   - Requires devcontainer-toolbox >= 1.8.0's dct-exec on PATH (when called from host)
-#   - Uses comparator: specification/tests/compare-log-files.py
+#   - Uses comparator: tools/validation/validators/compare-log-files.py
 #
 # Exit Codes:
 #   0 - Match (candidate's output is identical to TypeScript's, per the normalization rules)
@@ -43,7 +43,7 @@
 #   cd python/test/e2e/company-lookup && ./run-test.sh
 #
 #   # 2. Compare
-#   cd specification/tools && ./compare-with-master.sh python
+#   cd tools/validation/uis && ./compare-with-master.sh python
 #
 #   # JSON output for CI/CD pipeline parsing
 #   ./compare-with-master.sh python --json
@@ -57,7 +57,7 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-COMPARATOR_SCRIPT="/workspace/specification/tests/compare-log-files.py"
+COMPARATOR_SCRIPT="/workspace/tools/validation/validators/compare-log-files.py"
 
 print_usage() {
     echo "Usage: $0 <candidate-language> [options]"

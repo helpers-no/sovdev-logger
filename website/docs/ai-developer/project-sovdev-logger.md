@@ -55,7 +55,7 @@ sovdev-logger/
 This is a **library**, not a CLI tool — there's no `sovdev-logger` command. A developer (human or LLM) implementing sovdev-logger in a new language works from the specification directly, not from an automatically-invoked workflow:
 
 1. Read the [Implementation guide](https://sovdev-logger.sovereignsky.no/contributor/implementation-guide) — contract → TypeScript → anti-patterns table → implement
-2. Run `specification/tools/compare-with-master.sh {language}` until it passes — this is the completion gate, not a self-reported checklist
+2. Run `tools/validation/uis/compare-with-master.sh {language}` until it passes — this is the completion gate, not a self-reported checklist
 
 There used to be a `.claude/skills/` directory with hand-holding routers (mandatory checkpoints, per-language ROADMAP generation) built for an earlier, weaker model. It was deleted 2026-07-08 — see [PLAN-003](plans/completed/PLAN-003-spec-scaffolding-cleanup.md) — once `compare-with-master.sh` made the checklist-enforcement approach redundant.
 

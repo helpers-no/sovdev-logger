@@ -15,39 +15,43 @@ This document defines the **required test scenarios** that all sovdev-logger imp
 
 ## ⚡ Quick Start: Testing Your Implementation
 
-**IMPORTANT:** Use the provided tools in `specification/tools/` - **DO NOT create custom validation scripts!**
+**IMPORTANT:** Use the provided tools in `tools/validation/uis/` - **DO NOT create custom validation scripts!**
 
-### 2-Step Testing Process
+### Testing Process
 
 All sovdev-logger implementations are tested the same way, regardless of language:
 
 **Step 1: Test log files**
 ```bash
 # Validate log file format (fast, local-only test)
-./specification/tools/validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log
+./tools/validation/uis/validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log
 ```
 
-**Step 2: Test OTLP export**
+**Step 2: Test OTLP export (exact match, not just presence)**
 ```bash
-# Quick smoke test (5 seconds, no backend queries)
-./specification/tools/run-company-lookup.sh {language}
+LOG_FILE="{language}/test/e2e/company-lookup/logs/dev.log"
+./tools/validation/uis/query-loki.sh sovdev-test-company-lookup-{language} --compare-with "$LOG_FILE"
+./tools/validation/uis/query-tempo.sh sovdev-test-company-lookup-{language} --compare-with "$LOG_FILE"
+./tools/validation/uis/query-prometheus.sh sovdev-test-company-lookup-{language} --compare-with "$LOG_FILE"
+```
 
-# Complete E2E validation with backend queries (30 seconds)
-./specification/tools/run-full-validation.sh {language}
+**Step 3: Cross-language conformance (the completion gate)**
+```bash
+./tools/validation/uis/compare-with-master.sh {language}
 ```
 
 ### Example Workflow
 
 ```bash
 # TypeScript implementation
-./specification/tools/validate-log-format.sh typescript/test/e2e/company-lookup/logs/dev.log
-./specification/tools/run-company-lookup.sh typescript
-./specification/tools/run-full-validation.sh typescript
+./tools/validation/uis/validate-log-format.sh typescript/test/e2e/company-lookup/logs/dev.log
+./tools/validation/uis/run-company-lookup.sh typescript
+./tools/validation/uis/compare-with-master.sh typescript
 
 # Python implementation
-./specification/tools/validate-log-format.sh python/test/e2e/company-lookup/logs/dev.log
-./specification/tools/run-company-lookup.sh python
-./specification/tools/run-full-validation.sh python
+./tools/validation/uis/validate-log-format.sh python/test/e2e/company-lookup/logs/dev.log
+./tools/validation/uis/run-company-lookup.sh python
+./tools/validation/uis/compare-with-master.sh python
 ```
 
 ### Why Use These Tools?
@@ -55,10 +59,9 @@ All sovdev-logger implementations are tested the same way, regardless of languag
 - ✅ **Language-agnostic**: Works identically for all implementations
 - ✅ **Comprehensive**: Tests file output, OTLP export, and backend verification
 - ✅ **Automated**: No manual steps or Grafana clicking required
-- ✅ **Fast**: Quick smoke test in 5 seconds, full validation in 30 seconds
 - ✅ **Consistent**: Same verification process for all languages
 
-**📚 For complete tool documentation**, see **[`tools/README.md`](https://github.com/helpers-no/sovdev-logger/blob/main/specification/tools/README.md)** (authoritative source)
+**📚 For complete tool documentation**, see **[`tools/validation/uis/README.md`](https://github.com/helpers-no/sovdev-logger/blob/main/tools/validation/uis/README.md)** (authoritative source)
 
 **📝 For detailed company-lookup test specification**, see [`08-testprogram-company-lookup.md`](./08-testprogram-company-lookup.md)
 
@@ -127,9 +130,9 @@ All sovdev-logger implementations **MUST** follow this standardized directory st
 **Enables automated verification:**
 ```bash
 # Generic tool works for ALL languages
-./specification/tools/run-company-lookup.sh python
-./specification/tools/run-company-lookup.sh typescript
-./specification/tools/run-company-lookup.sh go
+./tools/validation/uis/run-company-lookup.sh python
+./tools/validation/uis/run-company-lookup.sh typescript
+./tools/validation/uis/run-company-lookup.sh go
 
 # Tool internally does:
 # cd /workspace/{language}/test/e2e/company-lookup && ./run-test.sh
@@ -156,12 +159,12 @@ Both serve as templates for implementing new languages.
 
 ## Verification Tools
 
-The `specification/tools/` directory provides **language-agnostic verification tools** that simplify testing and verification:
+The `tools/validation/uis/` directory provides **language-agnostic verification tools** that simplify testing and verification:
 
 ### Quick Smoke Test
 ```bash
-./specification/tools/run-company-lookup.sh python
-./specification/tools/run-company-lookup.sh typescript
+./tools/validation/uis/run-company-lookup.sh python
+./tools/validation/uis/run-company-lookup.sh typescript
 ```
 - Runs application inside devcontainer
 - Sends telemetry to OTLP endpoints
@@ -170,13 +173,15 @@ The `specification/tools/` directory provides **language-agnostic verification t
 
 ### Complete E2E Test
 ```bash
-./specification/tools/run-full-validation.sh python
-./specification/tools/run-full-validation.sh typescript
+LOG_FILE="python/test/e2e/company-lookup/logs/dev.log"
+./tools/validation/uis/query-loki.sh sovdev-test-company-lookup-python --compare-with "$LOG_FILE"
+./tools/validation/uis/query-tempo.sh sovdev-test-company-lookup-python --compare-with "$LOG_FILE"
+./tools/validation/uis/query-prometheus.sh sovdev-test-company-lookup-python --compare-with "$LOG_FILE"
+./tools/validation/uis/compare-with-master.sh python
 ```
-- Runs application inside devcontainer
-- Waits for telemetry export (15s)
-- Queries all backends (Loki/Prometheus/Tempo)
-- Slower (~30s), complete verification
+- Runs against a language's E2E test output
+- Exact-match comparison against the log file (`trace_id`/`event_id`), not just "found"
+- `compare-with-master.sh` confirms it's field-by-field identical to TypeScript's output
 - Use for official verification
 
 ### Backend Query Tools
@@ -185,20 +190,20 @@ Query individual backends for debugging or verification:
 
 **Query Loki (Logs):**
 ```bash
-./specification/tools/query-loki.sh sovdev-test-company-lookup-python
-./specification/tools/query-loki.sh sovdev-test-company-lookup-python --json --limit 20
+./tools/validation/uis/query-loki.sh sovdev-test-company-lookup-python
+./tools/validation/uis/query-loki.sh sovdev-test-company-lookup-python --json --limit 20
 ```
 
 **Query Prometheus (Metrics):**
 ```bash
-./specification/tools/query-prometheus.sh sovdev-test-company-lookup-python
-./specification/tools/query-prometheus.sh sovdev-test-company-lookup-python --json
+./tools/validation/uis/query-prometheus.sh sovdev-test-company-lookup-python
+./tools/validation/uis/query-prometheus.sh sovdev-test-company-lookup-python --json
 ```
 
 **Query Tempo (Traces):**
 ```bash
-./specification/tools/query-tempo.sh sovdev-test-company-lookup-python
-./specification/tools/query-tempo.sh sovdev-test-company-lookup-python --json --limit 10
+./tools/validation/uis/query-tempo.sh sovdev-test-company-lookup-python
+./tools/validation/uis/query-tempo.sh sovdev-test-company-lookup-python --json --limit 10
 ```
 
 **Benefits:**
@@ -207,7 +212,7 @@ Query individual backends for debugging or verification:
 - ✅ Dual output modes (human-readable + JSON)
 - ✅ Composable for custom workflows
 
-**See `specification/tools/README.md` for complete documentation.**
+**See [`tools/validation/uis/README.md`](https://github.com/helpers-no/sovdev-logger/blob/main/tools/validation/uis/README.md) for complete documentation.**
 
 ---
 
@@ -689,10 +694,10 @@ sovdev_errors_total{service_name="sovdev-test-app",exception_type="Error"} >= 1
 **Verification Command:**
 ```bash
 # Human-readable output
-./specification/tools/query-prometheus.sh sovdev-test-app
+./tools/validation/uis/query-prometheus.sh sovdev-test-app
 
 # JSON output for automated verification
-./specification/tools/query-prometheus.sh sovdev-test-app --json | \
+./tools/validation/uis/query-prometheus.sh sovdev-test-app --json | \
   jq '.data.result[] | select(.metric.__name__ == "sovdev_operations_total")'
 ```
 
@@ -715,10 +720,10 @@ await sovdev_flush();
 **Verification Command:**
 ```bash
 # Human-readable output
-./specification/tools/query-tempo.sh sovdev-test-app
+./tools/validation/uis/query-tempo.sh sovdev-test-app
 
 # JSON output for automated verification
-./specification/tools/query-tempo.sh sovdev-test-app --json | \
+./tools/validation/uis/query-tempo.sh sovdev-test-app --json | \
   jq '.traces[] | {trace_id, rootServiceName, rootTraceName}'
 ```
 
@@ -772,7 +777,7 @@ await sovdev_flush();
 
 **1. Validate log file format:**
 ```bash
-./specification/tools/validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log
+./tools/validation/uis/validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log
 ```
 
 This tool automatically checks:
@@ -784,7 +789,7 @@ This tool automatically checks:
 
 **2. Quick smoke test:**
 ```bash
-./specification/tools/run-company-lookup.sh {language}
+./tools/validation/uis/run-company-lookup.sh {language}
 ```
 
 This tool automatically:
@@ -795,19 +800,21 @@ This tool automatically:
 
 **3. Complete E2E validation:**
 ```bash
-./specification/tools/run-full-validation.sh {language}
+LOG_FILE="{language}/test/e2e/company-lookup/logs/dev.log"
+./tools/validation/uis/query-loki.sh sovdev-test-company-lookup-{language} --compare-with "$LOG_FILE"
+./tools/validation/uis/query-tempo.sh sovdev-test-company-lookup-{language} --compare-with "$LOG_FILE"
+./tools/validation/uis/query-prometheus.sh sovdev-test-company-lookup-{language} --compare-with "$LOG_FILE"
+./tools/validation/uis/compare-with-master.sh {language}
 ```
 
-This tool automatically verifies:
+This verifies:
 - ✅ OTLP export to all backends
-- ✅ Logs arrived in Loki
-- ✅ Metrics in Prometheus (sovdev_operations_total, sovdev_errors_total)
-- ✅ Traces in Tempo
-- ✅ All required fields present
-- ✅ Exception handling correct
-- ✅ Credential removal working
+- ✅ Logs arrived in Loki, exact match against the log file
+- ✅ Metrics in Prometheus (sovdev_operations_total, sovdev_errors_total), exact match
+- ✅ Traces in Tempo, exact match
+- ✅ Field-by-field identical to TypeScript's reference output
 
-**Result:** If all three tools pass, your implementation is complete! ✅
+**Result:** If all four tools pass, your implementation is complete! ✅
 
 ---
 
@@ -817,8 +824,8 @@ Only use manual verification if automated tools fail and you need to debug speci
 
 **OTLP Output (Loki) - Query manually:**
 ```bash
-./specification/tools/query-loki.sh {service-name}
-./specification/tools/query-loki.sh {service-name} --json | jq
+./tools/validation/uis/query-loki.sh {service-name}
+./tools/validation/uis/query-loki.sh {service-name} --json | jq
 ```
 
 Verify:
@@ -843,8 +850,8 @@ Verify:
 
 **Metrics (Prometheus) - Query manually:**
 ```bash
-./specification/tools/query-prometheus.sh {service-name}
-./specification/tools/query-prometheus.sh {service-name} --json | jq
+./tools/validation/uis/query-prometheus.sh {service-name}
+./tools/validation/uis/query-prometheus.sh {service-name} --json | jq
 ```
 
 Verify:
@@ -854,8 +861,8 @@ Verify:
 
 **Traces (Tempo) - Query manually:**
 ```bash
-./specification/tools/query-tempo.sh {service-name}
-./specification/tools/query-tempo.sh {service-name} --json | jq
+./tools/validation/uis/query-tempo.sh {service-name}
+./tools/validation/uis/query-tempo.sh {service-name} --json | jq
 ```
 
 Verify:

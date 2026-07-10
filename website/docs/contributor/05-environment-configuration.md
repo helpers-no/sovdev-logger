@@ -115,7 +115,7 @@ This diagram shows the complete development environment architecture and how com
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Validation:** See `specification/tools/README.md` for the complete 8-step validation sequence.
+**Validation:** See [`tools/validation/uis/README.md`](https://github.com/helpers-no/sovdev-logger/blob/main/tools/validation/uis/README.md) for the complete tool reference, and [`09-development-loop.md`](./09-development-loop.md) for the workflow.
 
 **Key Architecture:**
 
@@ -190,7 +190,7 @@ dotnet --version
 
 ### Command Execution
 
-All commands execute at `/workspace/` inside the DevContainer. Validation tools are in `/workspace/specification/tools/`.
+All commands execute at `/workspace/` inside the DevContainer. Validation tools are in `/workspace/tools/validation/uis/` (local UIS backend) and `/workspace/tools/validation/grafana-cloud/` (Grafana Cloud backend).
 
 ### Network Access
 
@@ -241,18 +241,18 @@ OTEL_EXPORTER_OTLP_HEADERS=Host=otel.localhost
 
 **Use validation tools instead of direct queries:**
 ```bash
-cd /workspace/specification/tools
+cd /workspace/tools/validation/uis
 
-# Query individual backends
+# Query individual backends (add --compare-with LOGFILE for exact-match validation)
 ./query-loki.sh <service-name>
 ./query-prometheus.sh <service-name>
 ./query-tempo.sh <service-name>
 
-# Run complete validation (all 8 steps)
-./run-full-validation.sh <language>
+# Cross-language conformance (the completion gate)
+./compare-with-master.sh <language>
 ```
 
-**Complete tool documentation:** See `specification/tools/README.md`
+**Complete tool documentation:** See [`tools/validation/uis/README.md`](https://github.com/helpers-no/sovdev-logger/blob/main/tools/validation/uis/README.md)
 
 ### Visualization
 
@@ -261,7 +261,7 @@ cd /workspace/specification/tools
 - **Credentials:** admin/admin
 - **Dashboards:** Pre-configured for sovdev-logger
 
-**For troubleshooting:** See `specification/tools/README.md` → Troubleshooting section
+**For troubleshooting:** See [Testing against UIS](./testing/uis.md) → Troubleshooting section
 
 ---
 ## Environment Variables

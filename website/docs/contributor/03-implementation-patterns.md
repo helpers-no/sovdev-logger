@@ -84,7 +84,7 @@ def create_log_entry(
 
 ### Overview
 
-**ALL language implementations MUST follow this exact directory structure** to work with cross-language validation tools in `specification/tools/`.
+**ALL language implementations MUST follow this exact directory structure** to work with cross-language validation tools in `tools/validation/uis/`.
 
 ### Standard Structure
 
@@ -118,12 +118,12 @@ def create_log_entry(
 
 ### Why This Matters
 
-The validation tools in `specification/tools/` expect this exact structure:
+The validation tools in `tools/validation/uis/` expect this exact structure:
 
-- `run-full-validation.sh` - Executes tests and validates output
+- `run-company-lookup.sh` - Runs the E2E test and validates output
 - `validate-log-format.sh` - Validates JSON log format
-- `query-loki.sh` - Queries logs from observability stack
-- `run-full-validation.sh` - Runs complete validation suite
+- `query-loki.sh` / `query-tempo.sh` / `query-prometheus.sh` - Query logs/traces/metrics from the observability stack
+- `compare-with-master.sh` - Cross-language conformance check against TypeScript's output
 
 **If the directory structure doesn't match, validation tools will fail.**
 
@@ -157,7 +157,7 @@ The `.env` file configures OTLP endpoints and environment variables for the test
 
 ### Purpose
 
-The `run-test.sh` script is the **standardized execution wrapper** for the E2E test. All validation tools in `specification/tools/` execute this script, expecting consistent behavior across all languages.
+The `run-test.sh` script is the **standardized execution wrapper** for the E2E test. All validation tools in `tools/validation/uis/` execute this script, expecting consistent behavior across all languages.
 
 ### Required Behavior
 

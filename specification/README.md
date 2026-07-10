@@ -4,11 +4,8 @@ The specification's prose (design principles, API contract, field definitions, a
 
 ## What's still here
 
-This directory keeps the **functional code**, which was never documentation and was never migrated:
+The **functional code** that used to live here (`schemas/`, `tests/`, `tools/`) moved to top-level [`tools/`](../tools/) — see [`tools/README.md`](../tools/README.md) for the new structure (organized by OTLP backend: local UIS, Grafana Cloud, and future backends). This keeps validation tooling in one place regardless of which language or backend it targets, rather than nested under a folder named after documentation that itself moved elsewhere.
 
-- **[`schemas/`](schemas/)** — JSON Schema definitions for the exact log format (`log-entry-schema.json`, Loki/Prometheus/Tempo response schemas)
-- **[`tests/`](tests/)** — the validators and comparators, including `compare-log-files.py`
-- **[`tools/`](tools/)** — the validation and query scripts, including `compare-with-master.sh` (the actual completion gate — see [`tools/README.md`](tools/README.md)) and `generate-field-constants.py`
 - **[`llm-work-templates-archive/`](llm-work-templates-archive/)** — superseded process scaffolding, kept for reference, not maintained (see [PLAN-003](../website/docs/ai-developer/plans/completed/PLAN-003-spec-scaffolding-cleanup.md))
 
 **Specification Status:** ✅ v2.1.0 COMPLETE

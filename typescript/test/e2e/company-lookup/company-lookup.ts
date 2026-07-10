@@ -34,9 +34,9 @@
  *
  * VALIDATION:
  * This test is validated by:
- * - specification/tools/validate-log-format.sh (JSON schema validation)
- * - specification/tools/run-company-lookup-validate.sh (full validation)
- * - Loki queries via specification/tools/query-loki.sh
+ * - tools/validation/uis/validate-log-format.sh (JSON schema validation)
+ * - tools/validation/uis/compare-with-master.sh (cross-language conformance)
+ * - Loki queries via tools/validation/uis/query-loki.sh
  * ============================================================================
  */
 

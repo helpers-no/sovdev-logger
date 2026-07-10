@@ -37,4 +37,4 @@ For people (human or LLM) **implementing or maintaining** a sovdev-logger langua
 
 ## Functional code (not migrated — lives in the repo)
 
-`specification/schemas/`, `specification/tests/`, and `specification/tools/` (including `compare-with-master.sh`, the actual completion gate) are functional code, not documentation — see them directly in the [repo](https://github.com/helpers-no/sovdev-logger/tree/main/specification).
+[`tools/`](https://github.com/helpers-no/sovdev-logger/tree/main/tools) — schemas, validators, and the backend-specific query/comparison scripts (including `compare-with-master.sh`, the actual completion gate) — is functional code, not documentation. See [`tools/README.md`](https://github.com/helpers-no/sovdev-logger/blob/main/tools/README.md) for how it's organized (by OTLP backend: local UIS, Grafana Cloud, and future backends).

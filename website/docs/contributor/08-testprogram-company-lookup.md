@@ -670,7 +670,7 @@ These files are NOT optional. Without them, validation tools will fail.
 **How to validate this test:**
 
 **📚 Primary documentation** (AUTHORITATIVE):
-- **Complete tool reference & 🔢 9-step validation sequence**: [`tools/README.md`](https://github.com/helpers-no/sovdev-logger/blob/main/specification/tools/README.md)
+- **Complete tool reference**: [`tools/validation/uis/README.md`](https://github.com/helpers-no/sovdev-logger/blob/main/tools/validation/uis/README.md)
 - **Quick start guide**: [`06-test-scenarios.md`](./06-test-scenarios.md) - "Quick Start: Testing Your Implementation"
 
 **👨‍💻 For LLM implementers**:
@@ -680,23 +680,30 @@ These files are NOT optional. Without them, validation tools will fail.
 
 ```bash
 # Step 1: Validate log file format (fast, local)
-./specification/tools/validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log
+./tools/validation/uis/validate-log-format.sh {language}/test/e2e/company-lookup/logs/dev.log
 
 # Step 2: Quick smoke test (5 seconds, no backend queries)
-./specification/tools/run-company-lookup.sh {language}
+./tools/validation/uis/run-company-lookup.sh {language}
 
-# Step 3: Complete E2E validation (30 seconds, queries all backends)
-./specification/tools/run-full-validation.sh {language}
+# Step 3: Complete E2E validation (queries all backends, exact match)
+LOG_FILE="{language}/test/e2e/company-lookup/logs/dev.log"
+./tools/validation/uis/query-loki.sh sovdev-test-company-lookup-{language} --compare-with "$LOG_FILE"
+./tools/validation/uis/query-tempo.sh sovdev-test-company-lookup-{language} --compare-with "$LOG_FILE"
+./tools/validation/uis/query-prometheus.sh sovdev-test-company-lookup-{language} --compare-with "$LOG_FILE"
+
+# Step 4: Cross-language conformance (the completion gate)
+./tools/validation/uis/compare-with-master.sh {language}
 ```
 
 **Expected result for company-lookup**:
 - ✅ 17 log entries validated
 - ✅ 13 unique trace IDs found
-- ✅ All logs in Loki
-- ✅ Metrics in Prometheus
-- ✅ Traces in Tempo
+- ✅ All logs in Loki, exact match
+- ✅ Metrics in Prometheus, exact match
+- ✅ Traces in Tempo, exact match
+- ✅ Field-by-field identical to TypeScript's output
 
-**For debugging**: Use `query-loki.sh`, `query-prometheus.sh`, and `query-tempo.sh` - see `specification/tools/README.md`
+**For debugging**: Use `query-loki.sh`, `query-prometheus.sh`, and `query-tempo.sh` without `--compare-with` for raw queries — see [`tools/validation/uis/README.md`](https://github.com/helpers-no/sovdev-logger/blob/main/tools/validation/uis/README.md)
 
 ---
 
@@ -745,10 +752,8 @@ Use this checklist when implementing company-lookup in a new language:
 ### Validation
 - [ ] `validate-log-format.sh` passes (17 entries validated)
 - [ ] `run-company-lookup.sh` passes (smoke test)
-- [ ] `run-full-validation.sh` passes (full E2E)
-- [ ] Logs visible in Loki
-- [ ] Metrics visible in Prometheus
-- [ ] Traces visible in Tempo
+- [ ] `query-loki.sh`/`query-tempo.sh`/`query-prometheus.sh --compare-with` all pass (exact match)
+- [ ] `compare-with-master.sh` passes (matches TypeScript field-by-field)
 - [ ] Grafana dashboard shows all data
 
 ---
@@ -781,13 +786,16 @@ An implementation is **complete and correct** when:
 6. ✅ Implements transaction correlation with explicit trace_id
 7. ✅ Passes `validate-log-format.sh` validation
 8. ✅ Passes `run-company-lookup.sh` smoke test
-9. ✅ Passes `run-full-validation.sh` full E2E test
+9. ✅ Passes `compare-with-master.sh` — field-by-field identical to TypeScript's output
 10. ✅ All data visible in Grafana dashboards
 
-**Validation Command**:
+**Validation Commands**:
 ```bash
-# Complete validation in one command
-./specification/tools/run-full-validation.sh {language}
+LOG_FILE="{language}/test/e2e/company-lookup/logs/dev.log"
+./tools/validation/uis/query-loki.sh sovdev-test-company-lookup-{language} --compare-with "$LOG_FILE"
+./tools/validation/uis/query-tempo.sh sovdev-test-company-lookup-{language} --compare-with "$LOG_FILE"
+./tools/validation/uis/query-prometheus.sh sovdev-test-company-lookup-{language} --compare-with "$LOG_FILE"
+./tools/validation/uis/compare-with-master.sh {language}
 ```
 
 **Expected output**:

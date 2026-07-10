@@ -102,7 +102,7 @@ npx tsx query-tempo.ts <service-name> --compare-with /path/to/logs/dev.log
 npx tsx query-prometheus.ts <service-name> --compare-with /path/to/logs/dev.log
 ```
 
-Each pipes Grafana Cloud's response to the matching `specification/tests/validate-*-consistency.py` script UIS's `--compare-with` already uses — exact `trace_id`/`event_id` matching against the source log file, not just "service found." Loki and Prometheus need no transformation (Grafana Cloud's hosted APIs return the identical response shape as self-hosted). Tempo does: `query-tempo.ts` fetches each trace's full span detail and converts base64 span/trace IDs to hex, replicating exactly what the original `query-tempo.sh` did, to match the `spanSets[].spans[]` shape the Python validator expects.
+Each pipes Grafana Cloud's response to the matching `tools/validation/validators/validate-*-consistency.py` script UIS's `--compare-with` already uses — exact `trace_id`/`event_id` matching against the source log file, not just "service found." Loki and Prometheus need no transformation (Grafana Cloud's hosted APIs return the identical response shape as self-hosted). Tempo does: `query-tempo.ts` fetches each trace's full span detail and converts base64 span/trace IDs to hex, replicating exactly what the original `query-tempo.sh` did, to match the `spanSets[].spans[]` shape the Python validator expects.
 
 Confirmed passing against real E2E test output: Loki 17/17, Tempo 4/4 (may need a retry — traces can take a few seconds to become searchable after ingestion, same as UIS), Prometheus 5/5.
 

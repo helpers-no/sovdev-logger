@@ -34,7 +34,7 @@ Comparison Strategy:
     - Normalizes level values (case-insensitive)
 
 Integration:
-    Can be integrated into run-company-lookup-validate.sh:
+    Already wired into ../uis/query-loki.sh's --compare-with flag; for manual use:
     ```bash
     if python3 validate-log-consistency.py logs/dev.log <(query-loki.sh app --json); then
         print_success "Log consistency validated"

@@ -110,16 +110,16 @@ cd typescript && npm run lib-test
 
 **Or use the validation wrapper (recommended):**
 ```bash
-./specification/tools/run-company-lookup-validate.sh typescript
+./tools/validation/uis/run-company-lookup.sh typescript
 ```
 
 **Planned Languages:**
 ```bash
 # Go (planned)
-./specification/tools/run-company-lookup-validate.sh go
+./tools/validation/uis/run-company-lookup.sh go
 
 # Python (planned)
-./specification/tools/run-company-lookup-validate.sh python
+./tools/validation/uis/run-company-lookup.sh python
 ```
 
 **Future Planned Languages:**
@@ -296,13 +296,13 @@ See [Environment configuration](https://sovdev-logger.sovereignsky.no/contributo
 
 ```bash
 # TypeScript
-./specification/tools/run-company-lookup-validate.sh typescript
+./tools/validation/uis/run-company-lookup.sh typescript
 
 # Go
-./specification/tools/run-company-lookup-validate.sh go
+./tools/validation/uis/run-company-lookup.sh go
 
 # Python
-./specification/tools/run-company-lookup-validate.sh python
+./tools/validation/uis/run-company-lookup.sh python
 ```
 
 ### 3. Verify in Grafana
