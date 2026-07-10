@@ -13,6 +13,7 @@ from .logger import (
     sovdev_start_span,
     sovdev_end_span,
     sovdev_flush,
+    sovdev_shutdown,
     create_peer_services,
 )
 
@@ -27,5 +28,6 @@ __all__ = [
     "sovdev_start_span",
     "sovdev_end_span",
     "sovdev_flush",
+    "sovdev_shutdown",
     "create_peer_services",
 ]
