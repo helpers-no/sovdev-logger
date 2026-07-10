@@ -29,4 +29,3 @@ tools/
 ## See also
 
 - [Testing backends](https://sovdev-logger.sovereignsky.no/contributor/testing) — the verified, step-by-step workflow for each backend
-- `specification/` — historical process scaffolding (archived), not live tooling

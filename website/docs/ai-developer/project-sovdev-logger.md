@@ -15,12 +15,14 @@ sovdev-logger/
 ├── README.md                   — product overview (read this first)
 ├── LICENSE
 │
-├── specification/               — functional code only; prose moved to the docs site's Contributor section (PLAN-006)
-│   ├── README.md                — pointer to the Contributor docs + what's still here
-│   ├── schemas/                 — output schemas implementations must match
-│   ├── tests/                   — cross-language test scenarios
-│   ├── tools/                   — validation / query tooling, incl. compare-with-master.sh
-│   └── llm-work-templates-archive/  — superseded ROADMAP/checklist scaffolding, kept for reference (see PLAN-003)
+├── tools/                        — cross-language verification tooling, organized by OTLP backend
+│   ├── validation/
+│   │   ├── schemas/              — output schemas implementations must match
+│   │   ├── validators/           — Python cross-validation (backend-agnostic)
+│   │   ├── uis/                  — bash + kubectl, local UIS backend, incl. compare-with-master.sh
+│   │   └── grafana-cloud/        — TypeScript, Grafana Cloud backend
+│   ├── codegen/                  — schema-driven field-name constant generation
+│   └── repo-maintenance/         — doc consistency checks
 │
 ├── typescript/                  — reference implementation
 │   ├── src/                     — logger.ts, logLevels.ts, peerServices.ts, index.ts
@@ -96,7 +98,7 @@ This repo is on **GitHub** (`https://github.com/helpers-no/sovdev-logger`, forke
 
 ### The specification is the contract — not any one implementation
 
-No language implementation may drift from `specification/`. If an implementation needs to do something the spec doesn't cover, the spec gets updated first (or the gap gets flagged), not worked around silently in one language's code. This is what "identical output across all implementations" depends on.
+No language implementation may drift from the [Contributor documentation](https://sovdev-logger.sovereignsky.no/contributor) (the contract). If an implementation needs to do something the spec doesn't cover, the spec gets updated first (or the gap gets flagged), not worked around silently in one language's code. This is what "identical output across all implementations" depends on.
 
 ### Always work on a branch — never commit directly to `main`
 

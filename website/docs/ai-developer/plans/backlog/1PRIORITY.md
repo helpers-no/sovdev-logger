@@ -47,7 +47,6 @@ _(none yet)_
 ## Tier 5 — raw ideas
 
 - Decide whether Go/C#/Rust/PHP restart from scratch or from their archived `terchris/implementation-tests/` state — the one remaining open item from `INVESTIGATE-multi-language-conformance.md` (now otherwise fully shipped, all four child plans merged); no INVESTIGATE written for this yet, no urgency signal from the maintainer.
-- **`specification/` needs a better name.** Raised 2026-07-09 while scoping where Grafana Cloud validation tooling should live — the maintainer explicitly didn't want new tooling added under that name, which implies it's already felt wrong. No INVESTIGATE yet; whatever replaces it needs to account for everything currently under `specification/` (schemas, tests, tools, the prose contract docs) and everywhere that references the current path (docs, CI, scripts) — likely a real rename effort, not a quick fix.
 
 ## Retire candidates
 

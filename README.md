@@ -92,4 +92,4 @@ This repository implements a multi-language logging library with identical outpu
 - Identical API (8 functions)
 - Identical output format (JSON with snake_case fields)
 - Identical validation requirements
-- Source of truth: [specification/](specification/)
+- Source of truth: [Contributor documentation](https://sovdev-logger.sovereignsky.no/contributor)

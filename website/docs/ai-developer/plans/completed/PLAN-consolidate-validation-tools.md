@@ -34,7 +34,7 @@ Moves the live parts of `specification/tools|tests|schemas` into a new `tools/va
 - [x] 1.6 `git mv`'d `tools/validation/grafana/` → `tools/validation/grafana-cloud/` (TypeScript, Grafana Cloud tooling — renamed for symmetry with the new `uis/`)
 - [x] 1.7 `git rm`'d the 7 confirmed-dead scripts: `verify-kubectl-setup.sh`, `query-grafana-loki.sh`, `query-grafana-prometheus.sh`, `query-grafana-tempo.sh`, `run-grafana-validation.sh`, `validate-grafana-datasources.sh`, `run-full-validation.sh`
 - [x] 1.8 `git rm`'d the now-orphaned `specification/tools/README.md` (content rewritten into the new locations); removed the leftover `specification/tests/__pycache__/`
-- [x] 1.9 `specification/` now contains only `README.md` (rewritten to point at `tools/`) and `llm-work-templates-archive/` (untouched — explicitly archived)
+- [x] 1.9 `specification/` initially left with only `README.md` (rewritten to point at `tools/`) and `llm-work-templates-archive/` — later fully deleted in Phase 4 below, once the maintainer confirmed neither was still needed
 
 ### Validation
 
@@ -79,12 +79,30 @@ Moves the live parts of `specification/tools|tests|schemas` into a new `tools/va
 - [x] 3.7 Fixed path/dead-tool references in `03-implementation-patterns.md`, `05-environment-configuration.md`, `06-test-scenarios.md`, `07-anti-patterns.md` (row 15's advice pointed at a now-dead script), `08-testprogram-company-lookup.md`, `implementation-guide.md`, `index.md`, `research-otel-sdk-guide.md`, `using/observability-architecture.md` (also fixed a reference to a script name — `run-company-lookup-validate.sh` — that never actually existed), `README.md` (root), `python/README.md`
 - [x] 3.8 Fixed `.github/workflows/ci.yml`'s comment-only references
 - [x] 3.9 Added an update note to `INVESTIGATE-grafana-cloud-validator.md`'s Q1, since its original decision text ("the existing scripts are not moved") is superseded by this plan
-- [x] 3.10 Left historical/completed docs alone: `specification/llm-work-templates-archive/*`, `python/llm-work/llm-checklist-python.md`, all `plans/completed/*.md` — these describe what was true at the time and aren't live guidance
+- [x] 3.10 Left historical/completed docs alone: `python/llm-work/llm-checklist-python.md`, all `plans/completed/*.md` — these describe what was true at the time and aren't live guidance
 
 ### Validation
 
 - [x] `npm run build` (Docusaurus) — clean, no broken links/anchors
 - [x] Full repo grep for the dead scripts' names and old paths — zero remaining live references (only historical/archived docs, left intentionally)
+
+---
+
+## Phase 4: Delete `specification/` entirely — DONE
+
+After Phase 1-3 left `specification/` holding only `README.md` (a redundant pointer to `tools/`) and `llm-work-templates-archive/`, the maintainer asked whether to remove the folder entirely. `llm-work-templates-archive/` was flagged as a deliberate keep from PLAN-003 (a safety net "in case something in it turns out to still be load-bearing for a future language implementation"), not oversight — so this was confirmed explicitly rather than assumed, since deleting it reverses that earlier decision. Maintainer confirmed: delete everything. Its content remains recoverable from git history if a future language implementation ever needs it.
+
+### Tasks
+
+- [x] 4.1 `git rm -r specification/` — removed `README.md` and the entire `llm-work-templates-archive/` tree
+- [x] 4.2 Fixed the one real (non-historical) reference: `implementation-guide.md`'s link to the now-deleted archive path
+- [x] 4.3 Fixed `project-sovdev-logger.md`'s directory tree, which was already stale from Phase 1 (still showed `specification/schemas|tests|tools`) — updated to the real current tree, and fixed a prose reference to "`specification/`" as the contract to point at the Contributor docs instead
+- [x] 4.4 Left historical mentions of `specification/`/`llm-work-templates-archive/` in completed PLANs and the backlog `INVESTIGATE-multi-language-conformance.md` alone — they describe what was true at the time, not current guidance
+
+### Validation
+
+- [x] `npm run build` (Docusaurus) — clean
+- [x] Full repo grep for `specification/` — zero remaining live references outside historical completed-plan docs
 
 ---
 
@@ -97,6 +115,7 @@ Moves the live parts of `specification/tools|tests|schemas` into a new `tools/va
 - [x] Documentation updated to match — no doc recommends a deleted script or an old path as current guidance
 - [x] `python/.gitignore` gap fixed (found while working in this area)
 - [x] Docusaurus build clean
+- [x] `specification/` deleted entirely (Phase 4), after explicit confirmation that the archived scaffolding was safe to remove rather than assumed
 
 ## Files Modified
 
@@ -104,7 +123,8 @@ Moved (see Phase 1) — plus:
 - `tools/README.md` (new)
 - `tools/validation/uis/README.md` (new)
 - `tools/validation/validators/README.md`, `tools/validation/schemas/README.md`
-- `specification/README.md`
+- `specification/README.md` (deleted in Phase 4)
+- `website/docs/ai-developer/project-sovdev-logger.md` (directory tree + contract reference)
 - `website/docs/contributor/09-development-loop.md` (substantial rewrite)
 - `website/docs/contributor/03-implementation-patterns.md`, `05-environment-configuration.md`, `06-test-scenarios.md`, `07-anti-patterns.md`, `08-testprogram-company-lookup.md`, `implementation-guide.md`, `index.md`, `research-otel-sdk-guide.md`
 - `website/docs/using/observability-architecture.md`

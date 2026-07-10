@@ -9,7 +9,7 @@ description: "Start here -- the end-to-end process for implementing a new langua
 
 The short version, now that [`compare-with-master.sh`](https://github.com/helpers-no/sovdev-logger/blob/main/tools/validation/uis/compare-with-master.sh) exists: read the contract, study TypeScript, implement, run the comparison until it passes. No ROADMAP file to generate, no checkboxes to maintain — the comparison script is the completion gate, not a human- or model-reported checklist.
 
-This replaces the old `llm-work-templates/` 13-task system (archived at [`llm-work-templates-archive/`](https://github.com/helpers-no/sovdev-logger/tree/main/specification/llm-work-templates-archive) — see [PLAN-003](../ai-developer/plans/completed/PLAN-003-spec-scaffolding-cleanup.md) for why).
+This replaces the old `llm-work-templates/` 13-task system — see [PLAN-003](../ai-developer/plans/completed/PLAN-003-spec-scaffolding-cleanup.md) for why, and the [consolidation cleanup](../ai-developer/plans/completed/PLAN-consolidate-validation-tools.md) for why the archived scaffolding itself was later removed entirely rather than kept as a historical folder.
 
 ## The process
 
