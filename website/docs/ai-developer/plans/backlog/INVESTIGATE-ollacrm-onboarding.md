@@ -12,6 +12,8 @@
 
 **Last Updated**: 2026-07-10
 
+**Resumed**: the flush/shutdown fix this was parked for has shipped. Picked back up — [Q5] and [Q6] resolved directly (see below); [Q1]–[Q3] and the two Grafana Cloud credential steps remain, the latter genuinely blocked on the maintainer per the established "don't mint credentials as an agent" rule.
+
 **Why parked**: writing the flush guidance for ollacrm surfaced a real, confirmed divergence — TypeScript's `sovdev_flush()` shuts down the SDK permanently on first call, Python's doesn't — that's bigger than one onboarding and worth resolving at the library level first. Spun out to [`INVESTIGATE-long-running-server-flush.md`](../completed/INVESTIGATE-long-running-server-flush.md) — **now shipped**: `sovdev_flush()`/`sovdev_shutdown()` split in both languages. This never blocked ollacrm's actual onboarding: the documented initialize-once/shutdown-on-`SIGTERM` pattern never called `sovdev_flush()` more than once per process. Its own worked example (`using/onboarding/ollacrm/index.md`) has already been updated to the new `sovdev_shutdown()` call. The Grafana Cloud credential steps ([Q1]–[Q6] below) remain independently actionable whenever the maintainer is ready.
 
 ---
@@ -104,8 +106,8 @@ A new, independent Grafana Cloud account/stack, its own free-tier quota, its own
 2. **[Q2]** Is the Grafana Cloud free tier's 14-day retention acceptable once ollacrm is actually logging real family-care activity, or does this need a paid tier (or a different backend entirely) before it's more than a test?
 3. **[Q3]** Should the dashboard-JSON generation be reworked to take datasource UIDs as parameters (one script, either backend), or is a one-off hand-edited Grafana-Cloud copy of the JSON good enough for now?
 4. **[Q4]** File the GitHub issue now — so ollacrm's Claude Code agent can start the integration work in parallel with the Grafana Cloud prep, per your original message — or hold it until the dashboard is actually live, so anyone following the issue's link to "see it in Grafana" doesn't hit a stack with nothing configured yet?
-5. **[Q5]** `typescript/package.json`'s `repository` field still points at `norwegianredcross/sovdev-logger`, not this fork. Worth a one-line fix (and a `1.0.2` republish) before or alongside this work, or defer to its own small ticket?
-6. **[Q6]** Once ollacrm's integration is actually working, is the initialize-once/flush-on-`SIGTERM` server pattern worth folding back into `typescript/README.md` as a second real-world example (alongside the existing script-shaped one), since ollacrm won't be the last server-shaped consumer?
+5. **[Q5]** — **Metadata fixed.** `typescript/package.json`'s `repository`/`bugs`/`homepage` all pointed at `norwegianredcross/sovdev-logger`; corrected to `helpers-no/sovdev-logger`. **Still open**: publish as `1.0.2`, or bundle into the next release that already needs a bump?
+6. **[Q6]** — **Resolved, no action needed.** `typescript/README.md` links out to `using/onboarding/` for the full server pattern rather than duplicating it inline — this already matches the project's own README-vs-Docusaurus policy (small essentials inline, full reference linked out), settled in `INVESTIGATE-readme-vs-docusaurus-policy.md`.
 
 ## Next Steps
 
