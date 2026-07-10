@@ -1057,9 +1057,13 @@ def sovdev_end_span(span: Span, error: Optional[BaseException] = None) -> None:
 
 def sovdev_flush() -> None:
     """
-    Flush all pending logs, metrics, and traces.
+    Force-export any buffered logs, metrics, and traces now.
 
-    Blocks until all data is exported or 30-second timeout occurs.
+    Safe to call any number of times, at any point in a process's life —
+    this does NOT shut anything down. Use this in a long-running server if
+    you want to force telemetry out at a specific moment; use
+    sovdev_shutdown() instead for the one true "the process is ending"
+    moment. Blocks until all data is exported or a 30-second timeout occurs.
     Safe to call from signal handlers and atexit hooks.
     """
     try:
@@ -1085,6 +1089,40 @@ def sovdev_flush() -> None:
 
     except Exception as error:
         print(f"⚠️  OpenTelemetry flush failed: {error}")
+
+
+def sovdev_shutdown() -> None:
+    """
+    Force-flush, then permanently shut down all telemetry providers.
+
+    Call this exactly ONCE, at the true end of a process — the last thing
+    before it exits. After this call, logging/metrics/tracing stop working
+    for the rest of the process's life. For anything short of "the process
+    is ending," call sovdev_flush() instead — this mirrors TypeScript's
+    sovdev_shutdown(), added there after finding that its old sovdev_flush()
+    silently stopped recording metrics (though not logs) after being called
+    more than once, since it used to shut down the SDK on every call.
+    """
+    try:
+        sovdev_flush()
+
+        if global_tracer_provider:
+            print("🔄 Shutting down TracerProvider...")
+            global_tracer_provider.shutdown()
+            print("✅ TracerProvider shutdown complete")
+
+        if global_meter_provider:
+            print("🔄 Shutting down MeterProvider...")
+            global_meter_provider.shutdown()
+            print("✅ MeterProvider shutdown complete")
+
+        if global_logger_provider:
+            print("🔄 Shutting down LoggerProvider...")
+            global_logger_provider.shutdown()
+            print("✅ LoggerProvider shutdown complete")
+
+    except Exception as error:
+        print(f"⚠️  OpenTelemetry shutdown failed: {error}")
 
 
 def create_peer_services(
@@ -1124,6 +1162,7 @@ __all__ = [
     "sovdev_start_span",
     "sovdev_end_span",
     "sovdev_flush",
+    "sovdev_shutdown",
     "create_peer_services",
 ]
 

@@ -340,6 +340,7 @@ from .logger import (
     sovdev_log_job_status,
     sovdev_log_job_progress,
     sovdev_flush,
+    sovdev_shutdown,
     sovdev_generate_trace_id,
     create_peer_services
 )
@@ -351,6 +352,7 @@ __all__ = [
     'sovdev_log_job_status',
     'sovdev_log_job_progress',
     'sovdev_flush',
+    'sovdev_shutdown',
     'sovdev_generate_trace_id',
     'create_peer_services',
     'SOVDEV_LOGLEVELS'
@@ -718,7 +720,7 @@ See `04-error-handling.md` for detailed graceful degradation patterns.
 
 **CRITICAL**: OpenTelemetry uses **batch processing by default** for efficiency. Logs, traces, and metrics are **accumulated in memory** and sent in **batches**, not immediately.
 
-**Without `sovdev_flush()`** before application exit, the **last batch is lost** (never sent to OTLP collector).
+**Without `sovdev_shutdown()`** before application exit, the **last batch is lost** (never sent to OTLP collector) — and in implementations whose batch processors run on timers that keep the process alive, the process may not exit at all.
 
 ### Default Batch Behavior
 
@@ -734,7 +736,7 @@ Short-lived applications (tests, CLI tools, jobs) often run **< 5 seconds**:
 
 ```
 App runs 2 seconds → Creates 10 logs → Exits → ❌ 10 logs LOST (batch still in memory)
-App runs 2 seconds → Creates 10 logs → sovdev_flush() → ✅ 10 logs SENT
+App runs 2 seconds → Creates 10 logs → sovdev_shutdown() → ✅ 10 logs SENT
 ```
 
 ### Implementation Requirements
@@ -745,9 +747,13 @@ All implementations MUST:
 2. **Implement `sovdev_flush()`** that:
    - Calls `forceFlush()` on all three providers (Logs, Traces, Metrics)
    - Blocks until export completes OR 30s timeout
-3. **Document flush requirement** in examples
+   - **MUST NOT** shut down anything — safe to call any number of times, in any order, with identical behavior every time
+3. **Implement `sovdev_shutdown()`** that:
+   - Calls `sovdev_flush()` first (or does the equivalent inline), then calls `shutdown()` on all three providers
+   - Called exactly once per process, as the last telemetry-related call before exit
+4. **Document the flush-vs-shutdown distinction** in examples — this is a hard requirement, not a style preference: an earlier version of this library had these coupled in one function in one language and not another, which silently broke metrics recording (not logging) the first time that function was called more than once in a long-running process, with no error in either language
 
-### Language-Specific Flush
+### Language-Specific Flush and Shutdown
 
 | Language | Type | Returns |
 |----------|------|---------|
@@ -775,11 +781,11 @@ See [OpenTelemetry Environment Variables](https://opentelemetry.io/docs/specs/ot
 
 ### Key Takeaway
 
-**If logs don't appear in Loki/Grafana**: Check if `sovdev_flush()` is called before application exit.
+**If logs don't appear in Loki/Grafana**: Check if `sovdev_shutdown()` (not `sovdev_flush()`) is called before application exit — `sovdev_flush()` alone never shuts anything down and won't let a short script exit naturally.
 
 **See Also**:
-- **API Contract**: `01-api-contract.md` → Function 5: sovdev_flush
-- **Error Handling**: `04-error-handling.md` → Error Handling in sovdev_flush()
+- **API Contract**: `01-api-contract.md` → Function 5: sovdev_flush, Function 6: sovdev_shutdown
+- **Error Handling**: `04-error-handling.md` → Error Handling in sovdev_shutdown()
 - **Further Reading**: [OpenTelemetry Specification](https://opentelemetry.io/docs/specs/otel/)
 
 ---

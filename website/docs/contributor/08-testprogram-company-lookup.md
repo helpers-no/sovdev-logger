@@ -227,7 +227,7 @@ sovdev_log(
 
 #### Step 7: Flush Telemetry
 ```typescript
-await sovdev_flush();
+await sovdev_shutdown();
 ```
 
 **Critical**: Forces immediate export of all batched telemetry data. Without this, short-lived applications lose the last batch of logs/metrics/traces.
@@ -402,7 +402,7 @@ See "Test Data Specification" above - exact organization numbers in exact order.
 2. `sovdev_log()` - 11 times (various scenarios)
 3. `sovdev_log_job_status()` - 2 times (started + completed)
 4. `sovdev_log_job_progress()` - 4 times (one per company)
-5. `sovdev_flush()` - Once at end
+5. `sovdev_shutdown()` - Once at end
 6. `sovdev_generate_trace_id()` - 4 times (one per lookup)
 7. `SOVDEV_LOGLEVELS` - Use INFO (15 times) and ERROR (2 times)
 8. `create_peer_services()` - Once at module initialization
@@ -732,7 +732,7 @@ Use this checklist when implementing company-lookup in a new language:
 - [ ] Used `SOVDEV_LOGLEVELS.INFO` 15 times
 - [ ] Used `SOVDEV_LOGLEVELS.ERROR` 2 times
 - [ ] Called `create_peer_services()` once at module init
-- [ ] Called `sovdev_flush()` once before exit
+- [ ] Called `sovdev_shutdown()` once before exit
 
 ### Transaction Correlation
 - [ ] Generated `trace_id` once per company lookup

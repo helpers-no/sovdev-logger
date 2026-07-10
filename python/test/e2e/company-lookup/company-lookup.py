@@ -38,7 +38,7 @@ from logger import (
     sovdev_log_job_progress,
     sovdev_start_span,
     sovdev_end_span,
-    sovdev_flush,
+    sovdev_shutdown,
     create_peer_services,
 )
 
@@ -286,10 +286,12 @@ def main() -> None:
         PEER_SERVICES.INTERNAL
     )
 
-    # 5. Flush telemetry
-    print('\n🔄 Flushing telemetry...')
-    sovdev_flush()
-    print('✅ Telemetry flushed\n')
+    # 5. Shut down telemetry (flushes, then permanently shuts down the SDK —
+    #    call this once, at the true end, not sovdev_flush() which is safe
+    #    to call repeatedly but never shuts anything down)
+    print('\n🔄 Shutting down telemetry...')
+    sovdev_shutdown()
+    print('✅ Telemetry shut down\n')
 
 
 if __name__ == '__main__':
@@ -297,9 +299,9 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt:
         print('\n⚠️  Interrupted by user')
-        sovdev_flush()
+        sovdev_shutdown()
         sys.exit(1)
     except Exception as e:
         print(f'\n❌ Fatal error: {e}')
-        sovdev_flush()
+        sovdev_shutdown()
         sys.exit(1)

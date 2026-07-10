@@ -428,17 +428,17 @@ try {
 
 ---
 
-## Error Handling in sovdev_flush()
+## Error Handling in sovdev_shutdown()
 
 ### Purpose
-`sovdev_flush()` forces immediate export of all pending batches to OTLP collector. This is critical before application exit.
+`sovdev_shutdown()` forces immediate export of all pending batches to the OTLP collector, then permanently shuts down the SDK. This is critical before application exit, and MUST only be called once per process — `sovdev_flush()` is the repeatable counterpart for anywhere short of true process end (see `01-api-contract.md` sections 5-6 for the full contract, including the cross-language bug this split fixed).
 
 ### Timeout Behavior
-**Requirement:** Flush MUST complete within 30 seconds or timeout.
+**Requirement:** The flush portion MUST complete within 30 seconds or timeout.
 
 **Implementation Pattern:**
 ```typescript
-async function sovdev_flush(timeoutMs: number = 30000): Promise<void> {
+async function sovdev_shutdown(timeoutMs: number = 30000): Promise<void> {
   const timeoutPromise = new Promise<void>((_, reject) => {
     setTimeout(() => reject(new Error('Flush timeout')), timeoutMs);
   });
@@ -455,45 +455,51 @@ async function sovdev_flush(timeoutMs: number = 30000): Promise<void> {
     console.warn('Failed to flush logs:', error.message);
     // Do not throw - allow application to continue shutdown
   }
+
+  await Promise.all([
+    logProvider.shutdown(),
+    meterProvider.shutdown(),
+    traceProvider.shutdown()
+  ]);
 }
 ```
 
 ### Exit Handler Integration
 
-**Requirement:** Flush SHOULD be called automatically on process exit signals.
+**Requirement:** Shutdown SHOULD be called automatically on process exit signals — exactly once, never per-request in a long-running server.
 
 **TypeScript/Node.js Example:**
 ```typescript
 process.on('SIGINT', async () => {
-  console.log('Flushing logs before exit...');
-  await sovdev_flush();
+  console.log('Shutting down telemetry before exit...');
+  await sovdev_shutdown();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('Flushing logs before exit...');
-  await sovdev_flush();
+  console.log('Shutting down telemetry before exit...');
+  await sovdev_shutdown();
   process.exit(0);
 });
 
 process.on('beforeExit', async () => {
-  await sovdev_flush();
+  await sovdev_shutdown();
 });
 ```
 
-**Python Example:**
+**Python Example** (synchronous — no `asyncio`/`await` needed, unlike TypeScript):
 ```python
 import signal
 import atexit
 
-def flush_on_exit():
-    asyncio.run(sovdev_flush())
+def shutdown_on_exit():
+    sovdev_shutdown()
 
-atexit.register(flush_on_exit)
+atexit.register(shutdown_on_exit)
 
 def signal_handler(signum, frame):
-    print('Flushing logs before exit...')
-    asyncio.run(sovdev_flush())
+    print('Shutting down telemetry before exit...')
+    sovdev_shutdown()
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signal_handler)
@@ -501,7 +507,7 @@ signal.signal(signal.SIGTERM, signal_handler)
 ```
 
 **See Also**:
-- **API Contract**: `01-api-contract.md` → Function 5: sovdev_flush
+- **API Contract**: `01-api-contract.md` → Function 6: sovdev_shutdown (and Function 5: sovdev_flush, the repeatable counterpart)
 - **Batch Processing Details**: `03-implementation-patterns.md` → OpenTelemetry Batch Processing
 
 ---

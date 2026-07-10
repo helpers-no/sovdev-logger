@@ -120,7 +120,7 @@ Configuration through environment variables:
 **Recommended Libraries by Language**: See `03-implementation-patterns.md` → **Logging Library Selection** for detailed recommendations, rationale, and implementation examples for TypeScript, Python, Go, Java, C#, PHP, and Rust.
 
 **Our Library's Responsibility**:
-1. ✅ Provide 8 API functions (sovdev_log, sovdev_initialize, sovdev_flush, sovdev_start_span, sovdev_end_span, etc.)
+1. ✅ Provide 9 API functions (sovdev_log, sovdev_initialize, sovdev_flush, sovdev_shutdown, sovdev_start_span, sovdev_end_span, etc.)
 2. ✅ Standardize field names and structure
 3. ✅ Handle OpenTelemetry integration
 4. ✅ Remove credentials from stack traces
@@ -187,10 +187,10 @@ try {
 **Good**: Always add responseJSON (value "null" when no response)
 **Why**: Grafana queries break when field presence varies
 
-### ❌ DON'T: Forget to flush on application exit
-**Bad**: Exit without calling `sovdev_flush()`
-**Good**: Always flush before exit (including error exits)
-**Why**: OTLP batches final logs; without flushing they're lost
+### ❌ DON'T: Forget to shut down on application exit
+**Bad**: Exit without calling `sovdev_shutdown()`, or call `sovdev_flush()` expecting it to also terminate the SDK
+**Good**: Always call `sovdev_shutdown()` before exit (including error exits) — `sovdev_flush()` is the separate, repeatable function for anywhere short of true process end
+**Why**: OTLP batches final logs; without shutting down they're lost. `sovdev_flush()` alone never terminates anything by design — conflating the two silently broke metrics recording in an earlier version of this library.
 
 ### ❌ DON'T: Log sensitive data directly
 **Bad**: Log raw exceptions with credentials

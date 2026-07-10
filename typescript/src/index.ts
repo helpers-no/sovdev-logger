@@ -12,6 +12,7 @@ export {
   sovdev_test_otlp_connection,   // NEW: Test OTLP connectivity
   sovdev_initialize,
   sovdev_flush,
+  sovdev_shutdown,
   sovdev_log,
   sovdev_log_job_status,
   sovdev_log_job_progress,

@@ -23,5 +23,6 @@ Package READMEs stay the canonical, up-to-date source — not duplicated here (s
 - **[Logging concepts](logging-concepts.md)** — distributed tracing with spans, when to use them.
 - **[Log data structure](logging-data.md)** — field reference, logging patterns, correlation strategies.
 - **[Observability architecture](observability-architecture.md)** — dashboard setup, service name naming, verification.
+- **[Onboarding a new system](onboarding/index.md)** — connecting a new application to the shared Grafana Cloud stack: a dedicated token, standard OTLP env vars, and it just shows up in the existing dashboard. Includes real experience reports, starting with [ollacrm](onboarding/ollacrm/index.md).
 - **[Dashboard walkthrough](dashboard-walkthrough/index.md)** — every panel of the sovdev-logger dashboard, paired with the exact code that produces it.
 - **[Loggeloven compliance](loggeloven.md)** — Norwegian Red Cross logging requirements.

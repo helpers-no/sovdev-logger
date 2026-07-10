@@ -24,13 +24,13 @@ tool, not a roadmap.
   it; one completes → strike it and promote dependents; a child PLAN ships
   → re-rank the parent. Full re-rank quarterly or after every 3 ships.
 
-**Last triaged:** 2026-07-10 — `INVESTIGATE-dashboard-documentation.md` and its child `PLAN-dashboard-walkthrough-documentation.md` resolved (page shipped, reviewed against actual screenshots/source — found and fixed 5 real factual errors, plus a stale source-code comment) and moved to `completed/`. Tier 1 is now empty.
+**Last triaged:** 2026-07-10 — `INVESTIGATE-long-running-server-flush.md` shipped (Status: Resolved) — `sovdev_flush()`/`sovdev_shutdown()` split implemented and verified in both languages, moved to `completed/`. `INVESTIGATE-ollacrm-onboarding.md` remains Parked (not blocked) in Tier 1, its only real dependency now being the maintainer's two Grafana Cloud credential steps.
 
 ---
 
 ## Tier 1 — next up
 
-_(none — promote from Tier 2/4 or start something new when ready)_
+- [`INVESTIGATE-ollacrm-onboarding.md`](INVESTIGATE-ollacrm-onboarding.md) — Parked, not blocked: the documented onboarding pattern was never affected by the flush divergence (resolved separately, see `completed/INVESTIGATE-long-running-server-flush.md`). Still needs the maintainer to create two Grafana Cloud credentials before the dashboard side can go live — see [Q1]–[Q6] in the doc.
 
 ## Tier 2 — real, not urgent
 

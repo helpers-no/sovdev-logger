@@ -9,23 +9,24 @@ description: "Public API that all languages MUST implement."
 
 ## Overview
 
-All sovdev-logger implementations MUST provide these 8 core functions with identical behavior across languages. Function names and parameter names are standardized, but parameter types should follow language conventions (e.g., `string | undefined` in TypeScript, `Optional<String>` in Java, `Option<String>` in Rust).
+All sovdev-logger implementations MUST provide these 9 core functions with identical behavior across languages. Function names and parameter names are standardized, but parameter types should follow language conventions (e.g., `string | undefined` in TypeScript, `Optional<String>` in Java, `Option<String>` in Rust).
 
 **Core Functions** (Mandatory):
 1. `sovdev_initialize()` - Initialize logger with service info
 2. `sovdev_log()` - Log a transaction
 3. `sovdev_log_job_status()` - Log job lifecycle events
 4. `sovdev_log_job_progress()` - Log job progress
-5. `sovdev_flush()` - Flush logs to backends
-6. `sovdev_start_span()` - Start distributed trace span
-7. `sovdev_end_span()` - End distributed trace span
-8. `create_peer_services()` - Create peer service mappings
+5. `sovdev_flush()` - Force-export pending telemetry now; safe to call repeatedly, never shuts anything down
+6. `sovdev_shutdown()` - Force-flush, then permanently shut down; call exactly once, at true process end
+7. `sovdev_start_span()` - Start distributed trace span
+8. `sovdev_end_span()` - End distributed trace span
+9. `create_peer_services()` - Create peer service mappings
 
 **Optional Diagnostic Functions** (Recommended for development):
-9. `sovdev_validate_config()` - Validate OTLP environment configuration
-10. `sovdev_test_otlp_connection()` - Test connectivity to OTLP endpoints
+10. `sovdev_validate_config()` - Validate OTLP environment configuration
+11. `sovdev_test_otlp_connection()` - Test connectivity to OTLP endpoints
 
-**NOTE**: This specification has been updated to use OpenTelemetry spans for distributed tracing instead of manual trace_id management. See sections 6-7 for `sovdev_start_span()` and `sovdev_end_span()`.
+**NOTE**: This specification has been updated to use OpenTelemetry spans for distributed tracing instead of manual trace_id management. See sections 7-8 for `sovdev_start_span()` and `sovdev_end_span()`.
 
 ---
 
@@ -513,7 +514,7 @@ async function batchLookup(orgNumbers: string[]): Promise<void> {
 
 ## 5. sovdev_flush
 
-**Purpose**: Flush all pending OTLP batches to ensure logs/metrics/traces are exported.
+**Purpose**: Force-export any pending OTLP batches right now, without shutting anything down.
 
 **TypeScript Signature**:
 ```typescript
@@ -524,24 +525,63 @@ sovdev_flush(): Promise<void>
 ```python
 def sovdev_flush() -> None:
     """
-    Flush all pending logs, metrics, and traces.
+    Force-export any buffered logs, metrics, and traces now.
 
-    Blocks until all data is exported or 30-second timeout occurs.
-    Safe to call from signal handlers and atexit hooks.
+    Safe to call any number of times, at any point in a process's life —
+    does NOT shut anything down. Use sovdev_shutdown() instead for the one
+    true "the process is ending" moment. Blocks until all data is exported
+    or a 30-second timeout occurs. Safe to call from signal handlers and
+    atexit hooks.
 
     Note: Python uses synchronous flush (blocks), unlike TypeScript async.
     """
 ```
 
 **Behavior**:
-- MUST flush all pending log records to OTLP endpoint
-- MUST flush all pending metrics to OTLP endpoint
-- MUST flush all pending spans to OTLP endpoint
-- MUST be called before application exit (including error exits)
+- MUST force-export all pending log records, metrics, and spans to their OTLP endpoints
+- MUST NOT shut down the SDK, any provider, or any exporter — this function must be safe to call any number of times, at any point in a process's life, with identical behavior every time
 - MUST be awaited in async contexts
 - SHOULD complete within reasonable timeout (30 seconds recommended)
 
-**Critical**: Without flushing, the final batch of logs (including job completion status) will be lost when application exits. OpenTelemetry uses batching for performance.
+**Critical — cross-language history**: TypeScript's original implementation coupled this function to a full SDK shutdown, so a second call silently stopped recording metrics (logs kept working, metrics didn't — no error either way) while Python's never had that coupling. This was found, fixed, and is now a **hard requirement**: `sovdev_flush()` MUST NOT have any shutdown side effect, in any language. Use it whenever a long-running server wants telemetry out sooner than the normal batch interval — never on every request, since it's a real network call.
+
+**See Also**:
+- **`sovdev_shutdown()`**: section 6, below — the terminal counterpart to this function
+- **Batch Processing Details**: `03-implementation-patterns.md` → OpenTelemetry Batch Processing
+- **Error Handling**: `04-error-handling.md` → Error Handling in sovdev_flush()
+- **Signal Handlers**: `04-error-handling.md` → Exit Handler Integration
+
+---
+
+## 6. sovdev_shutdown
+
+**Purpose**: Force-flush, then permanently shut down the OTel SDK and every provider — the true end-of-process call.
+
+**TypeScript Signature**:
+```typescript
+sovdev_shutdown(): Promise<void>
+```
+
+**Python Signature**:
+```python
+def sovdev_shutdown() -> None:
+    """
+    Force-flush, then permanently shut down all telemetry providers.
+
+    Call this exactly ONCE, at the true end of a process. After this call,
+    logging/metrics/tracing stop working for the rest of the process's
+    life. For anything short of "the process is ending," call
+    sovdev_flush() instead.
+    """
+```
+
+**Behavior**:
+- MUST force-export all pending telemetry first (equivalent to calling `sovdev_flush()`), then shut down the SDK and every provider
+- MUST be called exactly once per process, as the last telemetry-related call before exit
+- MUST be awaited in async contexts
+- In implementations whose batch processors run on timers that keep the process alive (e.g. Node's `setInterval`-backed batch processors), this is also what allows a short script to exit naturally — clearing those timers is a required side effect of shutdown, not optional
+
+**Critical**: Without this call, the final batch of logs (including job completion status) may be lost when the application exits, and in some language runtimes the process may not exit at all. This is distinct from `sovdev_flush()`: that function is safe to call repeatedly and never terminates anything; this one is a one-time, terminal operation.
 
 **Example - Application Shutdown**:
 ```typescript
@@ -551,19 +591,22 @@ async function main() {
   try {
     await batchLookup(orgNumbers);
   } finally {
-    await sovdev_flush();  // CRITICAL: Flush before exit
+    await sovdev_shutdown();  // CRITICAL: Shut down before exit
   }
 }
 ```
 
+**Long-running servers**: never call `sovdev_shutdown()` per-request. Call `sovdev_flush()` if you want telemetry out sooner (safe to call repeatedly), and `sovdev_shutdown()` exactly once, in the process's actual shutdown handler (e.g. on `SIGTERM`).
+
 **See Also**:
+- **`sovdev_flush()`**: section 5, above — the repeatable, non-terminal counterpart to this function
 - **Batch Processing Details**: `03-implementation-patterns.md` → OpenTelemetry Batch Processing
-- **Error Handling**: `04-error-handling.md` → Error Handling in sovdev_flush()
+- **Error Handling**: `04-error-handling.md` → Error Handling in sovdev_shutdown()
 - **Signal Handlers**: `04-error-handling.md` → Exit Handler Integration
 
 ---
 
-## 6. sovdev_start_span
+## 7. sovdev_start_span
 
 **Purpose**: Start an OpenTelemetry span for distributed tracing of an operation.
 
@@ -673,7 +716,7 @@ async function lookupCompany(orgNumber: string): Promise<void> {
 
 ---
 
-## 7. sovdev_end_span
+## 8. sovdev_end_span
 
 **Purpose**: End the currently active OpenTelemetry span.
 
@@ -764,7 +807,7 @@ async function batchLookup(orgNumbers: string[]): Promise<void> {
 
 ---
 
-## 8. create_peer_services
+## 9. create_peer_services
 
 **Purpose**: Create type-safe peer service mapping with INTERNAL auto-generation.
 
@@ -1201,13 +1244,13 @@ sovdev_log("info", ...)  # Also works (string literal)
 
 **ALL languages MUST use snake_case for function names to ensure cross-language consistency.**
 
-- **TypeScript/JavaScript**: snake_case (sovdev_log, sovdev_flush)
-- **Python**: snake_case (sovdev_log, sovdev_flush)
-- **Go**: snake_case (sovdev_log, sovdev_flush)
-- **Java**: snake_case (sovdev_log, sovdev_flush)
-- **C#**: snake_case (sovdev_log, sovdev_flush)
-- **PHP**: snake_case (sovdev_log, sovdev_flush)
-- **Rust**: snake_case (sovdev_log, sovdev_flush)
+- **TypeScript/JavaScript**: snake_case (sovdev_log, sovdev_flush, sovdev_shutdown)
+- **Python**: snake_case (sovdev_log, sovdev_flush, sovdev_shutdown)
+- **Go**: snake_case (sovdev_log, sovdev_flush, sovdev_shutdown)
+- **Java**: snake_case (sovdev_log, sovdev_flush, sovdev_shutdown)
+- **C#**: snake_case (sovdev_log, sovdev_flush, sovdev_shutdown)
+- **PHP**: snake_case (sovdev_log, sovdev_flush, sovdev_shutdown)
+- **Rust**: snake_case (sovdev_log, sovdev_flush, sovdev_shutdown)
 
 **Note**: Even if your language convention prefers PascalCase (Go, C#) or camelCase (Java), you MUST use snake_case for the public API to maintain consistency across all language implementations.
 

@@ -249,7 +249,7 @@ sovdev_log(
   { inputData: 'test' },
   { outputData: 'result' }
 );
-await sovdev_flush();
+await sovdev_shutdown();
 ```
 
 **Expected OTLP Output (Loki):**
@@ -324,7 +324,7 @@ try {
     traceId
   );
 }
-await sovdev_flush();
+await sovdev_shutdown();
 ```
 
 **Expected OTLP Output (Loki):**
@@ -412,7 +412,7 @@ sovdev_log_job_status(
   batchTraceId
 );
 
-await sovdev_flush();
+await sovdev_shutdown();
 ```
 
 **Expected OTLP Output (Loki) - Job Started:**
@@ -475,7 +475,7 @@ for (let i = 0; i < totalItems; i++) {
 
   // Process item...
 }
-await sovdev_flush();
+await sovdev_shutdown();
 ```
 
 **Expected OTLP Output (Loki):**
@@ -517,7 +517,7 @@ sovdev_log(
   null,  // Explicitly no response
   new Error('HTTP 404: Not Found')
 );
-await sovdev_flush();
+await sovdev_shutdown();
 ```
 
 **Expected OTLP Output (Loki):**
@@ -562,7 +562,7 @@ try {
     error as Error
   );
 }
-await sovdev_flush();
+await sovdev_shutdown();
 ```
 
 **Expected OTLP Output (Loki):**
@@ -635,7 +635,7 @@ sovdev_log(
   traceId
 );
 
-await sovdev_flush();
+await sovdev_shutdown();
 ```
 
 **Expected Behavior:**
@@ -658,7 +658,7 @@ sovdev_log(SOVDEV_LOGLEVELS.INFO, 'operation1', 'First operation', PEER_SERVICES
 sovdev_log(SOVDEV_LOGLEVELS.INFO, 'operation2', 'Second operation', PEER_SERVICES.INTERNAL);
 sovdev_log(SOVDEV_LOGLEVELS.INFO, 'operation3', 'Third operation', PEER_SERVICES.INTERNAL);
 
-await sovdev_flush();
+await sovdev_shutdown();
 ```
 
 **Expected Behavior:**
@@ -679,7 +679,7 @@ await sovdev_flush();
 sovdev_log(SOVDEV_LOGLEVELS.INFO, 'operation1', 'Op 1', PEER_SERVICES.INTERNAL);
 sovdev_log(SOVDEV_LOGLEVELS.INFO, 'operation2', 'Op 2', PEER_SERVICES.BRREG);
 sovdev_log(SOVDEV_LOGLEVELS.ERROR, 'operation3', 'Failed', PEER_SERVICES.BRREG, null, null, new Error('test'));
-await sovdev_flush();
+await sovdev_shutdown();
 ```
 
 **Expected Prometheus Metrics:**
@@ -710,7 +710,7 @@ sovdev_errors_total{service_name="sovdev-test-app",exception_type="Error"} >= 1
 **Test Code:**
 ```typescript
 sovdev_log(SOVDEV_LOGLEVELS.INFO, 'testOperation', 'Test trace', PEER_SERVICES.BRREG);
-await sovdev_flush();
+await sovdev_shutdown();
 ```
 
 **Expected Tempo Traces:**
@@ -743,7 +743,7 @@ sovdev_log(SOVDEV_LOGLEVELS.INFO, 'process', 'Processing', PEER_SERVICES.BRREG);
 sovdev_log(SOVDEV_LOGLEVELS.ERROR, 'process', 'Failed', PEER_SERVICES.BRREG, null, null, new Error('Test error'));
 sovdev_log_job_status(SOVDEV_LOGLEVELS.INFO, 'batch', 'TestBatch', 'Completed', PEER_SERVICES.INTERNAL, {}, batchTraceId);
 
-await sovdev_flush();
+await sovdev_shutdown();
 ```
 
 **Verification in Grafana:**
@@ -927,7 +927,7 @@ sovdev_log(
 process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT = 'http://invalid-host/logs';
 
 sovdev_log(SOVDEV_LOGLEVELS.INFO, 'test', 'Test message', PEER_SERVICES.INTERNAL);
-await sovdev_flush();
+await sovdev_shutdown();
 ```
 
 **Expected**:
@@ -941,12 +941,12 @@ await sovdev_flush();
 
 ### TypeScript/JavaScript
 - Use `Error` class for exceptions
-- Use `async/await` for `sovdevFlush()`
+- Use `async/await` for `sovdevShutdown()`
 - Use `process.env` for environment variables
 
 ### Python
 - Use `Exception` class (converted to "Error" in output)
-- Use async def/await for `sovdev_flush()`
+- Use `sovdev_shutdown()` (synchronous — no `await`, unlike TypeScript)
 - Use `os.environ` for environment variables
 
 ### Go (Future)

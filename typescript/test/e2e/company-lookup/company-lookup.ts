@@ -48,7 +48,7 @@
 // 2. sovdev_log()                - General purpose logging
 // 3. sovdev_log_job_status()     - Job lifecycle tracking (started/completed)
 // 4. sovdev_log_job_progress()   - Progress tracking for batch operations
-// 5. sovdev_flush()              - Flush OTLP batches before exit
+// 5. sovdev_shutdown()           - Flush OTLP batches and shut down before exit
 // 6. sovdev_start_span()         - Start an OpenTelemetry span for transaction correlation
 // 7. sovdev_end_span()           - End an OpenTelemetry span
 // 8. SOVDEV_LOGLEVELS            - Log level constants
@@ -61,7 +61,7 @@ import {
   sovdev_log,                // Function 2: General logging (transactions, errors, etc.)
   sovdev_log_job_status,     // Function 3: Job lifecycle (started/completed)
   sovdev_log_job_progress,   // Function 4: Progress tracking (items in batch)
-  sovdev_flush,              // Function 5: Flush OTLP batches before exit
+  sovdev_shutdown,           // Function 5: Flush OTLP batches and shut down before exit
   sovdev_start_span,         // Function 6: Start OpenTelemetry span for correlation
   sovdev_end_span,           // Function 7: End OpenTelemetry span
   SOVDEV_LOGLEVELS,          // Function 8: Log level constants (INFO, ERROR, etc.)
@@ -491,12 +491,12 @@ async function batchLookup(orgNumbers: string[]): Promise<void> {
 // ============================================================================
 // FUNCTION: main - Application Entry Point
 // ============================================================================
-// DEMONSTRATES: sovdev_initialize(), sovdev_log(), and sovdev_flush()
+// DEMONSTRATES: sovdev_initialize(), sovdev_log(), and sovdev_shutdown()
 //
 // WHY THIS FUNCTION EXISTS:
 // - Shows how to initialize sovdev-logger at application startup
 // - Demonstrates application lifecycle logging (start/finish)
-// - Shows critical sovdev_flush() call before exit
+// - Shows critical sovdev_shutdown() call before exit
 // - Defines the test data that all language implementations must use
 //
 // LOG ENTRIES GENERATED:
@@ -671,9 +671,9 @@ async function main() {
   );
 
   // ============================================================================
-  // FLUSH - CRITICAL for Short-Lived Applications
+  // SHUTDOWN - CRITICAL for Short-Lived Applications
   // ============================================================================
-  // DEMONSTRATES: sovdev_flush() - MUST be called before application exit
+  // DEMONSTRATES: sovdev_shutdown() - MUST be called before application exit
   //
   // WHY: OpenTelemetry uses batch processing for performance efficiency
   //
@@ -682,37 +682,45 @@ async function main() {
   // - Traces are batched in memory (default: 512 spans OR 5 seconds)
   // - Metrics are batched in memory (default: 60 seconds)
   //
-  // WITHOUT sovdev_flush():
+  // WITHOUT sovdev_shutdown():
   // - Application exits after 2 seconds
   // - Last batch still in memory (not sent yet)
   // - All logs from last batch are LOST forever
+  // - The process also never exits naturally: the batch processors' internal
+  //   timers keep Node's event loop alive indefinitely
   //
-  // WITH sovdev_flush():
+  // WITH sovdev_shutdown():
   // - Forces immediate export of all batched data
   // - Waits for export to complete (or 30s timeout)
   // - All logs safely delivered to OTLP collector
+  // - Shuts down the SDK, clearing those timers so the process can exit
   //
-  // WHEN TO CALL:
+  // sovdev_shutdown() is NOT the same as sovdev_flush(): flush() is safe to
+  // call any number of times (use it freely in a long-running server) but
+  // never shuts anything down; shutdown() does both, and is for exactly ONE
+  // moment — the true end of a process, never more than once.
+  //
+  // WHEN TO CALL sovdev_shutdown():
   // 1. Before process.exit()
   // 2. In catch blocks before exiting on error
   // 3. At the end of short-lived scripts/jobs
   //
-  // CROSS-LANGUAGE: All languages MUST call flush before exit
+  // CROSS-LANGUAGE: All languages MUST call shutdown before exit
 
-  await sovdev_flush();
+  await sovdev_shutdown();
 }
 
 // ============================================================================
 // APPLICATION ENTRY POINT - Error Handling
 // ============================================================================
-// Catches unhandled errors and ensures flush happens even on failure
+// Catches unhandled errors and ensures shutdown happens even on failure
 
 main().catch(async (error) => {
   console.error('Fatal error:', error);
 
-  // CRITICAL: Flush logs even on fatal error
+  // CRITICAL: Shut down even on fatal error
   // Without this, error logs might not reach the OTLP collector
-  await sovdev_flush();
+  await sovdev_shutdown();
 
   process.exit(1);
 });

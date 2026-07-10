@@ -1706,12 +1706,21 @@ export type { sovdev_log_level, structured_log_entry };
 // =============================================================================
 
 /**
- * Flush OpenTelemetry logs, metrics, and traces to ensure they are sent to OTLP collector
- * Call this before application exit to ensure all telemetry is exported
+ * Force-export any buffered logs, metrics, and traces to the OTLP collector now.
+ *
+ * Safe to call any number of times, at any point in a process's life — this
+ * does NOT shut anything down. Use this in a long-running server if you want
+ * to force telemetry out at a specific moment (e.g. defensively, or in a
+ * signal handler that might fire more than once); use `sovdev_shutdown()`
+ * instead for the one true "the process is ending" moment.
+ *
+ * (Historical note: this function used to also shut down the OTel SDK, which
+ * meant calling it more than once silently stopped all further metrics from
+ * being recorded — logs kept working, metrics didn't, with no error either
+ * way. Fixed by splitting shutdown out into its own function.)
  */
 async function flush_sovdev_logs(): Promise<void> {
   try {
-    // Flush all providers we created
     if (globalTracerProvider) {
       console.log('🔄 Flushing OpenTelemetry traces...');
       await globalTracerProvider.forceFlush();
@@ -1729,8 +1738,24 @@ async function flush_sovdev_logs(): Promise<void> {
       await globalLoggerProvider.forceFlush();
       console.log('✅ OpenTelemetry logs flushed successfully');
     }
+  } catch (error) {
+    console.warn('⚠️  OpenTelemetry flush failed:', error);
+  }
+}
 
-    // Shutdown the SDK and providers
+/**
+ * Force-flush, then permanently shut down the OTel SDK and every provider.
+ *
+ * Call this exactly ONCE, at the true end of a process — the last thing
+ * before it exits. After this call, logging/metrics/tracing stop working for
+ * the rest of the process's life (this is what clears the background batch
+ * timers so a short script can exit naturally instead of hanging). For
+ * anything short of "the process is ending," call `sovdev_flush()` instead.
+ */
+async function shutdown_sovdev_logger(): Promise<void> {
+  try {
+    await flush_sovdev_logs();
+
     if (otelSDK) {
       console.log('🔄 Shutting down OpenTelemetry SDK...');
       await otelSDK.shutdown();
@@ -1749,7 +1774,7 @@ async function flush_sovdev_logs(): Promise<void> {
       console.log('✅ MeterProvider shutdown complete');
     }
   } catch (error) {
-    console.warn('⚠️  OpenTelemetry flush/shutdown failed:', error);
+    console.warn('⚠️  OpenTelemetry shutdown failed:', error);
   }
 }
 
@@ -1778,17 +1803,35 @@ async function flush_sovdev_logs(): Promise<void> {
 export const sovdev_initialize = initialize_sovdev_logger;
 
 /**
- * Flush all OpenTelemetry telemetry (logs, metrics, traces) before app exit
- * Call this to ensure all buffered telemetry is sent to OTLP endpoints
+ * Force-export buffered logs, metrics, and traces right now.
+ *
+ * Safe to call any number of times — does not shut anything down. Use for a
+ * long-running server that wants telemetry out at a specific moment. For the
+ * true end of a process, call `sovdev_shutdown()` instead (not this).
  *
  * @example
  * ```typescript
- * import { sovdev_flush } from '@sovdev/logger';
+ * import { sovdev_flush } from '@terchris/sovdev-logger';
  *
- * async function main() {
- *   // ... your application code ...
- *   await sovdev_flush();
- * }
+ * // anywhere in a long-running process, as often as you like
+ * await sovdev_flush();
  * ```
  */
 export const sovdev_flush = flush_sovdev_logs;
+
+/**
+ * Force-flush, then permanently shut down all telemetry. Call this exactly
+ * ONCE, as the very last thing before a process exits — not `sovdev_flush()`,
+ * which is safe to call repeatedly but never shuts anything down.
+ *
+ * @example
+ * ```typescript
+ * import { sovdev_shutdown } from '@terchris/sovdev-logger';
+ *
+ * async function main() {
+ *   // ... your application code ...
+ *   await sovdev_shutdown();
+ * }
+ * ```
+ */
+export const sovdev_shutdown = shutdown_sovdev_logger;
