@@ -10,7 +10,7 @@ Fixes the two genuine, currently-existing discrepancies `PLAN-001`'s master-comp
 
 **Completed**: 2026-07-08
 
-**Investigation**: [INVESTIGATE-multi-language-conformance.md](../backlog/INVESTIGATE-multi-language-conformance.md) — Option C, accepted 2026-07-08
+**Investigation**: [INVESTIGATE-multi-language-conformance.md](INVESTIGATE-multi-language-conformance.md) — Option C, accepted 2026-07-08
 
 **Prerequisite**: [PLAN-001-master-comparison-mode.md](../completed/PLAN-001-master-comparison-mode.md) — completed, found these bugs
 

@@ -10,7 +10,7 @@ Shrinks `specification/llm-work-templates/` from a 6,596-line, 13-task ROADMAP/C
 
 **Completed**: 2026-07-08
 
-**Investigation**: [INVESTIGATE-multi-language-conformance.md](../backlog/INVESTIGATE-multi-language-conformance.md) — Option D, accepted 2026-07-08 as part of the combined B→C+D recommendation
+**Investigation**: [INVESTIGATE-multi-language-conformance.md](INVESTIGATE-multi-language-conformance.md) — Option D, accepted 2026-07-08 as part of the combined B→C+D recommendation
 
 **Prerequisite**: [PLAN-001-master-comparison-mode.md](PLAN-001-master-comparison-mode.md) — completed and merged; `compare-with-master.sh` is what makes this scaffolding redundant, not just an opinion that it's too big
 

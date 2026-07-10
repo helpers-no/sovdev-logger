@@ -6,11 +6,13 @@ Why a year of TypeScript-plus-specification work never produced a second shipped
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog — recommendation accepted, drafting child PLANs next
+## Status: Resolved — all four child plans shipped
 
 **Goal**: Decide how sovdev-logger actually reaches "identical output across languages" — using Python as the first real test case, since it already exists, was once self-declared complete, and has been sitting untouched for over eight months.
 
-**Last Updated**: 2026-07-08 (maintainer answered all questions below and accepted the recommendation — see "Decisions" section)
+**Last Updated**: 2026-07-10
+
+**Outcome**: `PLAN-001` (master-comparison mode), `PLAN-002` (Python conformance), `PLAN-003` (spec scaffolding cleanup), and `PLAN-004` (schema-driven field generation) all shipped — see the "Next Steps" checklist below, all four checked off. Python passed `compare-with-master.sh` with zero mismatches and was promoted to "✅ Available." The one item that doesn't close with this investigation — whether Go/C#/Rust/PHP restart from scratch or from their archived `terchris/implementation-tests/` state — is a forward-looking scoping question with no urgency signal from the maintainer, not unfinished work from this investigation's own scope; tracked as a Tier 5 raw idea in [`1PRIORITY.md`](../backlog/1PRIORITY.md) instead of left open here.
 
 ---
 

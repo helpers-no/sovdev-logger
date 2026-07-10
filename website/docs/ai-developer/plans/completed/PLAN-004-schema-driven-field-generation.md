@@ -10,7 +10,7 @@ Builds a generator that reads `specification/schemas/log-entry-schema.json` (the
 
 **Completed**: 2026-07-08
 
-**Investigation**: [INVESTIGATE-multi-language-conformance.md](../backlog/INVESTIGATE-multi-language-conformance.md) — Option E, accepted 2026-07-08 as a fast-follow once PLAN-001 exists
+**Investigation**: [INVESTIGATE-multi-language-conformance.md](INVESTIGATE-multi-language-conformance.md) — Option E, accepted 2026-07-08 as a fast-follow once PLAN-001 exists
 
 **Prerequisite**: [PLAN-001-master-comparison-mode.md](PLAN-001-master-comparison-mode.md) — completed; `compare-with-master.sh` is what lets any adoption of generated constants be verified rather than trusted blindly
 

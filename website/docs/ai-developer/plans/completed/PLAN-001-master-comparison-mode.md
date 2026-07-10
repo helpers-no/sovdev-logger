@@ -10,7 +10,7 @@ Adds an automated diff between a candidate language's E2E test output and TypeSc
 
 **Completed**: 2026-07-08
 
-**Investigation**: [INVESTIGATE-multi-language-conformance.md](../backlog/INVESTIGATE-multi-language-conformance.md) — Option B, accepted 2026-07-08
+**Investigation**: [INVESTIGATE-multi-language-conformance.md](INVESTIGATE-multi-language-conformance.md) — Option B, accepted 2026-07-08
 
 **Goal**: A re-runnable command that proves (or disproves) "candidate language X produces the same output as TypeScript for the same input," reusing the existing schema/test/tool infrastructure rather than replacing it.
 
