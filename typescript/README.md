@@ -879,7 +879,7 @@ Validate that all required OpenTelemetry environment variables are set and prope
 - `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`
 - `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`
 - `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
-- `OTEL_EXPORTER_OTLP_HEADERS` (must be valid JSON with Host header)
+- `OTEL_EXPORTER_OTLP_HEADERS` (comma-separated `key=value` pairs — see the note at the top of [Configuration](#configuration); required headers are backend-specific, not always a `Host` header)
 
 **Example:**
 
@@ -992,6 +992,8 @@ Each signal type has different structure and backend routing requirements. This 
 
 ## Configuration
 
+**A note on `OTEL_EXPORTER_OTLP_HEADERS` before you start:** it uses the standard OpenTelemetry format — comma-separated `key=value` pairs (e.g. `Host=otel.localhost` or `Authorization=Basic <token>`), **not JSON**. This is read natively by the underlying OpenTelemetry SDK, independent of anything sovdev-logger does. **Quote the value in your `.env` file whenever it contains a space** (any Basic/Bearer auth header does) — an unquoted value with a space gets truncated by shell word-splitting when loaded via `source` or similar, silently dropping the token and causing a `401` with no obvious cause. Every example below already shows the correct quoting.
+
 ### Scenario 1: Local Development (Console + File Only)
 
 **No configuration needed!** Just install and use:
@@ -1100,7 +1102,7 @@ Update your run script to include the Host header:
 ```bash
 #!/bin/bash
 # REQUIRED: Host header for Traefik routing
-OTEL_EXPORTER_OTLP_HEADERS='{"Host":"otel.localhost"}' npx tsx your-app.ts
+OTEL_EXPORTER_OTLP_HEADERS="Host=otel.localhost" npx tsx your-app.ts
 ```
 
 **Why These Values:**
@@ -1185,22 +1187,16 @@ rate(sovdev_operation_duration_milliseconds_sum[1m]) / rate(sovdev_operation_dur
 
 ### Basic Usage
 
-See `examples/basic/` for simple logging demonstration.
-
-```bash
-cd examples/basic
-npm install
-npm start
-```
+See [Quick Start](#quick-start-60-seconds) above for a minimal single-file example.
 
 ### Advanced Usage
 
-See `examples/advanced/` for company lookup service with batch processing.
+[`test/e2e/company-lookup/company-lookup.ts`](https://github.com/helpers-no/sovdev-logger/blob/main/typescript/test/e2e/company-lookup/company-lookup.ts) is a full working example covering batch processing, job status/progress logging, peer services, error handling, and traceId correlation — the same patterns shown above, in one real program. Run it yourself:
 
 ```bash
-cd examples/advanced
-npm install
-npm start
+cd test/e2e/company-lookup
+cp .env.example .env    # points at a local OTLP backend by default -- if you don't have
+bash run-test.sh        # one running, OTLP export fails gracefully; console + file logging still works
 ```
 
 ---
@@ -1249,7 +1245,8 @@ OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=https://your-app-insights.azure.com/v1/metri
 OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://your-app-insights.azure.com/v1/traces
 
 # Authentication (use Azure managed identity or connection string)
-OTEL_EXPORTER_OTLP_HEADERS={"Authorization":"Bearer YOUR_TOKEN"}
+# Quoted because the value contains a space -- see the note at the top of Configuration.
+OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer YOUR_TOKEN"
 
 LOG_TO_FILE=false
 NODE_ENV=production
@@ -1262,7 +1259,7 @@ OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=https://otlp-gateway-prod-eu-west-0.grafana.net
 OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=https://otlp-gateway-prod-eu-west-0.grafana.net/otlp/v1/metrics
 OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://otlp-gateway-prod-eu-west-0.grafana.net/otlp/v1/traces
 
-OTEL_EXPORTER_OTLP_HEADERS={"Authorization":"Basic BASE64_ENCODED_CREDENTIALS"}
+OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic BASE64_ENCODED_CREDENTIALS"
 NODE_ENV=production
 ```
 
