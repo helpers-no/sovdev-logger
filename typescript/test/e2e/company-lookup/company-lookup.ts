@@ -100,7 +100,7 @@ import {
 
 const PEER_SERVICES = create_peer_services({
   BRREG: 'SYS1234567'  // Norwegian company registry (Brønnøysundregistrene)
-  // INTERNAL is auto-generated with value 'internal'
+  // INTERNAL is auto-generated, set to this service's own service_name
 });
 
 // ============================================================================
