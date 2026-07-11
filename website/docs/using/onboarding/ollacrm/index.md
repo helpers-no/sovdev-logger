@@ -20,7 +20,7 @@ cd services/api
 npm install @terchris/sovdev-logger
 ```
 
-The published package (`@terchris/sovdev-logger@1.0.1`) already includes the OTLP header spec-compliance fix — no workarounds needed, just install it.
+The published package (`@terchris/sovdev-logger@1.0.2` or later) includes both the OTLP header spec-compliance fix and `sovdev_shutdown()` (used throughout this guide) — `1.0.1` has the header fix but not `sovdev_shutdown()`, so it's not enough on its own. `npm install` picks up the latest automatically; just confirm the installed version is `1.0.2+`.
 
 ## 2. Configuration, matched to how this service already deploys
 

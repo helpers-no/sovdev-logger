@@ -124,4 +124,4 @@ Neither A nor B alone was right. A's regression (E2E test hangs) is real, and B 
 - [x] Verify [Q1] empirically — done, see the finding above
 - [x] Maintainer decides [Q2]–[Q5] — done, see above
 - [x] Implement per [`PLAN-long-running-server-flush.md`](PLAN-long-running-server-flush.md) — done, all 4 phases
-- [ ] Resume [`INVESTIGATE-ollacrm-onboarding.md`](../backlog/INVESTIGATE-ollacrm-onboarding.md) — its own worked example already uses the new `sovdev_shutdown()`; still Parked pending the maintainer's Grafana Cloud credential steps, unrelated to this fix
+- [x] Resume [`INVESTIGATE-ollacrm-onboarding.md`](INVESTIGATE-ollacrm-onboarding.md) — done and resolved; its own worked example already uses the new `sovdev_shutdown()`
