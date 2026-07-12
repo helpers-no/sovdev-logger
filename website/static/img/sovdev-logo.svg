@@ -1,0 +1,9 @@
+<!-- PLACEHOLDER sovdev-logger mark — reused from mimer's own placeholder motif
+     (same ripple/well shape, recolored to this project's existing favicon
+     green #2e8555), swap for a designed logo later. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="sovdev-logger">
+  <circle cx="32" cy="32" r="28" fill="none" stroke="#2e8555" stroke-width="3" opacity="0.35"/>
+  <circle cx="32" cy="32" r="20" fill="none" stroke="#2e8555" stroke-width="3.5" opacity="0.6"/>
+  <circle cx="32" cy="32" r="12" fill="none" stroke="#2e8555" stroke-width="4" opacity="0.85"/>
+  <circle cx="32" cy="32" r="4.5" fill="#2e8555"/>
+</svg>

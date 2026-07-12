@@ -1,0 +1,113 @@
+/* Hero banner — logo left, content right. Adapted from mimer's own
+   HomepageHeader (website/src/pages/index.module.css) — same layout,
+   generic --ifm-* variables pick up sovdev-logger's own theme colors. */
+
+.heroBanner {
+  padding: 4rem 0 5rem;
+  background: linear-gradient(135deg, #ffffff 0%, #ededed 100%);
+  color: var(--ifm-heading-color);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme='dark'] .heroBanner {
+  background: linear-gradient(135deg, #1b1b1d 0%, #142a1e 100%);
+  color: #f5f5f5;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 2.5rem 0 3rem;
+  }
+}
+
+.heroContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4rem;
+}
+
+@media screen and (max-width: 996px) {
+  .heroContainer {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+}
+
+.heroIllustration {
+  flex: 0 0 auto;
+  width: 200px;
+}
+
+@media screen and (max-width: 996px) {
+  .heroIllustration {
+    width: 140px;
+  }
+}
+
+.heroMark {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.heroContent {
+  flex: 1;
+  max-width: 560px;
+  text-align: left;
+}
+
+@media screen and (max-width: 996px) {
+  .heroContent {
+    text-align: center;
+  }
+}
+
+.heroTitle {
+  font-family: var(--ifm-font-family-base);
+  color: var(--ifm-color-primary) !important;
+  font-size: 3.5rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+[data-theme='dark'] .heroTitle {
+  color: var(--ifm-color-primary-lighter) !important;
+}
+
+@media screen and (max-width: 996px) {
+  .heroTitle {
+    font-size: 2.5rem;
+  }
+}
+
+.heroSubtitle {
+  color: var(--ifm-color-emphasis-800);
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.5;
+  margin-bottom: 2rem;
+}
+
+[data-theme='dark'] .heroSubtitle {
+  color: #d6d6d6;
+}
+
+.heroButtons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+@media screen and (max-width: 996px) {
+  .heroButtons {
+    justify-content: center;
+  }
+}
+
+[data-theme='dark'] .heroBanner :global(.button--outline) {
+  border-color: var(--ifm-color-primary-lighter) !important;
+  color: var(--ifm-color-primary-lighter) !important;
+}

@@ -24,7 +24,7 @@ tool, not a roadmap.
   it; one completes → strike it and promote dependents; a child PLAN ships
   → re-rank the parent. Full re-rank quarterly or after every 3 ships.
 
-**Last triaged:** 2026-07-11 — `INVESTIGATE-developer-first-onboarding.md` added to Tier 1: the current onboarding recipe was written for a maintainer setting up shared infrastructure, not for a customer developer who knows nothing about OTLP/Grafana — a real risk of "this library is bad, I'll just use console.log" if the first-contact experience stays this heavy. `INVESTIGATE-selftest-cli.md` spun off into Tier 4: works out how to build Option E3's self-test CLI (Grafana Cloud + local UIS), deliberately deferred — doesn't block onboarding ollacrm with what already exists.
+**Last triaged:** 2026-07-12 — `INVESTIGATE-docusaurus-homepage.md` shipped and moved to `completed/` (real homepage at `/`, four value cards, Languages/Backends logo rows; found mid-implementation that Option D's cost had been overstated — see the investigation's "Post-implementation correction"). `INVESTIGATE-developer-first-onboarding.md` still Tier 1: the current onboarding recipe was written for a maintainer setting up shared infrastructure, not for a customer developer who knows nothing about OTLP/Grafana — a real risk of "this library is bad, I'll just use console.log" if the first-contact experience stays this heavy. `INVESTIGATE-selftest-cli.md` remains Tier 4: works out how to build Option E3's self-test CLI (Grafana Cloud + local UIS), deliberately deferred — doesn't block onboarding ollacrm with what already exists.
 
 ---
 
