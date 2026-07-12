@@ -1,0 +1,29 @@
+.values {
+  display: flex;
+  align-items: center;
+  padding: 2rem 0 1rem;
+  width: 100%;
+}
+
+.value {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  height: 100%;
+}
+
+.valueEmoji {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1;
+}
+
+.valueTitle {
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+}
+
+.valueDescription {
+  font-size: 0.95rem;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 0;
+}

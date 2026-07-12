@@ -1,7 +1,7 @@
 ---
 title: About
 sidebar_label: About
-slug: /
+slug: /about
 sidebar_position: 0
 description: "About sovdev-logger — what it is, why it's built on OpenTelemetry, and how it's developed and maintained."
 ---
