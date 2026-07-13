@@ -6,7 +6,7 @@ Prompted by a direct question after the OTel dependency upgrade shipped: "as thi
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Backlog — all decisions made, implementation not started
 
 **Goal**: Decide which of these gaps to close and in what order — two are real bugs in the already-published package, the rest are genuine improvements but not urgent.
 
@@ -85,15 +85,14 @@ Recognizes that #5 in particular (moving publish from a manual DevContainer step
 
 ## Open Questions
 
-1. **[Q1]** Confirm the `peerDependency` change for `@opentelemetry/api` — what version range? The installed `^1.9.1` is reasonable, but peer ranges are usually wider (e.g. `>=1.3.0 <2.0.0`) to avoid forcing consumers onto an unnecessarily narrow band.
-2. **[Q2]** Does `ollacrm` (the one known consumer) declare `@opentelemetry/api` directly today? If yes, this surfaces a real, currently-live diamond-dependency risk worth checking immediately rather than just fixing sovdev-logger's own declaration.
-3. **[Q3]** For the LICENSE fix — copy the root `LICENSE` into `typescript/LICENSE` (simple, but two files to keep in sync if it's ever amended), or change `package.json`'s `"files"` entry to reference `../LICENSE` (npm's `files` field doesn't support paths outside the package directory for publishing — needs checking whether this is even possible before assuming it as an option)?
-4. **[Q4]** Priority/timing for `.github/dependabot.yml` (#3) — bundle with the #1/#2 bugfix PR, or its own follow-up?
-5. **[Q5]** Is Trusted Publishing (#5) worth its own investigation now, or should it wait until there's a second real consumer beyond `ollacrm` (i.e., is this urgent enough to prioritize over other backlog items)?
+1. **[Q1]** — **Resolved.** `^1.9.1` — matches the exact version already installed and tested against, over a wider conventional peer range, to avoid claiming compatibility with older `1.x` versions that were never actually tested.
+2. **[Q2]** — **Resolved, checked directly.** `ollacrm/services/api/package.json` has no `@opentelemetry/*` dependency, and no `sovdev-logger` dependency at all yet — the onboarding guide was written, but the actual integration into `ollacrm`'s own code hasn't happened. **No live diamond-dependency risk exists anywhere today.** Still worth fixing sovdev-logger's own declaration proactively; there's just zero urgency behind it.
+3. **[Q3]** — **Resolved, tested empirically.** Copy the root `LICENSE` into `typescript/LICENSE` — the only option. Directly tested `"../LICENSE"` in a scratch package's `files` array: `npm pack --dry-run --json` confirms npm silently drops anything outside the package root being published, no error, no warning. Two copies to keep in sync is a real, if minor, ongoing cost.
+4. **[Q4]** — **Resolved.** Bundle `.github/dependabot.yml` with the #1/#2 bugfix PR — one release cycle, all three are small, low-risk, `package.json`-adjacent changes.
+5. **[Q5]** — **Resolved.** Start a separate investigation now, while the npm-ownership context from `INVESTIGATE-repo-and-package-ownership.md` is still fresh — see [`INVESTIGATE-npm-trusted-publishing.md`](INVESTIGATE-npm-trusted-publishing.md).
 
 ## Next Steps
 
-- [ ] Maintainer answers [Q1]–[Q5]
-- [ ] Create `PLAN-*.md` for the #1/#2 bugfixes (small, fast, no design ambiguity)
-- [ ] Add `.github/dependabot.yml` (#3), likely folded into the same plan per [Q4]
-- [ ] Spin off a separate investigation for Trusted Publishing/provenance (#5) once [Q5] is answered
+- [x] Maintainer answers [Q1]–[Q5] — all resolved 2026-07-13
+- [ ] Create `PLAN-library-best-practices-bugfix.md` for #1 (peerDependency), #2 (LICENSE), and #3 (dependabot.yml) — small, fast, no remaining design ambiguity
+- [x] Spin off [`INVESTIGATE-npm-trusted-publishing.md`](INVESTIGATE-npm-trusted-publishing.md) for #5
