@@ -88,6 +88,73 @@
     },
     {
       "datasource": {
+        "type": "loki",
+        "uid": "grafanacloud-logs"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 13,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "editorMode": "code",
+          "expr": "count(count by (client_name) (count_over_time({service_name=~\"$service_name\"} | client_name != \"\" [$__range]))) or vector(0)",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Clients",
+      "type": "stat"
+    },
+    {
+      "datasource": {
         "type": "prometheus",
         "uid": "grafanacloud-prom"
       },
@@ -141,8 +208,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 18,
-        "x": 6,
+        "w": 12,
+        "x": 12,
         "y": 0
       },
       "id": 2,
@@ -168,7 +235,7 @@
             "uid": "grafanacloud-prom"
           },
           "expr": "sum by (service_name, peer_service) (sovdev_operations_total{service_name=~\"$service_name\"})",
-          "legendFormat": "{{service_name}} → {{peer_service}}",
+          "legendFormat": "{{service_name}} \u2192 {{peer_service}}",
           "refId": "A"
         }
       ],
@@ -261,7 +328,7 @@
             "uid": "grafanacloud-prom"
           },
           "expr": "sum by (service_name, peer_service) (sovdev_errors_total{service_name=~\"$service_name\"}) / sum by (service_name, peer_service) (sovdev_operations_total{service_name=~\"$service_name\"})",
-          "legendFormat": "{{service_name}} → {{peer_service}}",
+          "legendFormat": "{{service_name}} \u2192 {{peer_service}}",
           "refId": "A"
         }
       ],
@@ -350,7 +417,7 @@
             "uid": "grafanacloud-prom"
           },
           "expr": "sum by (service_name, peer_service) (sovdev_operation_duration_milliseconds_sum{service_name=~\"$service_name\"}) / sum by (service_name, peer_service) (sovdev_operation_duration_milliseconds_count{service_name=~\"$service_name\"})",
-          "legendFormat": "{{service_name}} → {{peer_service}}",
+          "legendFormat": "{{service_name}} \u2192 {{peer_service}}",
           "refId": "A"
         }
       ],
