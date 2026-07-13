@@ -5,7 +5,7 @@
   "description": "TypeScript verification tooling for sovdev-logger's external OTLP backends (Grafana Cloud today; Azure/Google Cloud later). Language-agnostic — validates telemetry from any implementation's E2E test output, not just TypeScript's.",
   "type": "module",
   "devDependencies": {
-    "typescript": "^5.7.2",
+    "typescript": "^7.0.2",
     "tsx": "^4.20.6",
     "@types/node": "^22.0.0"
   }
