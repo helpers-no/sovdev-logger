@@ -1,18 +1,18 @@
 # Plan: Fix peerDependency, LICENSE, and add dependabot.yml
 
-Closes the two real bugs from [`INVESTIGATE-library-best-practices.md`](../backlog/INVESTIGATE-library-best-practices.md) — `@opentelemetry/api` should be a `peerDependency`, and the published tarball has never included a LICENSE file — plus adds automated dependency-update PRs (`dependabot.yml`) to prevent a repeat of the OTel drift that reached 49 vulnerabilities before anyone noticed.
+Closes the two real bugs from [`INVESTIGATE-library-best-practices.md`](INVESTIGATE-library-best-practices.md) — `@opentelemetry/api` should be a `peerDependency`, and the published tarball has never included a LICENSE file — plus adds automated dependency-update PRs (`dependabot.yml`) to prevent a repeat of the OTel drift that reached 49 vulnerabilities before anyone noticed.
 
 > **IMPLEMENTATION RULES:** Before implementing this plan, read and follow:
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Completed
 
 **Goal**: `@opentelemetry/api` declared as a `peerDependency` (`^1.9.1`), a real LICENSE file in the published tarball, and `.github/dependabot.yml` opening automated version-update PRs going forward.
 
 **Last Updated**: 2026-07-13
 
-**Investigation**: [INVESTIGATE-library-best-practices.md](../backlog/INVESTIGATE-library-best-practices.md) — [Q1]–[Q4] all resolved. [Q2] confirmed no live diamond-dependency risk exists today (`ollacrm` doesn't depend on `sovdev-logger` yet at all); [Q3] confirmed empirically that npm's `files` field can't reference a path outside the package directory, so the LICENSE fix must copy the file, not reference it.
+**Investigation**: [INVESTIGATE-library-best-practices.md](INVESTIGATE-library-best-practices.md) — [Q1]–[Q4] all resolved. [Q2] confirmed no live diamond-dependency risk exists today (`ollacrm` doesn't depend on `sovdev-logger` yet at all); [Q3] confirmed empirically that npm's `files` field can't reference a path outside the package directory, so the LICENSE fix must copy the file, not reference it.
 
 ---
 
@@ -42,7 +42,7 @@ Real `npm pack --dry-run --json` output confirmed `LICENSE` present (55 files, u
 
 ### Validation
 
-YAML syntax confirmed valid locally. Real activation (Insights → Dependency graph → Dependabot, or `gh api .../dependabot/...`) checked after this ships to `main` in Phase 3.
+YAML syntax confirmed valid locally. **Genuinely active, not just committed**: within minutes of merging to `main`, Dependabot opened real PRs — `github-actions` bumps (`actions/upload-artifact` 4→7) and `npm` bumps across multiple directories. Confirms the design working exactly as intended: an `eslint-config-prettier` minor/patch-range bump passed CI cleanly, while three major-version bumps (`typescript` 5.9.3→7.0.2, `eslint` 8.57.1→10.7.0, `@typescript-eslint/parser` 7→8.64.0) correctly failed CI on real peer-dependency conflicts (e.g. `parser@8.64.0` vs. `eslint-plugin@7.18.0`'s `peer @typescript-eslint/parser@^7.0.0` requirement) — exactly the "majors need individual review, never auto-merge" behavior this config was designed for, not a config bug.
 
 ---
 

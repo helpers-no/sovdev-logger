@@ -1,6 +1,6 @@
 # Investigate: npm Trusted Publishing (OIDC) for sovdev-logger
 
-Spun off from [`INVESTIGATE-library-best-practices.md`](INVESTIGATE-library-best-practices.md)'s [Q5]: whether to move `sovdev-logger`'s publish process from a manual, personal-OTP-gated DevContainer step to npm's Trusted Publishing (OIDC via GitHub Actions) — removing the dependency on the maintainer's personal npm account/token at publish time, and adding cryptographic build provenance. Directly follows on from `INVESTIGATE-repo-and-package-ownership.md`'s findings about the package's personal-account history.
+Spun off from [`INVESTIGATE-library-best-practices.md`](../completed/INVESTIGATE-library-best-practices.md)'s [Q5]: whether to move `sovdev-logger`'s publish process from a manual, personal-OTP-gated DevContainer step to npm's Trusted Publishing (OIDC via GitHub Actions) — removing the dependency on the maintainer's personal npm account/token at publish time, and adding cryptographic build provenance. Directly follows on from `INVESTIGATE-repo-and-package-ownership.md`'s findings about the package's personal-account history.
 
 > **IMPLEMENTATION RULES:** Before implementing this plan, read and follow:
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process

@@ -89,10 +89,10 @@ Recognizes that #5 in particular (moving publish from a manual DevContainer step
 2. **[Q2]** — **Resolved, checked directly.** `ollacrm/services/api/package.json` has no `@opentelemetry/*` dependency, and no `sovdev-logger` dependency at all yet — the onboarding guide was written, but the actual integration into `ollacrm`'s own code hasn't happened. **No live diamond-dependency risk exists anywhere today.** Still worth fixing sovdev-logger's own declaration proactively; there's just zero urgency behind it.
 3. **[Q3]** — **Resolved, tested empirically.** Copy the root `LICENSE` into `typescript/LICENSE` — the only option. Directly tested `"../LICENSE"` in a scratch package's `files` array: `npm pack --dry-run --json` confirms npm silently drops anything outside the package root being published, no error, no warning. Two copies to keep in sync is a real, if minor, ongoing cost.
 4. **[Q4]** — **Resolved.** Bundle `.github/dependabot.yml` with the #1/#2 bugfix PR — one release cycle, all three are small, low-risk, `package.json`-adjacent changes.
-5. **[Q5]** — **Resolved.** Start a separate investigation now, while the npm-ownership context from `INVESTIGATE-repo-and-package-ownership.md` is still fresh — see [`INVESTIGATE-npm-trusted-publishing.md`](INVESTIGATE-npm-trusted-publishing.md).
+5. **[Q5]** — **Resolved.** Start a separate investigation now, while the npm-ownership context from `INVESTIGATE-repo-and-package-ownership.md` is still fresh — see [`INVESTIGATE-npm-trusted-publishing.md`](../backlog/INVESTIGATE-npm-trusted-publishing.md).
 
 ## Next Steps
 
 - [x] Maintainer answers [Q1]–[Q5] — all resolved 2026-07-13
 - [ ] Create `PLAN-library-best-practices-bugfix.md` for #1 (peerDependency), #2 (LICENSE), and #3 (dependabot.yml) — small, fast, no remaining design ambiguity
-- [x] Spin off [`INVESTIGATE-npm-trusted-publishing.md`](INVESTIGATE-npm-trusted-publishing.md) for #5
+- [x] Spin off [`INVESTIGATE-npm-trusted-publishing.md`](../backlog/INVESTIGATE-npm-trusted-publishing.md) for #5
