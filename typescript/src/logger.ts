@@ -1715,8 +1715,12 @@ export function sovdev_end_span(span: Span, error?: Error): void {
  *
  * Call once per request (e.g. in auth middleware, after resolving the
  * caller's identity), before any sovdev_log() calls that should carry it.
- * Each call replaces the entire stored context -- it does not merge with
- * a previous call.
+ * Each call merges into the existing stored context (new keys overwrite
+ * same-named keys; keys not mentioned in this call are preserved) -- this
+ * matters because different fields naturally get set at different points
+ * in a request's call stack (e.g. client_name early in auth middleware,
+ * something else later in a database-access layer); replacing the whole
+ * context on every call would silently drop whatever an earlier call set.
  *
  * Registering callers (name <-> API key) is the caller's own application
  * logic, not this library's concern -- pass in the already-resolved
@@ -1726,8 +1730,10 @@ export function sovdev_set_context(context: SovdevRequestContext): void {
   // enterWith() sets the value for the current execution context and all
   // subsequent async operations -- same pattern as sovdev_start_span()'s use
   // of spanStorage.enterWith(), so a single call is enough with no wrapping
-  // callback required.
-  requestContextStorage.enterWith(context);
+  // callback required. Merge with whatever's already stored, rather than
+  // replace it outright, so an earlier call's fields survive a later one.
+  const existing = requestContextStorage.getStore();
+  requestContextStorage.enterWith({ ...existing, ...context });
 }
 
 // Export types for TypeScript consumers
