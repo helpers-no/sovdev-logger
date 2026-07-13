@@ -6,7 +6,7 @@ Spun off from [`INVESTIGATE-library-best-practices.md`](../completed/INVESTIGATE
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Backlog — blockers resolved, [Q3]/[Q5] still need a maintainer decision
 
 **Goal**: Decide whether to move to Trusted Publishing, and if so, design the GitHub Actions release workflow and the exact npmjs.com configuration.
 
@@ -26,9 +26,10 @@ OIDC-based publishing: GitHub Actions generates a short-lived identity token pro
 - As of May 2026, new Trusted Publisher configurations require explicitly selecting which actions are allowed (`npm publish`, `npm stage publish`, or both) — at least one must be selected.
 - Only cloud-hosted GitHub-provided runners are supported today; self-hosted runners aren't yet.
 
-**Not yet confirmed, needs hands-on verification before committing to this**:
-- Whether Trusted Publishing works retroactively on a package that's already been published manually (like `sovdev-logger`), or only packages published for the first time via Trusted Publishing. Neither source found during research states this explicitly either way.
-- Whether configuring Trusted Publishing removes the ability to *also* publish manually with a personal account/OTP as a fallback, or the two coexist.
+**Resolved via direct research (2026-07-13), no longer blockers**:
+- **Retroactive setup on an already-published package is the *normal*, documented path — not an edge case.** Confirmed via a tracked `npm/cli` GitHub issue (#8544, still open as of this check): *"The main problem is that the UI on npmjs.com requires a package to exist before you can edit its settings and enable OIDC publishing."* That issue is about the opposite ask — wanting OIDC for a package's very first-ever publish, which currently isn't possible. `sovdev-logger` already exists (published manually 2026-07-13), so it's squarely in the supported case.
+- **Manual publishing is not disabled by configuring Trusted Publishing.** Straight from npm's own docs, fetched directly (not summarized secondhand): *"When you configure a trusted publisher for your package, npm will accept publishes from the specific workflow you've authorized, in addition to traditional authentication methods like npm tokens and manual publishes."* There's an optional "Require two-factor authentication and disallow tokens" setting that *would* disable token auth if explicitly turned on — opt-in, not automatic, and OIDC/trusted-publisher access keeps working even with it enabled.
+- **[Q4] resolved too, while checking**: the current npm CLI version satisfies `>=11.5.1` **nowhere** in this repo's actual environments — host Mac (`10.2.4`), DevContainer (`10.9.7`), and CI's default via `actions/setup-node@v4` + Node 22 (ships npm 10.x, not 11.x). Any publish workflow needs an explicit `npm install -g npm@latest` step; this isn't optional.
 
 ---
 
@@ -37,7 +38,7 @@ OIDC-based publishing: GitHub Actions generates a short-lived identity token pro
 - Publishing today is entirely manual: `contributor/publishing/typescript.md` documents running `npm login` + `npm publish --access public` from a real interactive terminal (this session confirmed it works from the host Mac directly, correcting that doc's earlier claim it required the DevContainer) — always needs a live OTP from the maintainer's authenticator app, every single publish.
 - `typescript/package.json`'s `repository.url` already points at `helpers-no/sovdev-logger` — no metadata blocker.
 - No release/publish GitHub Actions workflow exists today — `ci.yml` and `deploy-docs.yml` are the only two workflows, neither touches npm.
-- `sovdev-logger` was published for the first time under its current (unscoped) name on 2026-07-13, manually. Whether Trusted Publishing can attach to that existing package or needs to have been the *original* publish method is the single biggest unresolved question before committing effort here (see above).
+- `sovdev-logger` was published for the first time under its current (unscoped) name on 2026-07-13, manually — now confirmed to be the *supported* starting point for Trusted Publishing, not a blocker.
 
 ---
 
@@ -67,27 +68,28 @@ A smaller, in-between step: manual `npm publish --provenance` still uses a perso
 
 ## Recommendation
 
-Not yet — this needs [Q1]–[Q3] answered first, particularly whether Trusted Publishing can attach to an already-published package, before recommending Option A outright. Leaning toward Option A once that's confirmed, given it directly closes a concern this session's own npm-rename work already flagged as only partially resolved.
+**Option A**, now that [Q1]/[Q2]/[Q4] are resolved and none of them block it. Directly closes a concern this session's own npm-rename work already flagged as only partially resolved — the rename fixed the package's *name*, this fixes *who/what can publish*, without giving up the manual fallback.
 
 ---
 
 ## Open Questions
 
-1. **[Q1]** Does Trusted Publishing work for a package (`sovdev-logger`) that was already published manually, or does npm require the *first-ever* publish of a package name to go through Trusted Publishing? Needs a direct test or a direct read of npm's support docs/forum, not inference from the two sources checked so far.
-2. **[Q2]** Does configuring a Trusted Publisher on `sovdev-logger` remove the maintainer's ability to also `npm publish` manually as a fallback (e.g. if GitHub Actions is down), or can both coexist?
+1. **[Q1]** — **Resolved.** Trusted Publishing works retroactively on an already-manually-published package like `sovdev-logger` — confirmed this is the standard, documented path, not an edge case. See `npm/cli` issue #8544 above.
+2. **[Q2]** — **Resolved.** Manual `npm publish` (with personal OTP) keeps working as a fallback after configuring a Trusted Publisher — confirmed directly from npm's own docs, not inferred.
 3. **[Q3]** What should trigger the publish workflow — a GitHub Release being created, a version tag push (`v*`), or `workflow_dispatch` (manual button, closest to today's process but still removing the OTP step)? Each implies a different amount of process change beyond just the auth mechanism.
-4. **[Q4]** Does the current npm CLI version in the DevContainer/CI actually satisfy the `>=11.5.1` requirement, or does the workflow need an explicit upgrade step?
+4. **[Q4]** — **Resolved.** No, the current npm CLI version satisfies `>=11.5.1` nowhere in this repo (host `10.2.4`, DevContainer `10.9.7`, CI's `actions/setup-node@v4`+Node 22 default is npm 10.x) — the workflow needs an explicit `npm install -g npm@latest` step.
 5. **[Q5]** Should this also cover a `CHANGELOG.md`/version-bump automation step (e.g. `changesets` or `semantic-release`), given a real publish workflow is being built anyway — or keep this scoped strictly to the auth mechanism and leave versioning as-is (manual `package.json` bumps, as today)?
 
 ## Next Steps
 
-- [ ] Answer [Q1]/[Q2] directly — check npm's own support documentation/forum for explicit confirmation, since neither source checked during this investigation states it either way
-- [ ] Maintainer answers [Q3]–[Q5]
+- [x] Answer [Q1]/[Q2]/[Q4] directly — all resolved 2026-07-13 via npm's own docs and a tracked `npm/cli` issue, not inference
+- [ ] Maintainer answers [Q3] and [Q5]
 - [ ] Create `PLAN-npm-trusted-publishing.md` once the above are resolved
 
 ## Sources checked
 
-- [Trusted publishing for npm packages — npm Docs](https://docs.npmjs.com/trusted-publishers/)
+- [Trusted publishing for npm packages — npm Docs](https://docs.npmjs.com/trusted-publishers/) — fetched directly for the manual-publish-coexistence and disallow-tokens wording
+- [Allow publishing initial version with OIDC — npm/cli issue #8544](https://github.com/npm/cli/issues/8544) — confirmed still open, confirms retroactive setup on an existing package is the supported path
 - [Things you need to do for npm trusted publishing to work — philna.sh](https://philna.sh/blog/2026/01/28/trusted-publishing-npm/)
 - [npm trusted publishing with OIDC is generally available — GitHub Changelog](https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/)
 - [Generating provenance statements — npm Docs](https://docs.npmjs.com/generating-provenance-statements/)
