@@ -23,7 +23,7 @@ import winston from 'winston';
 import TransportStream from 'winston-transport';
 import { AsyncLocalStorage } from 'async_hooks';
 import { NodeSDK } from '@opentelemetry/sdk-node';
-import { Resource } from '@opentelemetry/resources';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 import { SEMRESATTRS_DEPLOYMENT_ENVIRONMENT } from '@opentelemetry/semantic-conventions';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
@@ -786,7 +786,7 @@ function configure_metrics(
   session_id: string
 ): MeterProvider | null {
   try {
-    const resource = new Resource({
+    const resource = resourceFromAttributes({
       [ATTR_SERVICE_NAME]: service_name,
       [ATTR_SERVICE_VERSION]: service_version,
       [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV || 'development',
@@ -871,7 +871,7 @@ function configure_opentelemetry(
   tracerProvider: BasicTracerProvider | null;
 } {
   try {
-    const resource = new Resource({
+    const resource = resourceFromAttributes({
       [ATTR_SERVICE_NAME]: service_name,
       [ATTR_SERVICE_VERSION]: service_version,
       [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV || 'development',
@@ -895,17 +895,21 @@ function configure_opentelemetry(
       url: trace_endpoint,
     });
 
-    const tracer_provider = new BasicTracerProvider({ resource });
     // Configure BatchSpanProcessor for short-lived applications
     // Default scheduledDelayMillis=5000ms is too long for tests/short apps
-    tracer_provider.addSpanProcessor(
-      new BatchSpanProcessor(trace_exporter, {
-        maxQueueSize: 2048, // Default: keep large queue
-        scheduledDelayMillis: 1000, // Export every 1s (vs default 5s)
-        exportTimeoutMillis: 30000, // Default: 30s timeout
-        maxExportBatchSize: 512, // Default: batch size
-      })
-    );
+    // spanProcessors is a constructor option as of @opentelemetry/sdk-trace 2.x --
+    // BasicTracerProvider.addSpanProcessor() was removed
+    const tracer_provider = new BasicTracerProvider({
+      resource,
+      spanProcessors: [
+        new BatchSpanProcessor(trace_exporter, {
+          maxQueueSize: 2048, // Default: keep large queue
+          scheduledDelayMillis: 1000, // Export every 1s (vs default 5s)
+          exportTimeoutMillis: 30000, // Default: 30s timeout
+          maxExportBatchSize: 512, // Default: batch size
+        }),
+      ],
+    });
 
     // CRITICAL: Set global BEFORE SDK initialization
     trace.setGlobalTracerProvider(tracer_provider);
@@ -924,11 +928,15 @@ function configure_opentelemetry(
         url: log_endpoint || 'http://localhost:4318/v1/logs',
       });
 
-      const log_record_processor = new BatchLogRecordProcessor(log_exporter);
+      // BatchLogRecordProcessor takes an options object (with `exporter`) as of
+      // @opentelemetry/sdk-logs 0.200.x+, not a positional exporter argument.
+      // processors is a LoggerProvider constructor option -- addLogRecordProcessor()
+      // was removed, same pattern as BasicTracerProvider's addSpanProcessor() removal.
+      const log_record_processor = new BatchLogRecordProcessor({ exporter: log_exporter });
       logger_provider = new LoggerProvider({
         resource,
+        processors: [log_record_processor],
       });
-      logger_provider.addLogRecordProcessor(log_record_processor);
       console.log(
         '📡 OTLP Log exporter configured for:',
         log_endpoint || 'http://localhost:4318/v1/logs'
