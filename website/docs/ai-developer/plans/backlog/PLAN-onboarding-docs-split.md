@@ -76,7 +76,7 @@ User confirms the landing page is short (a picker, not a recipe) and correctly r
 ### Tasks
 
 - [ ] 4.1 Update `website/docs/using/onboarding/ollacrm/index.md` — its pointer to "follow [Onboarding a new system]'s recipe first" (section 2) should point at `operator-setup.md` specifically (that's whose job the Access Policy/token actually is); its "Open the shared dashboard" step (section 6) can keep pointing at the landing page or `developer-quickstart.md`, whichever reads better once both docs exist.
-- [ ] 4.2 Check and update, if needed, every other file confirmed to reference `using/onboarding` — `tools/dashboards/README.md`, `typescript/README.md`, `website/docs/ai-developer/plans/completed/INVESTIGATE-ollacrm-onboarding.md`, `website/docs/ai-developer/plans/completed/PLAN-long-running-server-flush.md`, `website/docs/ai-developer/plans/backlog/INVESTIGATE-selftest-cli.md`, `website/docs/ai-developer/plans/backlog/INVESTIGATE-developer-first-onboarding.md` — most likely just need their step-number references (e.g. "step 5" for the validation step) re-pointed to `operator-setup.md`.
+- [ ] 4.2 Check and update, if needed, every other file confirmed to reference `using/onboarding` — `tools/dashboards/README.md`, `typescript/README.md`, `website/docs/ai-developer/plans/completed/INVESTIGATE-ollacrm-onboarding.md`, `website/docs/ai-developer/plans/completed/PLAN-long-running-server-flush.md`, `website/docs/ai-developer/plans/completed/INVESTIGATE-selftest-cli.md`, `website/docs/ai-developer/plans/backlog/INVESTIGATE-developer-first-onboarding.md` — most likely just need their step-number references (e.g. "step 5" for the validation step) re-pointed to `operator-setup.md`.
 - [ ] 4.3 Mark `INVESTIGATE-developer-first-onboarding.md`'s Option A as shipped once this plan completes; re-rank it in `1PRIORITY.md`.
 
 ### Validation
@@ -108,6 +108,6 @@ Clean build, no broken-link errors. User does a final read-through of all three 
 - `typescript/README.md`
 - `website/docs/ai-developer/plans/completed/INVESTIGATE-ollacrm-onboarding.md`
 - `website/docs/ai-developer/plans/completed/PLAN-long-running-server-flush.md`
-- `website/docs/ai-developer/plans/backlog/INVESTIGATE-selftest-cli.md`
+- `website/docs/ai-developer/plans/completed/INVESTIGATE-selftest-cli.md`
 - `website/docs/ai-developer/plans/backlog/INVESTIGATE-developer-first-onboarding.md`
 - `website/docs/ai-developer/plans/backlog/1PRIORITY.md`

@@ -11,11 +11,11 @@ Spun off from `INVESTIGATE-developer-first-onboarding.md`'s Option E3, this work
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog — [Q1]–[Q8] all decided, no child PLAN drafted yet; deliberately deferred, not blocking ollacrm
+## Status: Completed — shipped via [`PLAN-selftest-cli.md`](PLAN-selftest-cli.md), `sovdev-selftest` bin entry in `@terchris/sovdev-logger`
 
 **Goal**: A single TypeScript command that initializes sovdev-logger, emits one uniquely-marked log + metric, reads both back, and reports a clear PASS/FAIL with a specific diagnostic — runnable by the maintainer against local UIS and by an external consumer against Grafana Cloud, same tool either way.
 
-**Last Updated**: 2026-07-13 — confirmed the read side is a native, dependency-free layer (each backend's own SDK/REST API), not a wrapper around vendor CLIs (`logcli`/`promtool`/`tempo-cli`, `az`, `gcloud`) — see [Q7]; further confirmed **live against the running cluster** that UIS needs no `kubectl` at all — Grafana's own datasource-proxy API reaches Loki/Prometheus/Tempo over plain HTTP, same as Grafana Cloud, just a different URL and credential; all design questions ([Q1]-[Q6], [Q8]) now decided; gap/consistency check found and fixed a real under-specified item (Q2's config shape needed two Instance-ID pairs, not one) plus several stale cross-references; checked whether this is already solved elsewhere — confirmed no vendor bundles write+read-back verification in one tool, not even OpenTelemetry's own `telemetrygen` (write-only); [Q2] revised — Grafana Cloud's read credential is a separate, dedicated read-only token again, not the write token reused, after a live portal check found Grafana Cloud's own UI warns against combining read+write scopes on one Access Policy (see the parent investigation's [Q6])
+**Last Updated**: 2026-07-13 — shipped. All design questions ([Q1]-[Q8]) resolved and implemented; see [`PLAN-selftest-cli.md`](PLAN-selftest-cli.md) for the full build-and-verify record, including a real URL-joining bug and a `--json`-mode console-noise bug found and fixed during implementation.
 
 ---
 
@@ -135,14 +135,13 @@ Option A is the intended direction given the maintainer's explicit call this ses
 
 ## Next Steps
 
-- [ ] Not blocking: ollacrm proceeds with the existing manual write+read-back validation recipe (`using/onboarding/index.md` step 5) until this ships
 - [x] Resolve [Q1]-[Q6], [Q8]
-- [ ] Confirm whether Grafana Cloud LBAC is actually available on the `urbalurba` stack's plan tier (carried over from the parent investigation's [Q6] — docs didn't confirm plan-tier availability; not blocking a PLAN, but worth checking before [Q3]'s regex selector is actually created in the portal)
-- [ ] Create `PLAN-selftest-cli.md`
+- [x] Create and ship [`PLAN-selftest-cli.md`](PLAN-selftest-cli.md)
+- [ ] **Deferred, tracked as a real follow-up, not blocking this investigation's closure**: mint ollacrm (and any future external consumer) their own LBAC-scoped, read-only Access Policy before handing them the CLI — the shipped version uses the maintainer's own existing `GRAFANA_CLOUD_VERIFY_TOKEN`, which is unscoped and unsafe to distribute externally as-is. Includes confirming whether Grafana Cloud LBAC (the "Add label selector" control) is actually available on the `urbalurba` stack's plan tier — still unconfirmed.
 
 ## See also
 
-- [`INVESTIGATE-developer-first-onboarding.md`](INVESTIGATE-developer-first-onboarding.md) — the parent investigation; Option E3 is what this document works out in detail
+- [`INVESTIGATE-developer-first-onboarding.md`](../backlog/INVESTIGATE-developer-first-onboarding.md) — the parent investigation; Option E3 is what this document works out in detail
 - `tools/validation/grafana-cloud/lib/grafana-cloud-client.ts` — the existing HTTP query client this CLI's shared Loki/Prometheus/Tempo client would generalize from
 - `tools/dashboards/push-dashboard.ts` — this project's own existing precedent for `GRAFANA_URL`/`GRAFANA_USER`/`GRAFANA_PASSWORD`-based Basic Auth against local UIS, the same credential shape the datasource-proxy approach reuses
 - `tools/validation/uis/query-loki.sh` and siblings — the older `kubectl run` + disposable-curl-pod pattern this CLI's UIS connection replaces entirely (no `kubectl` at all — see "UIS is reachable over plain HTTP" above)

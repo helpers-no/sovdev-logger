@@ -24,7 +24,7 @@ tool, not a roadmap.
   it; one completes → strike it and promote dependents; a child PLAN ships
   → re-rank the parent. Full re-rank quarterly or after every 3 ships.
 
-**Last triaged:** 2026-07-12 — `INVESTIGATE-docusaurus-homepage.md` shipped and moved to `completed/` (real homepage at `/`, four value cards, Languages/Backends logo rows; found mid-implementation that Option D's cost had been overstated — see the investigation's "Post-implementation correction"). `INVESTIGATE-developer-first-onboarding.md` still Tier 1: the current onboarding recipe was written for a maintainer setting up shared infrastructure, not for a customer developer who knows nothing about OTLP/Grafana — a real risk of "this library is bad, I'll just use console.log" if the first-contact experience stays this heavy. `INVESTIGATE-selftest-cli.md` remains Tier 4: works out how to build Option E3's self-test CLI (Grafana Cloud + local UIS), deliberately deferred — doesn't block onboarding ollacrm with what already exists.
+**Last triaged:** 2026-07-13 — `INVESTIGATE-selftest-cli.md` shipped and moved to `completed/` (`sovdev-selftest` bin entry in `@terchris/sovdev-logger`, validated end-to-end against real Grafana Cloud and UIS, plus a real npm-pack/fresh-install round-trip; two real bugs found and fixed along the way). `INVESTIGATE-developer-first-onboarding.md` still Tier 1: the current onboarding recipe was written for a maintainer setting up shared infrastructure, not for a customer developer who knows nothing about OTLP/Grafana — a real risk of "this library is bad, I'll just use console.log" if the first-contact experience stays this heavy.
 
 ---
 
@@ -43,7 +43,6 @@ _(none yet)_
 ## Tier 4 — investigated, undecided
 
 - [`INVESTIGATE-external-backend-verification.md`](INVESTIGATE-external-backend-verification.md) — whether to verify sovdev-logger against Grafana Cloud, Azure Monitor, and/or Google Cloud beyond local UIS, and in what order. Research complete (query APIs, auth models, cost/retention per backend, and TypeScript-vs-bash tooling choice); sequencing is a maintainer values call (cheapest-first vs. production-target-first), not a technical one — see [Q2] in the doc.
-- [`INVESTIGATE-selftest-cli.md`](INVESTIGATE-selftest-cli.md) — design for a TypeScript CLI that writes a marker log+metric and reads it back, confirming a sovdev-logger setup actually works, usable by both the maintainer (against local UIS) and an external consumer like ollacrm (against Grafana Cloud). An initial `kubectl`-only complication for UIS turned out not to be real — verified live that Grafana's own datasource-proxy API reaches Loki/Prometheus/Tempo over plain HTTP, no cluster access needed at all, so both backends share one HTTP query client. Considered and rejected wrapping vendor CLIs (`logcli`/`promtool`, `az`, `gcloud`) — confirmed each backend has an official SDK for direct, dependency-free reads instead (Azure: `@azure/monitor-query-logs`; GCP: `@google-cloud/logging`). All design questions now decided, gap-checked and cleaned up (a real under-specification in the Grafana Cloud config shape found and fixed — needs two Instance-ID pairs, not one) — ready for `PLAN-selftest-cli.md`, not yet drafted.
 
 ## Tier 5 — raw ideas
 

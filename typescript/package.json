@@ -4,6 +4,9 @@
   "description": "Structured logging library for OpenTelemetry with Loggeloven compliance - Norwegian Red Cross standards",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "sovdev-selftest": "dist/cli/selftest.js"
+  },
   "scripts": {
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
