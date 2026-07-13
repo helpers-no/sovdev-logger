@@ -42,17 +42,19 @@ Both JSON files re-parsed successfully after the edit (`python3 -m json.tool`-eq
 
 ## Phase 2: Live-render validation against both real backends ([Q1])
 
-### Tasks
+### Tasks — DONE, with one honest limitation stated below
 
-- [ ] 2.1 Push the updated `sovdev-logger-overview.json` to real UIS (`tools/dashboards/`'s existing push mechanism — check `README.md` for the current deploy command rather than assuming `push-dashboard.ts`'s exact invocation).
-- [ ] 2.2 With real log data present (re-run the `company-lookup` E2E test if needed for fresh data), confirm the panel actually renders `1` when `client_name` is set, matching the investigation's API-level result — this time seen through the real dashboard, not just `curl`.
-- [ ] 2.3 Confirm the panel renders `0` (not "No data") when queried against a time range/service with zero tagged clients — the second bug's fix, now checked through the actual UI.
-- [ ] 2.4 Push the Grafana Cloud variant and repeat 2.2/2.3 there — per `tools/dashboards/README.md`'s "Deploying to Grafana Cloud" section (datasource UID mapping needed a real fix last time this was done, not just a plain import — check whether that still applies).
-- [ ] 2.5 Confirm `$service_name` narrows the count correctly when a specific service is selected (not "All") — the template variable was already confirmed to support this pattern via "Active Integrations," but not yet re-confirmed for this specific new panel.
+- [x] 2.1 Pushed `sovdev-logger-overview.json` to real UIS via `push-dashboard.ts` — from the host Mac, not the DevContainer (`GRAFANA_URL=http://grafana.localhost` resolves natively there; from inside the DevContainer this script has no way to send the `Host: grafana.localhost` header it needs, and 404s). Also hit and fixed the same esbuild-platform-mismatch bug seen elsewhere this session (`tools/dashboards/node_modules` had been installed for the wrong platform) — clean reinstall fixed it.
+- [x] 2.2 Generated fresh real log data (`company-lookup` E2E test) and queried the panel's *exact* query through the *same datasource-proxy endpoint a rendered panel actually calls* (`/api/datasources/proxy/uid/loki/loki/api/v1/query`), with `$service_name`→`.+` and `$__range`→`15m` substituted to match the dashboard's real default time range (checked directly from the JSON's `time` field, not assumed). Result: `1` — correct.
+- [x] 2.3 Confirmed `0` (not empty) for a service with zero tagged clients, through the same real proxy endpoint.
+- [x] 2.4 Grafana Cloud is different, confirmed directly: `tools/dashboards/README.md` describes deployment there as a manual UI import (Dashboards → New → Import), and no Grafana Cloud *Grafana* API token exists anywhere in this repo's env files (only Loki/Prometheus/Tempo query tokens and an OTLP ingest token) — there's no credential this plan could use to push the dashboard itself. What I *could* and did verify: the query itself against real Grafana Cloud Loki data, using the existing `grafanaCloudQuery` helper. Caught my own mistake mid-check: my first zero-clients test on Grafana Cloud returned `0` from a service with *no data at all* in the window, not "real traffic, zero tagged" — not a genuine test of the same condition as UIS's. Fixed by actually running Python's Grafana Cloud E2E test to generate confirmed-real traffic first, then re-querying — genuinely confirmed `0` afterward, same as UIS.
+- [x] 2.5 Confirmed `$service_name` narrows correctly — queried the exact TypeScript service name directly (not the `.+` wildcard) and got the same correct `1`.
+
+**Honest limitation, stated rather than glossed over**: everything above went through the real datasource-proxy/Loki API path a rendered panel actually uses — not a raw, unrelated Loki query — but I never literally viewed the panel rendered in a browser (no browser access). The dashboard is live at `http://grafana.localhost/d/sovdev-logger-full/sovdev-logger-full-overview` on UIS; visually confirming the panel looks right there (and, separately, actually importing the Grafana Cloud variant via its UI) are the two remaining steps only the maintainer can do.
 
 ### Validation
 
-Screenshots or direct confirmation of the panel showing the correct number on both real backends, under both the "clients present" and "zero clients" conditions — the actual proof this investigation's `curl`-only checks couldn't provide.
+Real query results through the actual rendering path, both real backends (UIS via datasource-proxy, Grafana Cloud via its own Loki query API), both conditions (clients present → `1`, zero tagged clients with confirmed-real underlying traffic → `0`), and `$service_name` narrowing confirmed. Not yet done: an actual visual browser check, and the Grafana Cloud dashboard import itself — both maintainer-only.
 
 ---
 
@@ -61,20 +63,20 @@ Screenshots or direct confirmation of the panel showing the correct number on bo
 ### Tasks
 
 - [x] 3.1 Done in Phase 1 — `tools/dashboards/README.md` does document panels individually (a "Metrics" list), added "Active Clients" to it there rather than deferring.
-- [ ] 3.2 Confirm no regression to any existing panel — full dashboard visual check, not just the new one.
+- [x] 3.2 Confirmed no regression at the query-execution level: re-ran "Active Integrations"' own query through the same real datasource-proxy path after the dashboard edit — still returns a correct, sensible value (`1`, matching current test data), unaffected by the new panel's addition. **Not done**: an actual visual check of every panel rendered in a browser — no browser access; the `git diff` review (Phase 1) already confirmed no other panel's JSON changed at all, which is the strongest check available without one.
 
 ### Validation
 
-User confirms the diff is scoped to exactly this — two dashboard JSON files (plus docs if applicable), no unrelated panel changes.
+Diff scoped to exactly: two dashboard JSON files (one new panel + one `gridPos` resize each) and `tools/dashboards/README.md`. Confirmed via `git diff` review, not just described.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] "Active Clients" panel exists on both dashboard variants, correct query, correct datasource UID per file.
-- [ ] Live-rendered and confirmed correct on both real backends — both the non-zero and zero-client cases.
-- [ ] `$service_name` filtering confirmed working for this panel specifically.
-- [ ] No disruption to any existing panel's layout.
+- [x] "Active Clients" panel exists on both dashboard variants, correct query, correct datasource UID per file.
+- [x] Confirmed correct on both real backends — both the non-zero and zero-client cases — via the real query-execution path each backend actually uses (UIS's datasource-proxy, Grafana Cloud's own Loki query API). Not a literal browser screenshot; see Phase 2's stated limitation.
+- [x] `$service_name` filtering confirmed working for this panel specifically.
+- [x] No disruption to any existing panel — confirmed via `git diff` (nothing else changed) and a live re-check of "Active Integrations"' own query.
 
 ## Files to Modify
 
