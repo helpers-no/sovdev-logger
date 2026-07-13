@@ -46,6 +46,12 @@ EXCLUDED_FIELDS = {
     "client_name",  # TypeScript-only feature (sovdev_set_context()) as of
                      # PLAN-context-propagation.md; not yet implemented in
                      # Python. Remove this exclusion once Python has parity.
+    "service_principal",  # TypeScript-only feature (sovdev_set_context()) as
+                     # of PLAN-service-principal-acting-user.md; not yet
+                     # implemented in Python. Remove once Python has parity.
+    "acting_user",  # TypeScript-only feature (sovdev_set_context()) as of
+                     # PLAN-service-principal-acting-user.md; not yet
+                     # implemented in Python. Remove once Python has parity.
 }
 
 # Checked for presence only (non-empty iff exception_type is set) --

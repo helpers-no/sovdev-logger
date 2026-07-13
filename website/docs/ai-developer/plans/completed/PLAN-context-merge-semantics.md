@@ -13,7 +13,7 @@
 **Last Updated**: 2026-07-13
 **Completed**: 2026-07-13 — both phases done. Verified with a real end-to-end test (not just an isolated debug print): 4 real `sovdev_log()` calls interleaved with 3 `sovdev_set_context()` calls, run against both real Grafana Cloud and real UIS, confirming a different key from a second call doesn't wipe out an earlier one, and an overlapping key correctly updates just that key. No regression to the existing single-call `client_name` behavior.
 
-**Source**: Found while investigating [`INVESTIGATE-service-principal-acting-user.md`](../backlog/INVESTIGATE-service-principal-acting-user.md)'s **[Q4]** — not a new design decision, a correctness fix to code shipped in `PLAN-context-propagation.md`. Scoped independently of that investigation's new fields (`service_principal`/`acting_user`) — this fix stands on its own and doesn't need those fields to exist to be implemented or tested.
+**Source**: Found while investigating [`INVESTIGATE-service-principal-acting-user.md`](INVESTIGATE-service-principal-acting-user.md)'s **[Q4]** — not a new design decision, a correctness fix to code shipped in `PLAN-context-propagation.md`. Scoped independently of that investigation's new fields (`service_principal`/`acting_user`) — this fix stands on its own and doesn't need those fields to exist to be implemented or tested.
 
 ---
 

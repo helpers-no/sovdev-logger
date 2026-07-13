@@ -6,7 +6,7 @@ Extends `sovdev_set_context()` (shipped in `PLAN-context-propagation.md`) with t
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Completed
 
 **Goal**: Decide field names, semantics (when each is present/absent), the merge-vs-replace question `sovdev_set_context()` now needs revisiting for, and the Grafana Cloud privacy warning mechanism for `acting_user`.
 
@@ -68,7 +68,9 @@ sovdev_set_context({
 
 ## Next Steps
 
-- [ ] Maintainer confirms field names (**[Q1]**)
-- [ ] Confirm the Grafana Cloud detection mechanism and warning frequency (**[Q3]**)
-- [ ] Decide merge-vs-replace fix scope (**[Q4]**) — likely bundled into the same implementation plan rather than a separate one, since it's a small, targeted fix to code the same plan will already be touching
-- [ ] Create `PLAN-service-principal-acting-user.md` with the chosen approach, including adding both fields to the shared schema (`log-entry-schema.json`) first, same as `client_name`'s process
+- [x] Maintainer confirms field names (**[Q1]**) — `acting_user`, not `acting_user_id`
+- [x] Confirm the Grafana Cloud detection mechanism and warning frequency (**[Q3]**) — once at `sovdev_initialize()` time, cached
+- [x] Decide merge-vs-replace fix scope (**[Q4]**) — shipped separately, ahead of this investigation's own plan, as [`PLAN-context-merge-semantics.md`](PLAN-context-merge-semantics.md)
+- [x] Create `PLAN-service-principal-acting-user.md` with the chosen approach — shipped as [`PLAN-service-principal-acting-user.md`](PLAN-service-principal-acting-user.md)
+
+**All resolved and shipped.** Moved to `completed/` — its only child plan has shipped, per [PLANS.md](../../PLANS.md)'s INVESTIGATE lifecycle rule. Dashboard treatment (**[Q5]**) and Python parity remain explicitly deferred, tracked as separate future work in `1PRIORITY.md`, not as open items on this investigation.

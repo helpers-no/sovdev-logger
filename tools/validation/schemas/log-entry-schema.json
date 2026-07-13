@@ -53,6 +53,16 @@
       "minLength": 1,
       "description": "Identifier of the calling client/frontend for this request, set once via request-scoped context and inherited by every log entry in that request (snake_case). Optional - only used by services that serve multiple registered callers."
     },
+    "service_principal": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier of the database credential/account the API used to query, set via request-scoped context (snake_case). Optional - only used by services that record which DB principal handled a request."
+    },
+    "acting_user": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier of the human end-user the query was scoped/impersonated to (e.g. from a JWT), set via request-scoped context (snake_case). Optional - absent for service-to-service or batch calls with no end-user involved."
+    },
     "session_id": {
       "type": "string",
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",

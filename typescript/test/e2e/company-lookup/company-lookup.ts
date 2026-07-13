@@ -53,7 +53,7 @@
 // 7. sovdev_end_span()           - End an OpenTelemetry span
 // 8. SOVDEV_LOGLEVELS            - Log level constants
 // 9. create_peer_services()      - Define external system mappings
-// 10. sovdev_set_context()       - Set request-scoped context (client_name), TypeScript-only
+// 10. sovdev_set_context()       - Set request-scoped context (client_name, service_principal, acting_user), TypeScript-only
 
 import {
   sovdev_validate_config,    // NEW: Validate OTLP configuration
@@ -67,7 +67,7 @@ import {
   sovdev_end_span,           // Function 7: End OpenTelemetry span
   SOVDEV_LOGLEVELS,          // Function 8: Log level constants (INFO, ERROR, etc.)
   create_peer_services,      // Function 9: Create peer service mappings
-  sovdev_set_context         // Function 10: Set request-scoped context (client_name)
+  sovdev_set_context         // Function 10: Set request-scoped context (client_name, service_principal, acting_user)
 } from '../../../dist/index.js';
 
 // ============================================================================
@@ -609,19 +609,28 @@ async function main() {
   // REQUEST-SCOPED CONTEXT - sovdev_set_context()
   // ============================================================================
   // DEMONSTRATES: sovdev_set_context() for services with multiple registered
-  // callers (e.g. an API called by several frontends)
+  // callers (e.g. an API called by several frontends), for services that
+  // query a database under a specific credential (service_principal), and
+  // for services acting on behalf of a specific end-user (acting_user, e.g.
+  // resolved from a customer-facing JWT).
   //
   // WHY: Set once, here, and every sovdev_log() call below automatically
-  // inherits client_name -- no need to pass it as an argument to each call.
-  // A real service would call this once per incoming request (e.g. in auth
-  // middleware, after resolving the caller's identity from an API key), not
-  // once for the whole process the way this E2E test does for simplicity.
+  // inherits all three fields -- no need to pass them as arguments to each
+  // call. A real service would call this once per incoming request (e.g. in
+  // auth middleware, after resolving the caller's identity from an API key
+  // and JWT), not once for the whole process the way this E2E test does for
+  // simplicity.
   //
   // CROSS-LANGUAGE: TypeScript-only as of this test -- Python does not yet
   // have this feature (see PLAN-context-propagation.md), so
-  // compare-with-master.sh excludes client_name from cross-language diffing.
+  // compare-with-master.sh excludes client_name, service_principal, and
+  // acting_user from cross-language diffing.
 
-  sovdev_set_context({ client_name: 'company-lookup-e2e-client' });
+  sovdev_set_context({
+    client_name: 'company-lookup-e2e-client',
+    service_principal: 'company-lookup-db-svc',
+    acting_user: 'company-lookup-e2e-user',
+  });
 
   // ============================================================================
   // LOG #1: Application Start - Service Lifecycle

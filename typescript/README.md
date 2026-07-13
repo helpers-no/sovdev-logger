@@ -311,6 +311,7 @@ Choose your path:
 | 🔄 Processing batches/jobs? | [Batch Job Pattern](#batch-job-pattern) |
 | 🔗 Link related operations? | [Linking Multiple Operations with a Span](#linking-multiple-operations-with-a-span) |
 | 👥 Multiple clients calling your API? | [Setting Request-Scoped Context](#setting-request-scoped-context-client_name-for-multi-client-apis) |
+| 🔐 API queries a database, or acts on behalf of an end-user? | [Setting service_principal and acting_user](#setting-service_principal-and-acting_user-for-database-backed-apis) |
 | 🤔 Understand how it works? | [How It Works](#how-it-works) |
 
 ---
@@ -566,6 +567,34 @@ function handleOrder(orderId: string) {
 ```
 
 `client_name` is entirely optional and additive — if you never call `sovdev_set_context()`, every log entry behaves exactly as before, with no `client_name` field at all. Registering clients (mapping an API key to a name) is your application's own logic, not something this library manages — never pass the raw API key itself into `sovdev_set_context()`, only the already-resolved name.
+
+---
+
+### Setting `service_principal` and `acting_user` for Database-Backed APIs
+
+**Use Case**: Your API queries a database, and you want to record *which* DB credential/account handled a given request (`service_principal`), and — when the request is scoped to a specific end-user rather than being pure service-to-service traffic — *which* human it was acting on behalf of (`acting_user`), e.g. the identity resolved from a customer-facing JWT.
+
+Both fields go on the same `sovdev_set_context()` call as `client_name` — set once per request, inherited by every `sovdev_log()` call afterward:
+
+```typescript
+import { sovdev_set_context, sovdev_log } from '@terchris/sovdev-logger';
+
+function handleOrder(req, orderId: string) {
+  sovdev_set_context({
+    service_principal: 'orders-api-db-svc', // the DB credential/account this API used to query
+    acting_user: req.jwt.sub,               // the human end-user the query was scoped to (absent for batch/service-to-service calls)
+  });
+  sovdev_log(SOVDEV_LOGLEVELS.INFO, 'handleOrder', 'Processing order', PEER_SERVICES.INTERNAL, { orderId });
+}
+```
+
+- `service_principal` is expected whenever your API talks to a database at all — it identifies the *credential*, not a person.
+- `acting_user` only applies when a real end-user is behind the call; leave it unset for pure service-to-service or batch processing.
+- Like `client_name`, this library has **zero opinion** on either value — pass a raw JWT claim, a hash, or an internal pseudonymous ID; whatever you pass through is exactly what gets logged.
+
+**Privacy note — `acting_user` may contain personal data.** If your OTLP logs endpoint is Grafana Cloud (a third-party service), calling `sovdev_set_context({ acting_user: ... })` prints a one-time `console.warn()` reminding you of this — it never blocks or strips the value, just flags it. The warning does not fire against a self-hosted backend like UIS. Regardless of backend, consider passing a pseudonymous or internal identifier for `acting_user` rather than a raw claim value.
+
+Both fields are entirely optional and additive, exactly like `client_name` — if you never set them, log entries are unaffected.
 
 ---
 

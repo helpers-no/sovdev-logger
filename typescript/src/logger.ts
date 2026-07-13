@@ -71,6 +71,14 @@ const endedSpans = new WeakSet<Span>();
  */
 interface SovdevRequestContext {
   client_name?: string;
+  // Identifier of the database credential/account the API used to query.
+  // Expected whenever the API talks to a database at all -- absent for
+  // services that never touch one.
+  service_principal?: string;
+  // Identifier of the human end-user the query was scoped/impersonated to
+  // (e.g. from a JWT). Present only when a real end-user is behind the
+  // call -- absent for pure service-to-service/batch calls.
+  acting_user?: string;
 }
 
 /**
@@ -80,6 +88,16 @@ interface SovdevRequestContext {
  * with no wrapping callback required.
  */
 const requestContextStorage = new AsyncLocalStorage<SovdevRequestContext>();
+
+// Set once at sovdev_initialize() time (not re-checked per call) -- whether
+// the configured OTLP logs endpoint looks like Grafana Cloud, the one
+// backend where acting_user (possible personal data) leaves org
+// infrastructure to a third party. Drives the one-time privacy warning
+// below; UIS/self-hosted backends never trigger it.
+let isGrafanaCloudBackend = false;
+// Ensures the acting_user privacy warning prints once per process, not once
+// per sovdev_log() call.
+let hasWarnedAboutActingUser = false;
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -139,6 +157,8 @@ interface structured_log_entry {
   service_version: string; // Service version
   peer_service: string; // Target system/service
   client_name?: string; // Identifier of the calling client/frontend, set via sovdev_set_context() -- optional, absent unless set
+  service_principal?: string; // Identifier of the DB credential/account the API used to query, set via sovdev_set_context() -- optional, absent unless set
+  acting_user?: string; // Identifier of the human end-user the query was scoped to, set via sovdev_set_context() -- optional, absent unless set
 
   function_name: string;
   message: string;
@@ -201,10 +221,19 @@ class open_telemetry_winston_transport extends TransportStream {
         timestamp: info.timestamp,
       };
 
-      // Add client_name if set via sovdev_set_context() -- optional, only
-      // present for services that serve multiple registered callers
+      // Add request-scoped context fields if set via sovdev_set_context() --
+      // all optional. This attributes object is the actual OTLP export path;
+      // client_name was originally missed here (present in the file log via
+      // structured_log_entry, but silently dropped from OTLP) precisely
+      // because this list is separate from that one -- don't repeat that.
       if (info.client_name) {
         attributes.client_name = info.client_name;
+      }
+      if (info.service_principal) {
+        attributes.service_principal = info.service_principal;
+      }
+      if (info.acting_user) {
+        attributes.acting_user = info.acting_user;
       }
 
       // Add correlation fields (snake_case for consistency)
@@ -552,12 +581,18 @@ class internal_sovdev_logger {
         }
       }
 
-      // Extract client_name from request-scoped context (stored in
-      // AsyncLocalStorage), set via sovdev_set_context(). Absent unless the
-      // caller explicitly set it -- no fallback/default the way trace_id has.
+      // Extract request-scoped context fields (stored in AsyncLocalStorage),
+      // set via sovdev_set_context(). Each is absent unless the caller
+      // explicitly set it -- no fallback/default the way trace_id has.
       const request_context = requestContextStorage.getStore();
       if (request_context?.client_name) {
         log_entry.client_name = request_context.client_name;
+      }
+      if (request_context?.service_principal) {
+        log_entry.service_principal = request_context.service_principal;
+      }
+      if (request_context?.acting_user) {
+        log_entry.acting_user = request_context.acting_user;
       }
 
       // Emit metrics automatically (zero developer effort)
@@ -1416,6 +1451,11 @@ function initialize_sovdev_logger(
     effective_system_ids
   );
 
+  isGrafanaCloudBackend = (process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT || '').includes(
+    'grafana.net'
+  );
+  hasWarnedAboutActingUser = false;
+
   const is_development = process.env.NODE_ENV !== 'production';
   const has_otlp_endpoint = !!process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT;
   const log_to_console =
@@ -1734,6 +1774,20 @@ export function sovdev_set_context(context: SovdevRequestContext): void {
   // replace it outright, so an earlier call's fields survive a later one.
   const existing = requestContextStorage.getStore();
   requestContextStorage.enterWith({ ...existing, ...context });
+
+  // acting_user may carry personal data (e.g. a raw JWT claim). Warn once
+  // per process -- not per call -- when it's headed to Grafana Cloud, a
+  // third-party service, so it never fires against a self-hosted backend
+  // like UIS. Never block or strip the value; the library has zero opinion
+  // on what it contains.
+  if (context.acting_user && isGrafanaCloudBackend && !hasWarnedAboutActingUser) {
+    hasWarnedAboutActingUser = true;
+    console.warn(
+      '⚠️  sovdev_set_context(): acting_user is set and logs are exported to Grafana Cloud ' +
+        '(a third-party service). If acting_user may contain personal data (e.g. a raw JWT ' +
+        'claim), consider using a pseudonymous or internal identifier instead.'
+    );
+  }
 }
 
 // Export types for TypeScript consumers
