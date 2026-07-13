@@ -104,10 +104,10 @@ Beyond the single "how many clients total" stat, add a table/graph showing *whic
 ## Open Questions
 
 1. **[Q1]** Confirm via an actual live dashboard render (UIS, then Grafana Cloud) that `$service_name`/`$__range` substitute correctly into this query and the panel displays `0`/correct-count/`No data` exactly as expected — the one thing this investigation's API-level checks couldn't cover.
-2. **[Q2]** Panel title — "Active Clients" (mirroring "Active Integrations"), or something that more precisely signals "distinct client_name values seen in the selected time range" given `INVESTIGATE-terminology-review.md`'s existing finding that "Active Integrations" itself is a misleading name (it counts `service_name`, not integrations)? Worth not repeating that naming mistake in the new panel.
-3. **[Q3]** Where in the grid layout — next to "Active Integrations" (both fleet-overview stats together), or elsewhere?
+2. **[Q2]** — **Resolved.** "Active Clients" — matches "Active Integrations"' naming pattern for UI consistency, and unlike "Active Integrations" (found misleading by `INVESTIGATE-terminology-review.md` — it counts `service_name`, not integrations), this title is actually accurate: `client_name` literally represents clients by design.
+3. **[Q3]** — **Resolved.** Same top row as "Active Integrations." Checked the actual grid layout directly: the row is exactly full today (`Active Integrations` `w:6` + `Total Operations (cumulative)` `w:18` = 24). Fits with zero disruption elsewhere: place "Active Clients" at `x:6, w:6, y:0, h:8` (immediately right of "Active Integrations"), narrow "Total Operations (cumulative)" from `w:18` to `w:12` and shift it to `x:12` — still a plenty-wide timeseries panel. No other panel needs to move.
 
 ## Next Steps
 
-- [ ] Maintainer answers [Q2]/[Q3]
-- [ ] Create `PLAN-operator-dashboard-panel.md` — small scope: add the panel JSON, validate via [Q1]'s live render against both real backends, update `tools/dashboards/README.md` if it documents panel-by-panel purpose
+- [x] Maintainer answers [Q2]/[Q3] — resolved 2026-07-13
+- [x] Create [`PLAN-operator-dashboard-panel.md`](../active/PLAN-operator-dashboard-panel.md) — small scope: add the panel JSON, validate via [Q1]'s live render against both real backends, update `tools/dashboards/README.md` if it documents panel-by-panel purpose
