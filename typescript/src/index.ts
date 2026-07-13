@@ -18,6 +18,7 @@ export {
   sovdev_log_job_progress,
   sovdev_start_span,
   sovdev_end_span,
+  sovdev_set_context,
 } from './logger';
 
 // Export log levels
@@ -28,4 +29,4 @@ export { create_peer_services } from './peerServices';
 
 // Export TypeScript types
 export type { sovdev_log_level } from './logLevels';
-export type { structured_log_entry } from './logger';
+export type { structured_log_entry, SovdevRequestContext } from './logger';

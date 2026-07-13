@@ -43,6 +43,9 @@ EXCLUDED_FIELDS = {
     "session_id",   # per-run UUID
     "service_name", # differs by design: OTEL_SERVICE_NAME defaults to
                      # sovdev-test-company-lookup-{typescript,python}
+    "client_name",  # TypeScript-only feature (sovdev_set_context()) as of
+                     # PLAN-context-propagation.md; not yet implemented in
+                     # Python. Remove this exclusion once Python has parity.
 }
 
 # Checked for presence only (non-empty iff exception_type is set) --

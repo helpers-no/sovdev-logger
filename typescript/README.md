@@ -309,7 +309,8 @@ Choose your path:
 | ☁️ Send to Azure Monitor? | [Configuration for Azure](#configuration-for-azure) |
 | 📊 Send to Grafana/Loki/Tempo? | [Configuration](#configuration) |
 | 🔄 Processing batches/jobs? | [Batch Job Pattern](#batch-job-pattern) |
-| 🔗 Link related operations? | [Using traceId](#using-traceid-to-link-operations) |
+| 🔗 Link related operations? | [Linking Multiple Operations with a Span](#linking-multiple-operations-with-a-span) |
+| 👥 Multiple clients calling your API? | [Setting Request-Scoped Context](#setting-request-scoped-context-client_name-for-multi-client-apis) |
 | 🤔 Understand how it works? | [How It Works](#how-it-works) |
 
 ---
@@ -452,74 +453,69 @@ async function importUsers(users: User[]) {
 
 ---
 
-### Using traceId to Link Operations
+### Linking Multiple Operations with a Span
 
 **Use Case**: Process one company through multiple steps (lookup → validate → save). You want all 3 operations grouped together in Grafana.
 
+Use `sovdev_start_span`/`sovdev_end_span` — every `sovdev_log()` call made while the span is active automatically gets that span's `trace_id`/`span_id` stamped on, with nothing extra to pass at each call site:
+
 ```typescript
-import { sovdev_generate_trace_id } from '@terchris/sovdev-logger';
+import { sovdev_start_span, sovdev_end_span } from '@terchris/sovdev-logger';
 
 async function processCompany(orgNumber: string) {
   const FUNCTIONNAME = 'processCompany';
 
-  // IMPORTANT: Generate ONE traceId at the start - use it for ALL operations
-  const companyTraceId = sovdev_generate_trace_id();
+  // Start one span for the whole operation -- every sovdev_log() call below
+  // automatically inherits its trace_id/span_id, no extra argument needed.
+  const span = sovdev_start_span('process_company', { organisasjonsnummer: orgNumber });
 
-  // Step 1: Lookup company in external registry (BRREG)
-  const input1 = { organisasjonsnummer: orgNumber };
-  const companyData = await lookupInBREG(orgNumber);
-  const output1 = { name: companyData.name };
+  try {
+    // Step 1: Lookup company in external registry (BRREG)
+    const companyData = await lookupInBREG(orgNumber);
+    sovdev_log(
+      SOVDEV_LOGLEVELS.INFO,
+      FUNCTIONNAME,
+      'Company found',
+      PEER_SERVICES.BRREG,       // External system call
+      { organisasjonsnummer: orgNumber },
+      { name: companyData.name }
+    );
 
-  sovdev_log(
-    SOVDEV_LOGLEVELS.INFO,
-    FUNCTIONNAME,
-    'Company found',
-    PEER_SERVICES.BRREG,        // External system call
-    input1,
-    output1,
-    null,                       // No exception
-    companyTraceId              // ← Links this operation to the company
-  );
+    // Step 2: Validate data (internal operation)
+    const isValid = validateCompany(companyData);
+    sovdev_log(
+      SOVDEV_LOGLEVELS.INFO,
+      FUNCTIONNAME,
+      'Validation complete',
+      PEER_SERVICES.INTERNAL,    // Internal operation
+      { name: companyData.name },
+      { valid: isValid }
+    );
 
-  // Step 2: Validate data (internal operation)
-  const isValid = validateCompany(companyData);
-  const input2 = { name: companyData.name };
-  const output2 = { valid: isValid };
+    // Step 3: Save to database
+    await saveCompany(companyData);
+    sovdev_log(
+      SOVDEV_LOGLEVELS.INFO,
+      FUNCTIONNAME,
+      'Company saved',
+      PEER_SERVICES.DATABASE,    // Database call
+      { organisasjonsnummer: orgNumber },
+      { saved: true }
+    );
 
-  sovdev_log(
-    SOVDEV_LOGLEVELS.INFO,
-    FUNCTIONNAME,
-    'Validation complete',
-    PEER_SERVICES.INTERNAL,     // Internal operation
-    input2,
-    output2,
-    null,
-    companyTraceId              // ← Same traceId links to step 1
-  );
-
-  // Step 3: Save to database
-  await saveCompany(companyData);
-  const input3 = { organisasjonsnummer: orgNumber };
-  const output3 = { saved: true };
-
-  sovdev_log(
-    SOVDEV_LOGLEVELS.INFO,
-    FUNCTIONNAME,
-    'Company saved',
-    PEER_SERVICES.DATABASE,     // Database call
-    input3,
-    output3,
-    null,
-    companyTraceId              // ← Same traceId links all 3 steps together
-  );
+    sovdev_end_span(span);
+  } catch (error) {
+    sovdev_end_span(span, error as Error);
+    throw error;
+  }
 }
 ```
 
 **Result in Grafana**:
 ```
-Query: {traceId="company-abc123"}
+Query: {service_name="your-service"} | trace_id="<the span's trace id>"
 
-Shows ALL 3 operations (all share traceId "company-abc123"):
+Shows ALL 3 operations (all share the same trace_id):
   ├─ lookupCompany → BRREG (200ms)
   ├─ validateCompany → INTERNAL (5ms)
   └─ saveCompany → Database (50ms)
@@ -528,11 +524,48 @@ Total duration: 255ms
 Complete flow for this company visible in one view!
 ```
 
-**When to use traceId:**
+**When to use a span:**
 - ✅ Processing one item through multiple steps (read → transform → write)
 - ✅ Transaction flows where you want to see the complete journey
 - ✅ Debugging: "Show me everything that happened for company X"
-- ❌ Single, independent operations (library auto-generates traceId)
+- ❌ Single, independent operations (library auto-generates a `trace_id` per log entry either way)
+
+---
+
+### Setting Request-Scoped Context (`client_name`) for Multi-Client APIs
+
+**Use Case**: Your API is called by multiple registered frontends/clients (e.g. `api.example.com` serving both `web-app` and `mobile-app`), and you want to know which one made a given request — without passing a `client_name` argument through every function down to each `sovdev_log()` call.
+
+Call `sovdev_set_context()` once per request, as early as possible (typically in auth middleware, right after resolving the caller's identity) — every `sovdev_log()` call made afterward in the same request automatically inherits it:
+
+```typescript
+import { sovdev_set_context, sovdev_log } from '@terchris/sovdev-logger';
+
+// In your auth middleware, after validating the caller's API key:
+function authMiddleware(req, res, next) {
+  const clientName = resolveClientFromApiKey(req.headers['x-api-key']); // your own logic
+  sovdev_set_context({ client_name: clientName });
+  next();
+}
+
+// Anywhere later in the same request, no client_name argument needed:
+function handleOrder(orderId: string) {
+  sovdev_log(SOVDEV_LOGLEVELS.INFO, 'handleOrder', 'Processing order', PEER_SERVICES.INTERNAL, { orderId });
+  // ^ this log entry automatically includes client_name from the request's context
+}
+```
+
+**Important — `client_name` is not a Grafana/Loki *label*, so don't query it like `service_name`.** It's per-request data (the same running service handles many clients), while labels like `service_name` are fixed per deployment — Loki can only ever index resource-level, per-deployment attributes as labels, never per-request ones. `client_name` is stored as Loki **structured metadata** instead, which is still efficiently queryable, just with different query syntax:
+
+```
+# Filter within a known service:
+{service_name="your-service"} | client_name="web-app"
+
+# Filter across ALL services, without knowing which one (fleet-wide):
+{service_name=~".+"} | client_name="web-app"
+```
+
+`client_name` is entirely optional and additive — if you never call `sovdev_set_context()`, every log entry behaves exactly as before, with no `client_name` field at all. Registering clients (mapping an API key to a name) is your application's own logic, not something this library manages — never pass the raw API key itself into `sovdev_set_context()`, only the already-resolved name.
 
 ---
 
@@ -677,8 +710,7 @@ sovdev_log(
   peerService: string,
   inputJSON?: any,
   responseJSON?: any,
-  exceptionObject?: any,
-  traceId?: string
+  exceptionObject?: any
 ): void
 ```
 
@@ -697,9 +729,8 @@ General purpose logging function that captures complete operation context.
 - **`inputJSON`** (optional) - Data that went INTO the operation
 - **`responseJSON`** (optional) - Data that came OUT of the operation
 - **`exceptionObject`** (optional) - Error or exception object if operation failed
-- **`traceId`** (optional, advanced) - Manual trace correlation ID
-  - **99% of developers should omit this** - it's auto-generated!
-  - Only use to manually correlate operations (see [Using traceId](#using-traceid-to-link-operations))
+
+`trace_id`/`span_id` are never passed manually — they're auto-generated per log entry, or auto-inherited from an active span (see [Linking Multiple Operations with a Span](#linking-multiple-operations-with-a-span)) if one is running.
 
 **Example:**
 
@@ -729,8 +760,7 @@ sovdev_log_job_status(
   jobName: string,
   status: string,
   peerService: string,
-  inputJSON?: any,
-  traceId?: string
+  inputJSON?: any
 ): void
 ```
 
@@ -781,8 +811,7 @@ sovdev_log_job_progress(
   current: number,
   total: number,
   peerService: string,
-  inputJSON?: any,
-  traceId?: string
+  inputJSON?: any
 ): void
 ```
 
@@ -1215,7 +1244,7 @@ See [Quick Start](#quick-start-60-seconds) above for a minimal single-file examp
 
 ### Advanced Usage
 
-[`test/e2e/company-lookup/company-lookup.ts`](https://github.com/helpers-no/sovdev-logger/blob/main/typescript/test/e2e/company-lookup/company-lookup.ts) is a full working example covering batch processing, job status/progress logging, peer services, error handling, and traceId correlation — the same patterns shown above, in one real program. Run it yourself:
+[`test/e2e/company-lookup/company-lookup.ts`](https://github.com/helpers-no/sovdev-logger/blob/main/typescript/test/e2e/company-lookup/company-lookup.ts) is a full working example covering batch processing, job status/progress logging, peer services, error handling, and span-based trace correlation — the same patterns shown above, in one real program. Run it yourself:
 
 ```bash
 cd test/e2e/company-lookup

@@ -50,13 +50,7 @@ Everything below comes from this one run.
 
 These four panels are **automatic** — there's no separate metrics code anywhere in `company-lookup.ts`. Every `sovdev_log()` call generates `sovdev_operations_total`, `sovdev_errors_total`, and `sovdev_operation_duration_milliseconds` behind the scenes, labeled by `service_name` and `peer_service`. Write one log call, get a counter, an error counter, and a duration histogram for free — this is the "one log call, complete observability" idea the library is built around.
 
----
-
-## Operations / Errors / Error Rate / Avg Duration by Peer Service
-
-![Peer Service Dependencies panels](./dashboard-peer-service.png)
-
-Same underlying metrics as above, grouped by `peer_service` instead of summed together — this is sovdev-logger's service-dependency data. The `SYS1234567` you see here is BRREG's system ID, passed as `PEER_SERVICES.BRREG` to every `sovdev_log()` call inside `lookupCompany()`:
+Each panel breaks its metric down `by (service_name, peer_service)` and renders every combination via its table-mode legend (`{{service_name}} → {{peer_service}}`) — this is sovdev-logger's service-dependency data. The `SYS1234567` you see there is BRREG's system ID, passed as `PEER_SERVICES.BRREG` to every `sovdev_log()` call inside `lookupCompany()`:
 
 ```typescript
 const PEER_SERVICES = create_peer_services({
@@ -70,7 +64,7 @@ sovdev_log(
   SOVDEV_LOGLEVELS.INFO,
   FUNCTIONNAME,
   `Looking up company ${orgNumber}`,
-  PEER_SERVICES.BRREG,   // <- this is the label these panels group by
+  PEER_SERVICES.BRREG,   // <- this is the label these panels break down by
   input,
   null,
   null
@@ -78,6 +72,8 @@ sovdev_log(
 ```
 
 That single argument is what lets sovdev-logger build a dependency map automatically — every external system your service calls shows up here, broken out from your service's own internal operations, with no extra instrumentation. (The code comment above says `PEER_SERVICES.INTERNAL` is `'internal'` — that's stale. It actually resolves to your own `service_name`, which is what you'll see as the `peer_service` value on the Job Lifecycle panel's "Job Completed" entry below.)
+
+(An earlier version of this dashboard also had 4 separate "by Peer Service" Stat panels doing this same breakdown a second way — removed 2026-07-13 as redundant with what's shown here, and because they carried a `maxDataPoints: 1` sampling fragility these table-mode panels don't have.)
 
 ---
 

@@ -359,250 +359,6 @@
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 16
-      },
-      "id": 10,
-      "maxDataPoints": 1,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": true
-        },
-        "textMode": "value_and_name",
-        "showPercentChange": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (peer_service) (sovdev_operations_total{service_name=~\"$service_name\"})",
-          "legendFormat": "{{peer_service}}",
-          "refId": "A",
-          "maxDataPoints": 1
-        }
-      ],
-      "title": "Operations by Peer Service",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 16
-      },
-      "id": 13,
-      "maxDataPoints": 1,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": true
-        },
-        "textMode": "value_and_name",
-        "showPercentChange": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (peer_service) (sovdev_errors_total{service_name=~\"$service_name\"})",
-          "legendFormat": "{{peer_service}}",
-          "refId": "A",
-          "maxDataPoints": 1
-        }
-      ],
-      "title": "Errors by Peer Service",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "percentunit"
-        }
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 24
-      },
-      "id": 14,
-      "maxDataPoints": 1,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": true
-        },
-        "textMode": "value_and_name",
-        "showPercentChange": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (peer_service) (sovdev_errors_total{service_name=~\"$service_name\"}) / sum by (peer_service) (sovdev_operations_total{service_name=~\"$service_name\"})",
-          "legendFormat": "{{peer_service}}",
-          "refId": "A",
-          "maxDataPoints": 1
-        }
-      ],
-      "title": "Error Rate by Peer Service",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "ms"
-        }
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 24
-      },
-      "id": 15,
-      "maxDataPoints": 1,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": true
-        },
-        "textMode": "value_and_name",
-        "showPercentChange": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (peer_service) (sovdev_operation_duration_milliseconds_sum{service_name=~\"$service_name\"}) / sum by (peer_service) (sovdev_operation_duration_milliseconds_count{service_name=~\"$service_name\"})",
-          "legendFormat": "{{peer_service}}",
-          "refId": "A",
-          "maxDataPoints": 1
-        }
-      ],
-      "title": "Avg Duration by Peer Service",
-      "type": "stat"
-    },
-    {
-      "datasource": {
         "type": "loki",
         "uid": "loki"
       },
@@ -610,7 +366,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 16
       },
       "id": 11,
       "options": {
@@ -647,7 +403,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 40
+        "y": 24
       },
       "id": 12,
       "fieldConfig": {
@@ -763,7 +519,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 50
+        "y": 34
       },
       "id": 5,
       "options": {
@@ -815,16 +571,18 @@
               "timestamp": 1,
               "service_name": 2,
               "peer_service": 3,
-              "function_name": 4,
-              "exception_type": 5,
-              "exception_message": 6,
-              "trace_id": 7,
-              "span_id": 8
+              "client_name": 4,
+              "function_name": 5,
+              "exception_type": 6,
+              "exception_message": 7,
+              "trace_id": 8,
+              "span_id": 9
             },
             "renameByName": {
               "timestamp": "Timestamp",
               "service_name": "Service",
               "peer_service": "Peer Service",
+              "client_name": "Client",
               "function_name": "Function",
               "exception_type": "Exception Type",
               "exception_message": "Error Message",
@@ -846,7 +604,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 60
+        "y": 44
       },
       "id": 6,
       "options": {

@@ -43,7 +43,7 @@
 // ============================================================================
 // IMPORTS - sovdev-logger API Functions
 // ============================================================================
-// These are the 9 core functions we're demonstrating in this E2E test:
+// These are the 10 core functions we're demonstrating in this E2E test:
 // 1. sovdev_initialize()         - Initialize the logger
 // 2. sovdev_log()                - General purpose logging
 // 3. sovdev_log_job_status()     - Job lifecycle tracking (started/completed)
@@ -53,6 +53,7 @@
 // 7. sovdev_end_span()           - End an OpenTelemetry span
 // 8. SOVDEV_LOGLEVELS            - Log level constants
 // 9. create_peer_services()      - Define external system mappings
+// 10. sovdev_set_context()       - Set request-scoped context (client_name), TypeScript-only
 
 import {
   sovdev_validate_config,    // NEW: Validate OTLP configuration
@@ -65,7 +66,8 @@ import {
   sovdev_start_span,         // Function 6: Start OpenTelemetry span for correlation
   sovdev_end_span,           // Function 7: End OpenTelemetry span
   SOVDEV_LOGLEVELS,          // Function 8: Log level constants (INFO, ERROR, etc.)
-  create_peer_services       // Function 9: Create peer service mappings
+  create_peer_services,      // Function 9: Create peer service mappings
+  sovdev_set_context         // Function 10: Set request-scoped context (client_name)
 } from '../../../dist/index.js';
 
 // ============================================================================
@@ -602,6 +604,24 @@ async function main() {
     "1.0.0",                     // Service version
     PEER_SERVICES.mappings       // Peer service validation mappings
   );
+
+  // ============================================================================
+  // REQUEST-SCOPED CONTEXT - sovdev_set_context()
+  // ============================================================================
+  // DEMONSTRATES: sovdev_set_context() for services with multiple registered
+  // callers (e.g. an API called by several frontends)
+  //
+  // WHY: Set once, here, and every sovdev_log() call below automatically
+  // inherits client_name -- no need to pass it as an argument to each call.
+  // A real service would call this once per incoming request (e.g. in auth
+  // middleware, after resolving the caller's identity from an API key), not
+  // once for the whole process the way this E2E test does for simplicity.
+  //
+  // CROSS-LANGUAGE: TypeScript-only as of this test -- Python does not yet
+  // have this feature (see PLAN-context-propagation.md), so
+  // compare-with-master.sh excludes client_name from cross-language diffing.
+
+  sovdev_set_context({ client_name: 'company-lookup-e2e-client' });
 
   // ============================================================================
   // LOG #1: Application Start - Service Lifecycle

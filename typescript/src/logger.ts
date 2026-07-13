@@ -60,6 +60,28 @@ const spanStorage = new AsyncLocalStorage<Span>();
 const endedSpans = new WeakSet<Span>();
 
 // =============================================================================
+// REQUEST CONTEXT STORAGE
+// =============================================================================
+
+/**
+ * Request-scoped context set once via sovdev_set_context() and inherited by
+ * every sovdev_log() call in the same async chain -- for services that serve
+ * multiple registered callers (e.g. an API called by several frontends) and
+ * need to know which one without threading it through every function call.
+ */
+interface SovdevRequestContext {
+  client_name?: string;
+}
+
+/**
+ * AsyncLocalStorage for the request-scoped context, parallel to spanStorage
+ * above. Uses enterWith(), same as sovdev_start_span(), not run() -- so a
+ * single call at the top of request handling (e.g. in middleware) is enough,
+ * with no wrapping callback required.
+ */
+const requestContextStorage = new AsyncLocalStorage<SovdevRequestContext>();
+
+// =============================================================================
 // TYPE DEFINITIONS
 // =============================================================================
 
@@ -116,6 +138,7 @@ interface structured_log_entry {
   service_name: string; // Service identifier
   service_version: string; // Service version
   peer_service: string; // Target system/service
+  client_name?: string; // Identifier of the calling client/frontend, set via sovdev_set_context() -- optional, absent unless set
 
   function_name: string;
   message: string;
@@ -177,6 +200,12 @@ class open_telemetry_winston_transport extends TransportStream {
         function_name: info.function_name,
         timestamp: info.timestamp,
       };
+
+      // Add client_name if set via sovdev_set_context() -- optional, only
+      // present for services that serve multiple registered callers
+      if (info.client_name) {
+        attributes.client_name = info.client_name;
+      }
 
       // Add correlation fields (snake_case for consistency)
       if (info.trace_id) {
@@ -521,6 +550,14 @@ class internal_sovdev_logger {
           // Extract span ID for operation-level correlation
           log_entry.span_id = span_context.spanId;
         }
+      }
+
+      // Extract client_name from request-scoped context (stored in
+      // AsyncLocalStorage), set via sovdev_set_context(). Absent unless the
+      // caller explicitly set it -- no fallback/default the way trace_id has.
+      const request_context = requestContextStorage.getStore();
+      if (request_context?.client_name) {
+        log_entry.client_name = request_context.client_name;
       }
 
       // Emit metrics automatically (zero developer effort)
@@ -1670,8 +1707,31 @@ export function sovdev_end_span(span: Span, error?: Error): void {
   }
 }
 
+/**
+ * Sets request-scoped context (currently just client_name) inherited by every
+ * sovdev_log() call in the same async chain, without re-passing it at each
+ * call site. For services that serve multiple registered callers (e.g. an
+ * API called by several frontends) and need to know which one.
+ *
+ * Call once per request (e.g. in auth middleware, after resolving the
+ * caller's identity), before any sovdev_log() calls that should carry it.
+ * Each call replaces the entire stored context -- it does not merge with
+ * a previous call.
+ *
+ * Registering callers (name <-> API key) is the caller's own application
+ * logic, not this library's concern -- pass in the already-resolved
+ * client_name, never a raw credential.
+ */
+export function sovdev_set_context(context: SovdevRequestContext): void {
+  // enterWith() sets the value for the current execution context and all
+  // subsequent async operations -- same pattern as sovdev_start_span()'s use
+  // of spanStorage.enterWith(), so a single call is enough with no wrapping
+  // callback required.
+  requestContextStorage.enterWith(context);
+}
+
 // Export types for TypeScript consumers
-export type { sovdev_log_level, structured_log_entry };
+export type { sovdev_log_level, structured_log_entry, SovdevRequestContext };
 
 /**
  * ARCHITECTURE SUMMARY:
