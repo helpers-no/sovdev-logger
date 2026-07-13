@@ -21,7 +21,21 @@ description: "How to release a new version of sovdev-logger to npm."
    Confirm the version number and file list look right (should be `dist/`, `README.md`, `LICENSE` per the `"files"` field in `package.json` — nothing else).
 3. **Run the conformance check** if the change touches `src/logger.ts` at all — `compare-with-master.sh typescript` (see [Testing backends](../testing/index.md)) — before publishing a behavioral change.
 
-## Publish
+## Publish (recommended: GitHub Actions, no personal OTP needed)
+
+As of `PLAN-npm-trusted-publishing.md` (2026-07-13), publishing runs through `.github/workflows/publish.yml` via npm's Trusted Publishing (OIDC) — no npm token stored anywhere, no personal 2FA code needed for a routine release, and it generates a real, verifiable provenance attestation as a side effect.
+
+```bash
+gh workflow run publish.yml --repo helpers-no/sovdev-logger
+```
+
+This publishes whatever version is currently in `typescript/package.json` on `main` — bump the version (see "Before you publish" above) and merge that first, then dispatch. Confirmed working end-to-end for `1.0.1`'s real first publish: build → lint → metadata check → `npm publish --access public --provenance`, verified afterward against the live registry (`npm view sovdev-logger version`, and `npm view sovdev-logger@<version> --json`'s `dist.attestations` showing a real SLSA provenance attestation with its own Sigstore transparency-log entry).
+
+**One-time setup**, already done for `sovdev-logger`: a Trusted Publisher is configured on `npmjs.com/package/sovdev-logger/access` — GitHub org `helpers-no`, repo `sovdev-logger`, workflow filename `publish.yml` (exact, case-sensitive), no environment name, `npm publish` allowed. If this package's identity or workflow filename ever changes, that configuration needs updating to match — no CLI/API path exists for it, it's web-UI only.
+
+## Publish manually (fallback)
+
+The old process still works — npm's own settings page for `sovdev-logger` confirms manual/token-based publishing coexists with Trusted Publishing, it isn't disabled by it. Use this if GitHub Actions is unavailable, or for anything the workflow doesn't cover.
 
 `npm publish`/`npm login` both need a real interactive terminal (for OTP/browser-based login) — run these yourself in a real shell, not via a one-shot non-interactive command. **Corrected 2026-07-13**: this doc previously claimed the host Mac has no `npm` and required running via `dct-exec bash` inside the DevContainer — that's stale; `npm login`/`npm publish` both ran directly from the host terminal without issue.
 

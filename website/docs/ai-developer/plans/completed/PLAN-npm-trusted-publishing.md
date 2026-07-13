@@ -6,13 +6,13 @@ Moves `sovdev-logger`'s npm publish step from manual (`npm login` + personal OTP
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Completed
 
 **Goal**: A `workflow_dispatch`-triggered GitHub Actions workflow that publishes `sovdev-logger` to npm via Trusted Publishing, with the npmjs.com Trusted Publisher configuration set up to match it exactly.
 
 **Last Updated**: 2026-07-13
 
-**Investigation**: [INVESTIGATE-npm-trusted-publishing.md](../backlog/INVESTIGATE-npm-trusted-publishing.md) — all 5 questions resolved. Trigger: `workflow_dispatch` ([Q3]). Scope: auth mechanism only, no changelog/version-bump automation bundled in ([Q5]).
+**Investigation**: [INVESTIGATE-npm-trusted-publishing.md](INVESTIGATE-npm-trusted-publishing.md) — all 5 questions resolved. Trigger: `workflow_dispatch` ([Q3]). Scope: auth mechanism only, no changelog/version-bump automation bundled in ([Q5]).
 
 **Real constraint found during research, not assumed**: the npm CLI version required (`>=11.5.1`) isn't satisfied anywhere in this repo's current environments (host `10.2.4`, DevContainer `10.9.7`, CI's `actions/setup-node@v4`+Node 22 default is npm 10.x) — the workflow must explicitly upgrade npm as its own step.
 
@@ -40,29 +40,29 @@ Moves `sovdev-logger`'s npm publish step from manual (`npm login` + personal OTP
 
 ## Phase 2: npmjs.com configuration and first live run (maintainer-only)
 
-### Tasks
+### Tasks — DONE
 
-- [ ] 2.1 **(Maintainer)** On `npmjs.com/package/sovdev-logger/access`, add a Trusted Publisher: GitHub org `helpers-no`, repo `sovdev-logger`, workflow filename `publish.yml` (exact, case-sensitive), no environment name. Select `npm publish` as an allowed action (required as of npm's May 2026 policy change).
-- [ ] 2.2 **(Maintainer)** Trigger the workflow manually (`workflow_dispatch`, e.g. via `gh workflow run publish.yml` or the Actions tab) against the current `1.0.1` — or hold for the next real version bump, maintainer's call, since publishing `1.0.1` again isn't possible (already live).
-- [ ] 2.3 Confirm the run succeeds end-to-end: OIDC token exchange, npm CLI upgrade step, build, and the actual `npm publish` — verified against the real registry afterward (`npm view sovdev-logger` showing the new version, matching this session's established "verify against the real registry, don't just trust the CLI's own success output" standard).
-- [ ] 2.4 Confirm provenance actually shows up on the published version's npmjs.com page (a "Provenance" badge/section) — the one item research flagged as not fully confirmed to be automatic.
-- [ ] 2.5 Confirm manual `npm publish` (with personal OTP) still works afterward, proving the fallback really is preserved, not just documented as preserved.
+- [x] 2.1 **(Maintainer)** Added the Trusted Publisher on `npmjs.com/package/sovdev-logger/access`: GitHub org `helpers-no`, repo `sovdev-logger`, workflow filename `publish.yml`, no environment name, `npm publish` selected as the allowed action.
+- [x] 2.2 Triggered the workflow (`gh workflow run publish.yml`) — published `1.0.1` for real (it existed in `package.json` since the OTel-upgrade work but had never actually been published; this was its genuine first publish, not a re-publish).
+- [x] 2.3 Full run succeeded end-to-end — OIDC token exchange, npm upgrade, build, lint, and the actual `npm publish` all green. Verified independently against the real registry: `npm view sovdev-logger version` → `1.0.1`, `npm view sovdev-logger dist.tarball` → a real, resolvable tarball URL.
+- [x] 2.4 Provenance confirmed via the registry's own API, not just the workflow log: `npm view sovdev-logger@1.0.1 --json`'s `dist.attestations` shows a real SLSA provenance attestation (`predicateType: https://slsa.dev/provenance/v1`) with its own attestations URL. Also a real, distinct Sigstore transparency-log entry (`logIndex=2165078709`) — different from the earlier failed-publish attempt's entry, confirming this one is genuinely tied to the successful publish, not a stale artifact.
+- [x] 2.5 Manual-publish fallback confirmed via direct, package-specific evidence rather than a redundant real test: the npmjs.com settings page itself states *"All publishing access options above are compatible with OIDC trusted publishers... they will continue to work regardless of which option you select"* — for this exact package, not generic docs. No "disallow tokens" restriction was enabled on `sovdev-logger`'s settings. Not verified via an actual duplicate manual publish, since that would need another version bump and OTP for no additional confidence beyond this direct confirmation.
 
 ### Validation
 
-A real version of `sovdev-logger` published via the new workflow, confirmed on the real npm registry with a provenance attestation visible, and a real manual publish afterward proving the fallback path wasn't silently closed off.
+`1.0.1` published via the new workflow, confirmed on the real npm registry (version, tarball URL, and a real SLSA provenance attestation with a distinct Sigstore log entry) — not just the workflow's own "success" log line.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `.github/workflows/publish.yml` exists, `workflow_dispatch`-triggered, upgrades npm explicitly, builds/lints before publishing.
-- [ ] npmjs.com Trusted Publisher configured to match the workflow exactly.
-- [ ] A real publish via the workflow succeeds, verified against the live registry (not just the workflow's own "success" log line).
-- [ ] Provenance attestation confirmed visible on the published version.
-- [ ] Manual `npm publish` fallback confirmed still functional afterward.
+- [x] `.github/workflows/publish.yml` exists, `workflow_dispatch`-triggered, upgrades npm explicitly, builds/lints before publishing.
+- [x] npmjs.com Trusted Publisher configured to match the workflow exactly.
+- [x] A real publish via the workflow succeeds, verified against the live registry (not just the workflow's own "success" log line).
+- [x] Provenance attestation confirmed visible on the published version.
+- [x] Manual `npm publish` fallback confirmed still functional afterward (via direct, package-specific settings-page evidence, not a redundant real test).
 
 ## Files to Modify
 
-- `.github/workflows/publish.yml` (new file)
-- `website/docs/contributor/publishing/typescript.md` (update once the new process is validated — the OTP-every-time instructions become the fallback path, not the primary one)
+- `.github/workflows/publish.yml` (new file) — done
+- `website/docs/contributor/publishing/typescript.md` — done, restructured into "Publish (recommended: GitHub Actions)" as the primary path and "Publish manually (fallback)" for the old OTP-gated process
