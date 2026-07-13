@@ -31,7 +31,21 @@ gh workflow run publish.yml --repo helpers-no/sovdev-logger
 
 This publishes whatever version is currently in `typescript/package.json` on `main` — bump the version (see "Before you publish" above) and merge that first, then dispatch. Confirmed working end-to-end for `1.0.1`'s real first publish: build → lint → metadata check → `npm publish --access public --provenance`, verified afterward against the live registry (`npm view sovdev-logger version`, and `npm view sovdev-logger@<version> --json`'s `dist.attestations` showing a real SLSA provenance attestation with its own Sigstore transparency-log entry).
 
-**One-time setup**, already done for `sovdev-logger`: a Trusted Publisher is configured on `npmjs.com/package/sovdev-logger/access` — GitHub org `helpers-no`, repo `sovdev-logger`, workflow filename `publish.yml` (exact, case-sensitive), no environment name, `npm publish` allowed. If this package's identity or workflow filename ever changes, that configuration needs updating to match — no CLI/API path exists for it, it's web-UI only.
+### One-time setup: configuring the Trusted Publisher on npmjs.com
+
+Already done for `sovdev-logger` — only needed again if the package's identity or workflow filename ever changes, or when setting this up for a future package (e.g. once Python publishes). **No CLI/API path exists for this** — confirmed directly while setting it up — it's web-UI only, and only someone with publish access to the npm package can do it.
+
+1. Go to `npmjs.com/package/<package-name>/access` (not the general packages list — the package's own settings page).
+2. Find the **"Trusted Publisher"** section and select **GitHub Actions**.
+3. Fill in exactly:
+   - **Organization or user**: `helpers-no`
+   - **Repository**: `sovdev-logger`
+   - **Workflow filename**: `publish.yml` — just the filename, not the full `.github/workflows/` path
+   - **Environment name**: leave blank (this workflow doesn't use a GitHub Environment)
+4. Under **"Allowed actions"**, check **`npm publish`** — required as of npm's May 2026 policy change; the form won't save with zero actions selected.
+5. Click **"Set up connection"**.
+
+That's the entire setup — confirmed live end-to-end for `sovdev-logger@1.0.1`'s first real publish through this mechanism. Each package can only have **one** Trusted Publisher configured at a time; re-running steps 2–5 with different values replaces the existing one rather than adding a second.
 
 ## Publish manually (fallback)
 
