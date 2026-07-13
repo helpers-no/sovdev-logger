@@ -86,7 +86,7 @@ Before touching versions, add a small, fast, isolated test that specifically con
 
 ## Recommendation
 
-**[Q6]** Leaning toward **Option B** (staged: `core` first, then the `0.x` pair together) **plus** a lightweight version of **Option C** — not a whole new test file necessarily, but at minimum a manual check ("does a Winston `logger.info()` call still produce an auto-instrumented log record with trace context attached?") run once per bump, so a regression in auto-instrumentation specifically doesn't hide behind a green E2E suite that happens to not exercise that exact path. This is a maintainer call on how much process the 4 alerts (none currently exploitable in the one deployment we've heard from) warrant — Option A is defensible if the maintainer is comfortable treating the existing E2E suite as sufficient evidence.
+~~**[Q6]** Leaning toward **Option B** (staged: `core` first, then the `0.x` pair together) **plus** a lightweight version of **Option C**~~ — **[Q6] decided 2026-07-13: Option A.** Maintainer chose the one-big-jump approach over staging, comfortable treating the existing E2E suite (real OTLP delivery against both UIS and Grafana Cloud) as sufficient evidence rather than isolating `core`'s bump first. Left struck through, not deleted, per this repo's convention of preserving what was actually recommended vs. decided.
 
 Fold **[Q3]** (making `uuid` a direct dependency) into the same PR as the `core` bump — it's a one-line `package.json` change with no version-compatibility risk of its own, not worth a separate release cycle.
 
@@ -94,6 +94,6 @@ Fold **[Q3]** (making `uuid` a direct dependency) into the same PR as the `core`
 
 ## Next Steps
 
-- [ ] Maintainer decides bump strategy (**[Q6]**: Option A, B, or C)
-- [ ] Read `@opentelemetry/core`'s 1→2 major version migration notes before starting (**[Q2]**)
-- [ ] Create `PLAN-otel-dependency-upgrade.md` with the chosen approach and explicit before/after version numbers
+- [x] Maintainer decides bump strategy (**[Q6]**: Option A) — decided 2026-07-13
+- [x] Read `@opentelemetry/core`'s 1→2 major version migration notes before starting (**[Q2]**) — found two real breaking changes directly relevant to `src/logger.ts`, documented in the plan's own "Real breaking changes found" section rather than repeated here
+- [x] Create [`PLAN-otel-dependency-upgrade.md`](../active/PLAN-otel-dependency-upgrade.md) with the chosen approach and explicit before/after version numbers
