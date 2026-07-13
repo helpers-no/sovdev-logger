@@ -1,18 +1,20 @@
 # Investigate: Updating every software component this project depends on
 
-Every dependency category in this repo has drifted from current — not just the OpenTelemetry packages already covered in [`INVESTIGATE-otel-dependency-upgrade.md`](INVESTIGATE-otel-dependency-upgrade.md). This investigation checks every category directly (not from memory or a Dependabot count alone) and lays out what's actually outdated, how risky each gap is, and in what order it's worth tackling them.
+Every dependency category in this repo has drifted from current — not just the OpenTelemetry packages already covered in [`INVESTIGATE-otel-dependency-upgrade.md`](../completed/INVESTIGATE-otel-dependency-upgrade.md). This investigation checks every category directly (not from memory or a Dependabot count alone) and lays out what's actually outdated, how risky each gap is, and in what order it's worth tackling them.
 
 > **IMPLEMENTATION RULES:** Before implementing this plan, read and follow:
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Backlog — OTel (the highest-priority item) shipped, the rest still open
 
 **Goal**: A prioritized, evidence-based picture of every outdated software component across this repo — TypeScript runtime deps, TypeScript dev tooling, the Docusaurus site, the small tooling packages under `tools/`, Python, GitHub Actions, and the DevContainer image — so upgrade work can be sequenced deliberately instead of guessed at.
 
 **Last Updated**: 2026-07-13
 
 **Relationship to `INVESTIGATE-otel-dependency-upgrade.md`**: that investigation already covers the OpenTelemetry/`uuid` piece in depth (staged-bump options, breaking-change risk, test plan) — not duplicated here. This investigation is the parent sweep across everything else; treat the OTel one as this sweep's most urgent, already-scoped item.
+
+**Update 2026-07-13**: OTel shipped — [`PLAN-otel-dependency-upgrade.md`](../completed/PLAN-otel-dependency-upgrade.md), 49 vulnerabilities → 0, validated end-to-end against both real backends. Per this doc's own Option B recommendation, GitHub Actions/Docusaurus/dev-tooling consistency are next, in decreasing risk order — none started yet.
 
 ---
 
@@ -31,7 +33,7 @@ Every dependency category in this repo has drifted from current — not just the
 | `winston` | `3.18.3` | `3.19.0` | minor |
 | `uuid` (transitive only — see below) | `9.0.1` | `14.0.1` | direct-dependency gap, not just version |
 
-**Re-confirmed today, not just cited from the older investigation**: `npm audit --omit=dev` reports **49 vulnerabilities (45 moderate, 3 high, 1 critical)** in the current dependency tree — the 1 critical is arbitrary code execution in `protobufjs`, a transitive dependency of the OTel exporter packages. Full detail, staged-bump options, and breaking-change analysis already exist in [`INVESTIGATE-otel-dependency-upgrade.md`](INVESTIGATE-otel-dependency-upgrade.md) — this is the single highest-priority item in this whole sweep.
+**Re-confirmed today, not just cited from the older investigation**: `npm audit --omit=dev` reports **49 vulnerabilities (45 moderate, 3 high, 1 critical)** in the current dependency tree — the 1 critical is arbitrary code execution in `protobufjs`, a transitive dependency of the OTel exporter packages. Full detail, staged-bump options, and breaking-change analysis already exist in [`INVESTIGATE-otel-dependency-upgrade.md`](../completed/INVESTIGATE-otel-dependency-upgrade.md) — this is the single highest-priority item in this whole sweep.
 
 ### 2. TypeScript dev-only tooling (`typescript/package.json` devDependencies, and the same pattern repeats in `website/`, `tools/dashboards/`, `tools/validation/`, `typescript/test/e2e/company-lookup/`)
 

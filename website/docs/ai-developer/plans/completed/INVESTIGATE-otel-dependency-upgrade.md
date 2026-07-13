@@ -6,11 +6,13 @@ Explores how to safely close the gap between sovdev-logger's currently pinned Op
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Completed
 
 **Goal**: Determine a safe upgrade path (and testing strategy) for `@opentelemetry/sdk-node`, `@opentelemetry/auto-instrumentations-node`, `@opentelemetry/core`, and `uuid`, closing the Dependabot alerts without silently breaking auto-instrumentation, exporter configuration, or the OTLP wire format for existing integrators.
 
 **Last Updated**: 2026-07-13
+
+**Shipped**: [`PLAN-otel-dependency-upgrade.md`](PLAN-otel-dependency-upgrade.md) — Option A (one big jump), all 49 vulnerabilities resolved (including the critical `protobufjs` one), validated end-to-end against both real backends. Moved to `completed/` since this was the investigation's only child plan.
 
 **Re-checked 2026-07-13 — the "4 alerts" count below is stale, real number is much higher**: `gh api repos/norwegianredcross/sovdev-logger/dependabot/alerts` and a local `npm audit --omit=dev` on `typescript/` both show **49 open vulnerabilities (45 moderate, 3 high, 1 critical)**, not 4. The original 4 only counted direct dependencies (`@opentelemetry/sdk-node`, `@opentelemetry/auto-instrumentations-node`, `@opentelemetry/core`, `uuid`) — it never counted the transitive chain underneath them: multiple `protobufjs` advisories (including the 1 critical — arbitrary code execution), `@grpc/grpc-js`, `js-yaml`, `picomatch`. The upgrade options below (A/B/C) and the core breaking-change risk analysis still apply, but any `PLAN-*.md` drafted from this should scope against the real count, not the number in the paragraph immediately below.
 
@@ -96,4 +98,4 @@ Fold **[Q3]** (making `uuid` a direct dependency) into the same PR as the `core`
 
 - [x] Maintainer decides bump strategy (**[Q6]**: Option A) — decided 2026-07-13
 - [x] Read `@opentelemetry/core`'s 1→2 major version migration notes before starting (**[Q2]**) — found two real breaking changes directly relevant to `src/logger.ts`, documented in the plan's own "Real breaking changes found" section rather than repeated here
-- [x] Create [`PLAN-otel-dependency-upgrade.md`](../active/PLAN-otel-dependency-upgrade.md) with the chosen approach and explicit before/after version numbers
+- [x] Create [`PLAN-otel-dependency-upgrade.md`](PLAN-otel-dependency-upgrade.md) with the chosen approach and explicit before/after version numbers

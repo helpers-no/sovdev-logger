@@ -12,7 +12,7 @@ Closes the real gap `INVESTIGATE-otel-dependency-upgrade.md` found (49 vulnerabi
 
 **Last Updated**: 2026-07-13
 
-**Investigation**: [INVESTIGATE-otel-dependency-upgrade.md](../backlog/INVESTIGATE-otel-dependency-upgrade.md) — [Q6] resolved: Option A (one big jump), not the staged/smoke-test approach originally leaned toward. [Q3] (make `uuid` a direct dependency) folded into this same plan per the investigation's own recommendation.
+**Investigation**: [INVESTIGATE-otel-dependency-upgrade.md](INVESTIGATE-otel-dependency-upgrade.md) — [Q6] resolved: Option A (one big jump), not the staged/smoke-test approach originally leaned toward. [Q3] (make `uuid` a direct dependency) folded into this same plan per the investigation's own recommendation.
 
 **Real breaking changes found before writing this plan** (not discovered mid-implementation) — checked by installing the actual latest packages in a scratch directory and reading their real `.d.ts` files, not just the changelog prose:
 
