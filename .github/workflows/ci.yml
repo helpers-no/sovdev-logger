@@ -79,7 +79,7 @@ jobs:
           npm install ./$PACKAGE
 
           # Verify import works
-          node -e "const logger = require('@terchris/sovdev-logger'); console.log('✅ Package imports successfully');"
+          node -e "const logger = require('sovdev-logger'); console.log('✅ Package imports successfully');"
 
       - name: Upload build artifacts
         if: matrix.node-version == 22
