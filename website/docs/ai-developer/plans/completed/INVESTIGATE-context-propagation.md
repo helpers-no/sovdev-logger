@@ -17,7 +17,7 @@ Explores how to let integrators set a cross-cutting field (which frontend/client
 
 ## Source
 
-[GitHub issue #23](https://github.com/helpers-no/sovdev-logger/issues/23) on `helpers-no/sovdev-logger`, filed by the ollacrm integration team after running `@terchris/sovdev-logger@1.0.2` in production on Cloud Run for a few weeks, followed by a maintainer discussion that grounded the abstract ask in ollacrm's real architecture (see next section). Two of the issue's five findings feed this investigation:
+[GitHub issue #23](https://github.com/helpers-no/sovdev-logger-old-fork/issues/23) on `helpers-no/sovdev-logger`, filed by the ollacrm integration team after running `@terchris/sovdev-logger@1.0.2` in production on Cloud Run for a few weeks, followed by a maintainer discussion that grounded the abstract ask in ollacrm's real architecture (see next section). Two of the issue's five findings feed this investigation:
 
 - **Feature request** — no ambient/"request-scoped" way to set a value once (e.g. per HTTP request) and have it inherit into every `sovdev_log` call downstream. Concrete ask: `sovdev_set_context({...})`, called once per request/middleware, backed by `AsyncLocalStorage` or OTel's own `context`/`baggage` primitives.
 - **Bug** — `sovdev_generate_trace_id` is documented in `README.md`'s "Using traceId to Link Operations" section but isn't exported. The integrator worked around it with `sovdev_start_span`/`sovdev_end_span` (which do exist and work).

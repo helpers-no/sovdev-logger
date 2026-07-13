@@ -18,7 +18,7 @@ Explores how to safely close the gap between sovdev-logger's currently pinned Op
 
 ## Source
 
-[GitHub issue #23](https://github.com/helpers-no/sovdev-logger/issues/23) on `helpers-no/sovdev-logger`, filed by the ollacrm integration team running `1.0.2` in production. Their own risk assessment: none of the 4 alerts have an exploitable path in *their* deployment (the high-severity ones require the Prometheus pull-exporter, unused; the moderate ones require inbound W3C `baggage` header extraction or a direct `uuid.v3/v5/v6` call, neither of which they do) — but they were explicit this is "deployment-specific luck, not something the package should rely on integrators to verify individually."
+[GitHub issue #23](https://github.com/helpers-no/sovdev-logger-old-fork/issues/23) on `helpers-no/sovdev-logger`, filed by the ollacrm integration team running `1.0.2` in production. Their own risk assessment: none of the 4 alerts have an exploitable path in *their* deployment (the high-severity ones require the Prometheus pull-exporter, unused; the moderate ones require inbound W3C `baggage` header extraction or a direct `uuid.v3/v5/v6` call, neither of which they do) — but they were explicit this is "deployment-specific luck, not something the package should rely on integrators to verify individually."
 
 ---
 
