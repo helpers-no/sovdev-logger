@@ -6,7 +6,7 @@ Spun off from [`INVESTIGATE-library-best-practices.md`](../completed/INVESTIGATE
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog — blockers resolved, [Q3]/[Q5] still need a maintainer decision
+## Status: Backlog — all questions resolved, ready for a PLAN
 
 **Goal**: Decide whether to move to Trusted Publishing, and if so, design the GitHub Actions release workflow and the exact npmjs.com configuration.
 
@@ -76,15 +76,15 @@ A smaller, in-between step: manual `npm publish --provenance` still uses a perso
 
 1. **[Q1]** — **Resolved.** Trusted Publishing works retroactively on an already-manually-published package like `sovdev-logger` — confirmed this is the standard, documented path, not an edge case. See `npm/cli` issue #8544 above.
 2. **[Q2]** — **Resolved.** Manual `npm publish` (with personal OTP) keeps working as a fallback after configuring a Trusted Publisher — confirmed directly from npm's own docs, not inferred.
-3. **[Q3]** What should trigger the publish workflow — a GitHub Release being created, a version tag push (`v*`), or `workflow_dispatch` (manual button, closest to today's process but still removing the OTP step)? Each implies a different amount of process change beyond just the auth mechanism.
+3. **[Q3]** — **Resolved.** `workflow_dispatch` (manual button) — closest to today's process, least process change, still removes the OTP step.
 4. **[Q4]** — **Resolved.** No, the current npm CLI version satisfies `>=11.5.1` nowhere in this repo (host `10.2.4`, DevContainer `10.9.7`, CI's `actions/setup-node@v4`+Node 22 default is npm 10.x) — the workflow needs an explicit `npm install -g npm@latest` step.
-5. **[Q5]** Should this also cover a `CHANGELOG.md`/version-bump automation step (e.g. `changesets` or `semantic-release`), given a real publish workflow is being built anyway — or keep this scoped strictly to the auth mechanism and leave versioning as-is (manual `package.json` bumps, as today)?
+5. **[Q5]** — **Resolved.** No — keep this scoped strictly to the auth mechanism. Manual `package.json` version bumps stay as-is; `changesets`/`semantic-release` stays a separate, smaller-scoped future idea rather than bundled here.
 
 ## Next Steps
 
 - [x] Answer [Q1]/[Q2]/[Q4] directly — all resolved 2026-07-13 via npm's own docs and a tracked `npm/cli` issue, not inference
-- [ ] Maintainer answers [Q3] and [Q5]
-- [ ] Create `PLAN-npm-trusted-publishing.md` once the above are resolved
+- [x] Maintainer answers [Q3] and [Q5] — resolved 2026-07-13
+- [x] Create [`PLAN-npm-trusted-publishing.md`](../active/PLAN-npm-trusted-publishing.md)
 
 ## Sources checked
 
