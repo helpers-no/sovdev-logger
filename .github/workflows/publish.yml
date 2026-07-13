@@ -1,0 +1,73 @@
+name: Publish to npm
+
+# Manual trigger only -- publishing stays a deliberate, maintainer-initiated
+# action, same as today's manual `npm publish`, just without the personal
+# OTP: this workflow authenticates via npm Trusted Publishing (OIDC), not a
+# stored token or a human's 2FA. See PLAN-npm-trusted-publishing.md.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for npm's OIDC token exchange
+
+defaults:
+  run:
+    working-directory: ./typescript
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: typescript/package-lock.json
+
+      # npm Trusted Publishing requires npm CLI >=11.5.1. Confirmed directly
+      # (2026-07-13): this repo's environments don't satisfy that anywhere
+      # today -- host Mac 10.2.4, DevContainer 10.9.7, and this exact
+      # actions/setup-node@v6 + Node 22 combination's own default is npm
+      # 10.x. Not optional.
+      - name: Upgrade npm
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Verify package.json metadata
+        run: |
+          echo "✅ Verifying package.json metadata..."
+          node -e "
+          const pkg = require('./package.json');
+          const required = ['name', 'version', 'description', 'main', 'types', 'license', 'repository'];
+          const missing = required.filter(field => !pkg[field]);
+          if (missing.length > 0) {
+            console.error('❌ Missing required fields:', missing);
+            process.exit(1);
+          }
+          console.log('✅ All required package.json fields present, publishing version', pkg.version);
+          "
+
+      # --access public: a no-op for the already-unscoped `sovdev-logger`
+      # (unscoped packages are always public), kept for clarity and for the
+      # day this or a future package is scoped again.
+      # --provenance: npm's docs describe this as automatic under Trusted
+      # Publishing, but at least one real-world report found it wasn't in
+      # practice -- passed explicitly rather than relying on that claim.
+      - name: Publish to npm
+        run: npm publish --access public --provenance
