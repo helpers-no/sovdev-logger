@@ -24,18 +24,19 @@ count(count by (client_name) (count_over_time({service_name=~"$service_name"} | 
 
 ---
 
-## Phase 1: Add the panel to both dashboard files
+## Phase 1: Add the panel to both dashboard files — DONE
 
 ### Tasks
 
-- [ ] 1.1 In `sovdev-logger-overview.json`: add a new `stat` panel "Active Clients" at `gridPos: {h:8, w:6, x:6, y:0}`, Loki datasource `uid: loki`, the query above. Change "Total Operations (cumulative)" from `{h:8, w:18, x:6, y:0}` to `{h:8, w:12, x:12, y:0}` — same row, narrower, shifted right to make room. No other panel's `gridPos` changes.
-- [ ] 1.2 Same edit in `sovdev-logger-overview-grafana-cloud.json`, with Loki datasource `uid: grafanacloud-logs` instead.
-- [ ] 1.3 New panel's `id` — use the next free integer in each file (checked directly, not guessed, since panel IDs must be unique within a dashboard).
-- [ ] 1.4 Match "Active Integrations"' exact `fieldConfig`/`options` shape (thresholds, `colorMode`, `graphMode`, etc.) for visual consistency — copy its structure, not a fresh design.
+- [x] 1.1 Added "Active Clients" to `sovdev-logger-overview.json` at `gridPos: {h:8, w:6, x:6, y:0}`, Loki datasource `uid: loki`, the query above (`queryType: instant`, matching a stat panel's single-current-value semantics — same pattern used to test the query directly earlier via the Loki HTTP API's instant `/query` endpoint, not the ranged `/query_range`). "Total Operations (cumulative)" changed to `{h:8, w:12, x:12, y:0}` — no other panel's `gridPos` touched.
+- [x] 1.2 Same edit in `sovdev-logger-overview-grafana-cloud.json`, with Loki datasource `uid: grafanacloud-logs`.
+- [x] 1.3 New panel `id: 13` in both files — checked directly (`max(existing ids) + 1`), not guessed; both files happened to already have identical ID sets (`[1,2,3,4,5,6,11,12]`), so `13` is correct in both.
+- [x] 1.4 Matched "Active Integrations"' exact `fieldConfig`/`options` shape (same thresholds, `colorMode`, `graphMode`, `reduceOptions`) — copied its structure via a script reading the real existing panel, not hand-typed from memory.
+- [x] Also updated `tools/dashboards/README.md`'s existing panel-by-panel list (confirmed it documents panels individually before adding to it, per the parent plan's Phase 3.1 — pulled forward since it was a one-line addition to a section I was already reading).
 
 ### Validation
 
-Both JSON files remain valid JSON (`python3 -m json.tool` or equivalent) and both panels reference the correct, file-specific Loki datasource UID — not copy-pasted incorrectly across files.
+Both JSON files re-parsed successfully after the edit (`python3 -m json.tool`-equivalent check built into the edit script itself — it round-trips through `json.load`/`json.dump`, so a parse failure would have thrown before any file was written). Diff reviewed directly (`git diff`): exactly one new panel block per file plus the one `gridPos` change to "Total Operations (cumulative)" — no unrelated formatting noise, no other panel touched. Datasource UIDs confirmed correct per file (`loki` vs. `grafanacloud-logs`), not copy-pasted across files.
 
 ---
 
@@ -59,7 +60,7 @@ Screenshots or direct confirmation of the panel showing the correct number on bo
 
 ### Tasks
 
-- [ ] 3.1 Update `tools/dashboards/README.md` if it documents panels individually (check first — don't add documentation structure that doesn't already exist there).
+- [x] 3.1 Done in Phase 1 — `tools/dashboards/README.md` does document panels individually (a "Metrics" list), added "Active Clients" to it there rather than deferring.
 - [ ] 3.2 Confirm no regression to any existing panel — full dashboard visual check, not just the new one.
 
 ### Validation
