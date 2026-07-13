@@ -17,10 +17,10 @@ description: "A real, worked example of onboarding a new system onto sovdev-logg
 
 ```bash
 cd services/api
-npm install @terchris/sovdev-logger
+npm install sovdev-logger
 ```
 
-The published package (`@terchris/sovdev-logger@1.0.2` or later) includes both the OTLP header spec-compliance fix and `sovdev_shutdown()` (used throughout this guide) — `1.0.1` has the header fix but not `sovdev_shutdown()`, so it's not enough on its own. `npm install` picks up the latest automatically; just confirm the installed version is `1.0.2+`.
+**Renamed from `@terchris/sovdev-logger`** — same code, unscoped name, starting fresh at `1.0.0`. If ollacrm is still on the old scoped package, switch to this one; `@terchris/sovdev-logger` is deprecated and won't receive further updates.
 
 ## 2. Configuration, matched to how this service already deploys
 
@@ -57,7 +57,7 @@ Every example in sovdev-logger's TypeScript README is a short script: call `sovd
 Concretely, in `services/api/src/server.ts`:
 
 ```typescript
-import { sovdev_initialize, sovdev_shutdown } from "@terchris/sovdev-logger";
+import { sovdev_initialize, sovdev_shutdown } from "sovdev-logger";
 
 sovdev_initialize("ollacrm-api", undefined, {
   SHEETS: "google-sheets",

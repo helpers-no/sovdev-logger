@@ -28,7 +28,7 @@ Explores how to safely close the gap between sovdev-logger's currently pinned Op
 2. **[Q2]** `@opentelemetry/core` is jumping from an installed `1.28.0`/`1.30.1` (transitive, per the issue) to a `2.x` major version — what actually changed across that major bump, and does anything in `src/logger.ts` depend on `core`'s API surface directly (vs. only transitively through `sdk-node`)?
 3. **[Q3]** Should `uuid` become a direct dependency (it's currently only a transitive one, despite `src/logger.ts` importing `uuidv4` from it directly — see Current State) as part of this same upgrade, or as a separate, smaller fix?
 4. **[Q4]** What's the actual test plan for "this upgrade didn't break anything" — the existing E2E tests (`typescript/test/e2e/company-lookup/`) already exercise real OTLP delivery against both UIS and Grafana Cloud; is running those sufficient, or does the auto-instrumentation change specifically need its own dedicated check (e.g. does Winston auto-instrumentation still patch correctly under the new `auto-instrumentations-node` version)?
-5. **[Q5]** Does this get released as a patch, minor, or major version of `@terchris/sovdev-logger` itself — given transitive dependency bumps alone don't usually need a major bump, but a bundle-size or behavior change from `auto-instrumentations-node` might?
+5. **[Q5]** Does this get released as a patch, minor, or major version of `sovdev-logger` itself — given transitive dependency bumps alone don't usually need a major bump, but a bundle-size or behavior change from `auto-instrumentations-node` might?
 
 ---
 

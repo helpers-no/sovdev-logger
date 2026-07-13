@@ -49,7 +49,7 @@ User confirms the operator doc reads correctly as a standalone infra runbook, wi
 ### Tasks
 
 - [ ] 2.1 Create `website/docs/using/onboarding/developer-quickstart.md` — starts from "you were handed a 6-line `.env` snippet by whoever operates your project's Grafana Cloud connection" (no mention of Access Policies, OTLP Instance IDs, or the portal at all).
-- [ ] 2.2 Cover: `npm install @terchris/sovdev-logger`, where the secret goes (deploy pipeline's secret manager vs. plain env vars — reuse the distinction already spelled out in `ollacrm/index.md` section 2), the three function calls (`sovdev_initialize` / `sovdev_log` / `sovdev_shutdown`), and confirming it works (today: open the shared dashboard and find your `service_name` — step 7 of the current doc, moved here unchanged).
+- [ ] 2.2 Cover: `npm install sovdev-logger`, where the secret goes (deploy pipeline's secret manager vs. plain env vars — reuse the distinction already spelled out in `ollacrm/index.md` section 2), the three function calls (`sovdev_initialize` / `sovdev_log` / `sovdev_shutdown`), and confirming it works (today: open the shared dashboard and find your `service_name` — step 7 of the current doc, moved here unchanged).
 - [ ] 2.3 Cross-reference `ollacrm/index.md` as "a full worked example of this quickstart" rather than duplicating its content.
 
 ### Validation

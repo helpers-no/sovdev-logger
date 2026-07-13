@@ -6,15 +6,15 @@ Both `helpers-no/sovdev-logger` (this repo) and its published npm package (`@ter
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog — Part 1 done, Part 2 still open
+## Status: Completed
 
 **Goal**: Decide (a) whether/how to sever the GitHub fork relationship so `helpers-no/sovdev-logger` stops being technically "forked from" an inactive repo, and (b) whether/how to move the npm package off the maintainer's personal account onto an org-scoped name, given npm has no in-place rename.
 
 **Last Updated**: 2026-07-13
 
-**Part 1 outcome**: maintainer rejected waiting on GitHub Support — went straight to Option C (DIY copy), executed same-day. See "What actually happened" under Part 1 below. Part 2 (npm) is untouched, still needs [Q3]–[Q5] answered.
+**Part 1 outcome**: maintainer rejected waiting on GitHub Support — went straight to Option C (DIY copy), executed same-day. **Part 2 outcome**: maintainer rejected the org-scoped Option B too, once told an npm org means an ongoing entity to maintain, not just a name — went unscoped instead, a variant this doc hadn't listed. Both parts shipped same-day; see "What actually happened" under each Part below.
 
-**Context that simplifies this**: the maintainer (`terchris` / `terje@businessmodel.io`) manages **both** `norwegianredcross` and `helpers-no` GitHub orgs, and also owns the only known external consumer of the npm package (`terchris/ollacrm`, per [`INVESTIGATE-ollacrm-onboarding.md`](../completed/INVESTIGATE-ollacrm-onboarding.md)). There is no cross-org negotiation or third-party coordination needed for either fix — every party involved is the same person. This is the cheapest this will ever be to fix; every day it stays as-is, the risk grows that a real third-party consumer starts depending on `@terchris/sovdev-logger` and turns the npm rename into an actually-breaking change for someone else.
+**Context that simplifies this**: the maintainer (`terchris` / `terje@businessmodel.io`) manages **both** `norwegianredcross` and `helpers-no` GitHub orgs, and also owns the only known external consumer of the npm package (`terchris/ollacrm`, per [`INVESTIGATE-ollacrm-onboarding.md`](INVESTIGATE-ollacrm-onboarding.md)). There is no cross-org negotiation or third-party coordination needed for either fix — every party involved is the same person. This is the cheapest this will ever be to fix; every day it stays as-is, the risk grows that a real third-party consumer starts depending on `@terchris/sovdev-logger` and turns the npm rename into an actually-breaking change for someone else.
 
 ---
 
@@ -80,21 +80,37 @@ Turned out much cheaper than this doc's own Option C estimate ("far more manual 
 
 ### Recommendation
 
-**Option B**, while the blast radius is still just one maintainer-controlled consumer. Waiting makes this strictly more expensive, never less.
+~~**Option B**, while the blast radius is still just one maintainer-controlled consumer. Waiting makes this strictly more expensive, never less.~~ **Superseded same-day**: told the maintainer directly that an npm org is a distinct entity you'd create via npmjs.com (not a new login — `@terchris` would just be its sole member) but still something to maintain going forward. Given the maintainer is solo and explicitly wants low overhead, recommended the unscoped `sovdev-logger` name instead — no org, ever. Maintainer agreed. Left struck through, not deleted, for the same reason as Part 1's superseded recommendation.
+
+### What actually happened (unscoped rename, executed 2026-07-13)
+
+1. Checked `sovdev-logger` (unscoped) for availability on the registry — free, confirmed via `npm view` 404.
+2. Updated `typescript/package.json`: `"name": "@terchris/sovdev-logger"` → `"sovdev-logger"`, `"version": "1.0.2"` → `"1.0.0"` (maintainer's call — this is the package's first release under its own identity, no prior version to stay consistent with, per [Q4]).
+3. **Found no valid npm auth in either the host or the DevContainer** — both had a stored `_authToken` in `.npmrc`, but both 401'd on `npm whoami`; a real publish attempt against the new name additionally came back `404 Not Found` on the `PUT` itself (not `401`) — npm's registry returns 404 rather than 401 for some invalid-auth cases on publish, which briefly looked like a permissions-scope issue before the simpler explanation (token just invalid) was confirmed by re-testing against the *existing* package too.
+4. Maintainer ran `npm login` interactively (browser-based) themselves — confirmed via `npm whoami` → `terchris`.
+5. `npm publish --access public` — required a live OTP from the maintainer's authenticator app each time (real 2FA, not scriptable); succeeded on `sovdev-logger@1.0.0`.
+6. **Verified against the real registry, not just the CLI's own "success" output**: `npm view sovdev-logger` (correct metadata), then a genuine `npm install sovdev-logger` into a scratch directory followed by a real `require()` of `sovdev_initialize`/`sovdev_log`/`SOVDEV_LOGLEVELS` — confirms the published tarball actually works, not just that it landed.
+7. `npm deprecate @terchris/sovdev-logger@"*" "..."` (maintainer-run, needed a fresh OTP) — verified via `npm view @terchris/sovdev-logger deprecated`, which now prints the message. Old installs keep working; nothing was unpublished.
+8. Updated every live-facing reference to the old name across the repo (root `README.md`, `typescript/README.md`, `logger.ts`/`selftest.ts`'s doc comments and runtime banner string, `using/onboarding/*`, `contributor/publishing/*`, `contributor/testing/selftest-cli.md`, `contributor/index.md`, `using/configuration.md`, plus the still-open backlog docs that describe current/future state) — left `completed/` historical PLAN/INVESTIGATE docs untouched (accurate record of what was true when shipped), and left the one captured example transcript in `selftest-cli.md` as originally printed, with a note explaining the format changed since.
+9. **Found and fixed one unrelated stale claim along the way**: `contributor/publishing/typescript.md` claimed the host Mac has no `npm` and publishing must run via `dct-exec` inside the DevContainer — directly contradicted by this exact session, where `npm login`/`npm publish` both ran from the host terminal without issue. Corrected in place.
+10. `npm run build`/`lint`/`tsc --noEmit` and the Docusaurus build all clean after every edit.
+
+**Not done**: `ollacrm`'s own `package.json` (still depends on `@terchris/sovdev-logger`) wasn't touched — that's `terchris/ollacrm`'s own repo, out of scope here, tracked as its own follow-up.
 
 ---
 
 ## Open Questions
 
-1. **[Q1]** — **Resolved, differently than recommended.** Not a GitHub Support ticket — maintainer chose Option C (DIY copy) same-day. See "What actually happened" above.
+1. **[Q1]** — **Resolved, differently than recommended.** Not a GitHub Support ticket — maintainer chose Option C (DIY copy) same-day. See Part 1's "What actually happened" above.
 2. **[Q2]** — **Deferred, no longer urgent.** Archiving `norwegianredcross/sovdev-logger` was originally tied to the fork-detach approach; since Option C never depended on it, this is now an independent, lower-priority cleanup item (Tier 5-ish) rather than a blocking question.
-3. **[Q3]** Pick the new npm scope name (Part 2, Option B) — candidates checked and available: `@helpers-no/sovdev-logger` (matches the GitHub org), `@sovdev/logger`, `sovdev-logger` (unscoped), or another name entirely.
-4. **[Q4]** Any preference on version bump strategy for the npm rename — a final `@terchris/sovdev-logger` release that's just the deprecation notice, or deprecate the current `1.0.2` as-is and never publish under that name again?
-5. **[Q5]** Timing relative to the still-open `INVESTIGATE-otel-dependency-upgrade.md` — bundle the npm rename with that dependency bump (one breaking-change release instead of two), or keep them fully independent?
+3. **[Q3]** — **Resolved, differently than recommended.** Not an org-scoped name — unscoped `sovdev-logger`, specifically to avoid ever having to create/maintain an npm org as a solo maintainer.
+4. **[Q4]** — **Resolved.** `1.0.0` — a fresh start, no relation to `@terchris/sovdev-logger`'s version sequence.
+5. **[Q5]** — **Resolved, independent.** Shipped same-day, not bundled with `INVESTIGATE-otel-dependency-upgrade.md`'s still-undecided dependency bump.
 
 ## Next Steps
 
 - [x] Part 1 (GitHub fork relationship) — shipped, see "What actually happened" above
-- [ ] Maintainer answers [Q3]–[Q5] (Part 2, npm)
-- [ ] Create `PLAN-npm-package-rename.md` once [Q3]–[Q5] are settled — covers the actual npm org creation, publish, deprecation, and updating every reference in this repo (`package.json`, README badges/install instructions, Docusaurus docs) and in `ollacrm`
+- [x] Part 2 (npm package rename) — shipped, see "What actually happened" above
 - [ ] Whenever convenient, decide whether to archive `norwegianredcross/sovdev-logger` (Q2) — no longer blocking anything
+- [ ] Separately, out of this repo's scope: migrate `terchris/ollacrm`'s own dependency from `@terchris/sovdev-logger` to `sovdev-logger`
+- [ ] Move this investigation to `completed/` — both parts (its only two threads of work) have shipped

@@ -2,12 +2,12 @@
 title: Publishing the TypeScript package
 sidebar_label: Publishing
 sidebar_position: 1
-description: "How to release a new version of @terchris/sovdev-logger to npm — must run from inside the DevContainer, not the host."
+description: "How to release a new version of sovdev-logger to npm."
 ---
 
 # Publishing the TypeScript package
 
-`@terchris/sovdev-logger` is a real, published npm package — this is the maintainer-only release process, distinct from the (unpublished) Python package. This has only been done a handful of times; write down what actually happened, not a guessed process.
+`sovdev-logger` (unscoped on npm; renamed from `@terchris/sovdev-logger` in 2026-07) is a real, published npm package — this is the maintainer-only release process, distinct from the (unpublished) Python package. This has only been done a handful of times; write down what actually happened, not a guessed process.
 
 ## Before you publish
 
@@ -21,13 +21,12 @@ description: "How to release a new version of @terchris/sovdev-logger to npm —
    Confirm the version number and file list look right (should be `dist/`, `README.md`, `LICENSE` per the `"files"` field in `package.json` — nothing else).
 3. **Run the conformance check** if the change touches `src/logger.ts` at all — `compare-with-master.sh typescript` (see [Testing backends](../testing/index.md)) — before publishing a behavioral change.
 
-## Publish — must run from inside the DevContainer, not the host
+## Publish
 
-The host Mac has no `npm` installed, and `npm publish`/`npm login` both need a real interactive terminal (for OTP/browser-based login) — run this via `dct-exec bash` (an interactive shell), not a one-shot `dct-exec bash -c "..."` command.
+`npm publish`/`npm login` both need a real interactive terminal (for OTP/browser-based login) — run these yourself in a real shell, not via a one-shot non-interactive command. **Corrected 2026-07-13**: this doc previously claimed the host Mac has no `npm` and required running via `dct-exec bash` inside the DevContainer — that's stale; `npm login`/`npm publish` both ran directly from the host terminal without issue.
 
 ```bash
-dct-exec bash
-cd /workspace/typescript
+cd typescript
 npm login
 ```
 
@@ -37,7 +36,7 @@ npm login
 npm publish --access public
 ```
 
-`--access public` is required every time — `@terchris/sovdev-logger` is a **scoped** package (`@terchris/...`), and npm defaults every scoped package to private unless told otherwise.
+`--access public` is a no-op now that the package is unscoped (`sovdev-logger`, not `@terchris/sovdev-logger`) — unscoped packages on the public registry are always public, there's no private option to default away from. Harmless to keep in the command; kept here for the day this package (or a future one) is scoped again.
 
 **Two things that look like errors but aren't:**
 - `npm warn publish "repository.url" was normalized to "git+https://github.com/.../sovdev-logger.git"` — npm's own normalization of the `repository.url` field (adding `git+` and `.git`), not a problem with what's in `package.json`.
@@ -53,7 +52,7 @@ npm publish --access public
 
 ## After publishing
 
-- Confirm it landed: `npm view @terchris/sovdev-logger version` should show the new version.
+- Confirm it landed: `npm view sovdev-logger version` should show the new version.
 - If the change is behaviorally significant (not just docs/metadata), consider whether it's worth a note somewhere visible — this repo doesn't have a `CHANGELOG.md` yet; the commit history and the relevant `completed/PLAN-*.md` are the record for now.
 
 ## See also

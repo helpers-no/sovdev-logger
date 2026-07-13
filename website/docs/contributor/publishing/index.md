@@ -11,7 +11,7 @@ Each language implementation publishes to its own registry (npm, PyPI, crates.io
 
 ## Pages
 
-- **[TypeScript](typescript.md)** — `@terchris/sovdev-logger` on npm. The only language published so far.
+- **[TypeScript](typescript.md)** — `sovdev-logger` on npm. The only language published so far.
 
 ## Not yet published
 

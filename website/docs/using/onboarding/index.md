@@ -73,7 +73,7 @@ Don't skip this. A portal saying "access policy created" and an SDK printing "fl
 Run a tiny, throwaway test through the exact env vars from step 4 — a distinct, disposable `service_name` like `<service-name>-ingest-validation` (not the real one, so this never pollutes the actual dashboard), one `sovdev_log()` call with a unique marker message, then `sovdev_shutdown()`. For example, using the published TypeScript package:
 
 ```typescript
-import { sovdev_initialize, sovdev_log, sovdev_shutdown, SOVDEV_LOGLEVELS, create_peer_services } from '@terchris/sovdev-logger';
+import { sovdev_initialize, sovdev_log, sovdev_shutdown, SOVDEV_LOGLEVELS, create_peer_services } from 'sovdev-logger';
 
 sovdev_initialize('ollacrm-ingest-validation', '1.0.0', {});
 sovdev_log(SOVDEV_LOGLEVELS.INFO, 'validateIngest', 'MARKER-INGEST-VALIDATION', create_peer_services({}).INTERNAL, null, null, null);

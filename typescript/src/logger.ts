@@ -1931,7 +1931,7 @@ export const sovdev_initialize = initialize_sovdev_logger;
  *
  * @example
  * ```typescript
- * import { sovdev_flush } from '@terchris/sovdev-logger';
+ * import { sovdev_flush } from 'sovdev-logger';
  *
  * // anywhere in a long-running process, as often as you like
  * await sovdev_flush();
@@ -1946,7 +1946,7 @@ export const sovdev_flush = flush_sovdev_logs;
  *
  * @example
  * ```typescript
- * import { sovdev_shutdown } from '@terchris/sovdev-logger';
+ * import { sovdev_shutdown } from 'sovdev-logger';
  *
  * async function main() {
  *   // ... your application code ...

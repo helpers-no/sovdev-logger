@@ -37,7 +37,7 @@ For people (human or LLM) **implementing or maintaining** a sovdev-logger langua
 
 ## Releasing
 
-- **[Publishing](publishing/index.md)** — how to release each language's package to its registry, one language at a time. So far: [TypeScript](publishing/typescript.md) (`@terchris/sovdev-logger` on npm).
+- **[Publishing](publishing/index.md)** — how to release each language's package to its registry, one language at a time. So far: [TypeScript](publishing/typescript.md) (`sovdev-logger` on npm).
 
 ## Functional code (not migrated — lives in the repo)
 

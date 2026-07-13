@@ -1,4 +1,4 @@
-# @terchris/sovdev-logger
+# sovdev-logger
 
 **One log call. Complete observability.**
 
@@ -65,7 +65,7 @@ sovdev_log(INFO, FUNCTIONNAME, 'Payment processed', PEER_SERVICES.PAYMENT_GATEWA
 ### 1. Install
 
 ```bash
-npm install @terchris/sovdev-logger
+npm install sovdev-logger
 ```
 
 ### 2. Basic Usage (Console + File Logging)
@@ -73,7 +73,7 @@ npm install @terchris/sovdev-logger
 Create `test.ts`:
 
 ```typescript
-import { sovdev_initialize, sovdev_log, sovdev_shutdown, SOVDEV_LOGLEVELS, create_peer_services } from '@terchris/sovdev-logger';
+import { sovdev_initialize, sovdev_log, sovdev_shutdown, SOVDEV_LOGLEVELS, create_peer_services } from 'sovdev-logger';
 
 // INTERNAL is auto-generated, just pass empty object if no external systems
 const PEER_SERVICES = create_peer_services({});
@@ -461,7 +461,7 @@ async function importUsers(users: User[]) {
 Use `sovdev_start_span`/`sovdev_end_span` — every `sovdev_log()` call made while the span is active automatically gets that span's `trace_id`/`span_id` stamped on, with nothing extra to pass at each call site:
 
 ```typescript
-import { sovdev_start_span, sovdev_end_span } from '@terchris/sovdev-logger';
+import { sovdev_start_span, sovdev_end_span } from 'sovdev-logger';
 
 async function processCompany(orgNumber: string) {
   const FUNCTIONNAME = 'processCompany';
@@ -540,7 +540,7 @@ Complete flow for this company visible in one view!
 Call `sovdev_set_context()` once per request, as early as possible (typically in auth middleware, right after resolving the caller's identity) — every `sovdev_log()` call made afterward in the same request automatically inherits it:
 
 ```typescript
-import { sovdev_set_context, sovdev_log } from '@terchris/sovdev-logger';
+import { sovdev_set_context, sovdev_log } from 'sovdev-logger';
 
 // In your auth middleware, after validating the caller's API key:
 function authMiddleware(req, res, next) {
@@ -577,7 +577,7 @@ function handleOrder(orderId: string) {
 Both fields go on the same `sovdev_set_context()` call as `client_name` — set once per request, inherited by every `sovdev_log()` call afterward:
 
 ```typescript
-import { sovdev_set_context, sovdev_log } from '@terchris/sovdev-logger';
+import { sovdev_set_context, sovdev_log } from 'sovdev-logger';
 
 function handleOrder(req, orderId: string) {
   sovdev_set_context({
@@ -963,7 +963,7 @@ Validate that all required OpenTelemetry environment variables are set and prope
 **Example:**
 
 ```typescript
-import { sovdev_validate_config, sovdev_initialize } from '@terchris/sovdev-logger';
+import { sovdev_validate_config, sovdev_initialize } from 'sovdev-logger';
 
 // Validate configuration before initialization
 const validation = sovdev_validate_config();
@@ -1016,7 +1016,7 @@ Test connectivity to all three OTLP endpoints by sending properly formatted test
 **Example:**
 
 ```typescript
-import { sovdev_test_otlp_connection, sovdev_initialize } from '@terchris/sovdev-logger';
+import { sovdev_test_otlp_connection, sovdev_initialize } from 'sovdev-logger';
 
 // Test connectivity before initialization
 console.log('🔌 Testing OTLP connectivity...');
@@ -1078,7 +1078,7 @@ Each signal type has different structure and backend routing requirements. This 
 **No configuration needed!** Just install and use:
 
 ```bash
-npm install @terchris/sovdev-logger
+npm install sovdev-logger
 ```
 
 The library will:
@@ -1113,7 +1113,7 @@ npm install @azure/monitor-opentelemetry
 Update your app initialization:
 
 ```typescript
-import { sovdev_initialize, sovdev_log, sovdev_flush, SOVDEV_LOGLEVELS, create_peer_services } from '@terchris/sovdev-logger';
+import { sovdev_initialize, sovdev_log, sovdev_flush, SOVDEV_LOGLEVELS, create_peer_services } from 'sovdev-logger';
 import { useAzureMonitor } from '@azure/monitor-opentelemetry';
 
 // Initialize Azure Monitor (reads APPLICATIONINSIGHTS_CONNECTION_STRING from env)

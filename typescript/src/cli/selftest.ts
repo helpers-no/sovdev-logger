@@ -176,7 +176,7 @@ async function main(): Promise<void> {
   // Printed to stderr, not stdout -- always visible on screen (including in
   // --json mode), but never part of the stdout stream a CI script parses as
   // JSON. First thing printed, before sovdev_initialize()'s own output.
-  logProgress(`sovdev-selftest v${getOwnVersion()} (@terchris/sovdev-logger)`);
+  logProgress(`sovdev-selftest v${getOwnVersion()} (sovdev-logger)`);
 
   const { values } = parseArgs({
     options: {
