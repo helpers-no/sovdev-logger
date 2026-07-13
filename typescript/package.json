@@ -43,8 +43,10 @@
   "homepage": "https://github.com/helpers-no/sovdev-logger#readme",
   "author": "Terje Christensen",
   "license": "MIT",
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.9.1"
+  },
   "dependencies": {
-    "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/api-logs": "^0.220.0",
     "@opentelemetry/auto-instrumentations-node": "^0.78.0",
     "@opentelemetry/exporter-logs-otlp-http": "^0.220.0",
@@ -60,6 +62,7 @@
     "winston": "^3.19.0"
   },
   "devDependencies": {
+    "@opentelemetry/api": "^1.9.1",
     "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
