@@ -12,6 +12,8 @@ Explores how to safely close the gap between sovdev-logger's currently pinned Op
 
 **Last Updated**: 2026-07-13
 
+**Re-checked 2026-07-13 — the "4 alerts" count below is stale, real number is much higher**: `gh api repos/norwegianredcross/sovdev-logger/dependabot/alerts` and a local `npm audit --omit=dev` on `typescript/` both show **49 open vulnerabilities (45 moderate, 3 high, 1 critical)**, not 4. The original 4 only counted direct dependencies (`@opentelemetry/sdk-node`, `@opentelemetry/auto-instrumentations-node`, `@opentelemetry/core`, `uuid`) — it never counted the transitive chain underneath them: multiple `protobufjs` advisories (including the 1 critical — arbitrary code execution), `@grpc/grpc-js`, `js-yaml`, `picomatch`. The upgrade options below (A/B/C) and the core breaking-change risk analysis still apply, but any `PLAN-*.md` drafted from this should scope against the real count, not the number in the paragraph immediately below.
+
 ---
 
 ## Source
