@@ -20,19 +20,21 @@ Moves `sovdev-logger`'s npm publish step from manual (`npm login` + personal OTP
 
 ---
 
-## Phase 1: Create the publish workflow
+## Phase 1: Create the publish workflow — DONE
 
 ### Tasks
 
-- [ ] 1.1 Create `.github/workflows/publish.yml`: `workflow_dispatch` trigger, `permissions: { contents: read, id-token: write }`, `actions/checkout@v7`, `actions/setup-node@v6` with `registry-url: 'https://registry.npmjs.org'` and `node-version: 22` — using current-latest Action versions for this new file rather than matching `ci.yml`/`deploy-docs.yml`'s already-known-outdated pins (tracked separately in `INVESTIGATE-dependency-upgrade-sweep.md`, not this plan's problem to fix).
-- [ ] 1.2 Explicit `npm install -g npm@latest` step before anything else — the version requirement this repo's environments don't currently satisfy anywhere.
-- [ ] 1.3 `npm ci`, `npm run build`, `npm run lint` inside `typescript/` (`working-directory` default) — the same gate `ci.yml` already runs on every PR, repeated here since this workflow runs independently of `ci.yml`.
-- [ ] 1.4 `npm publish --access public` — `--access public` is a no-op for the already-unscoped `sovdev-logger` (confirmed during the OTel-upgrade work) but kept for clarity. Explicitly add `--provenance` too, rather than relying on npm's docs claim that it's automatic — one real-world report found it wasn't automatic in practice; safe to pass explicitly either way.
-- [ ] 1.5 No E2E test step against a real backend inside this workflow — that requires live credentials this workflow shouldn't need, and `ci.yml` already gates every merge to `main` before a publish would ever be triggered from it.
+- [x] 1.1 Created `.github/workflows/publish.yml`: `workflow_dispatch` trigger, `permissions: { contents: read, id-token: write }`, `actions/checkout@v7`, `actions/setup-node@v6` with `registry-url: 'https://registry.npmjs.org'` and `node-version: 22`.
+- [x] 1.2 Explicit `npm install -g npm@latest` step before anything else.
+- [x] 1.3 `npm ci`, `npm run build`, `npm run lint` inside `typescript/` (`working-directory` default).
+- [x] 1.4 `npm publish --access public --provenance`.
+- [x] 1.5 No E2E test step — confirmed unnecessary, per plan.
 
 ### Validation
 
-Workflow file is syntactically valid (checked via `gh workflow view` or a dry run once pushed); `npm ci`/`build`/`lint` steps match exactly what `ci.yml` already runs successfully today.
+**A real dispatched run, not just syntax checking.** Confirmed GitHub requires a `workflow_dispatch` workflow to exist on the default branch before it's dispatchable at all — tried dispatching from the feature branch first, got a clean `404 workflow not found on the default branch`, confirming this constraint directly rather than assuming it. Merged to `main`, then dispatched a real run: **every step through `Verify package.json metadata` passed** (checkout, npm upgrade, install, build, lint) — the log itself doesn't print the resulting npm version, but the subsequent successful OIDC token exchange and provenance signing (below) wouldn't have worked at all on the pre-upgrade npm `10.x`, confirming the upgrade step did what it needed to. The final `Publish to npm` step failed exactly as expected — `404 Not Found ... could not be found or you do not have permission to access it` — because no Trusted Publisher is configured yet on npmjs.com (Phase 2, not done).
+
+**Unexpected, useful finding**: provenance attestation actually worked *before* any Trusted Publisher was configured — the run's log shows `npm notice publish Signed provenance statement with source and build information from GitHub Actions` and a real Sigstore transparency-log entry (`https://search.sigstore.dev/?logIndex=2165055851`), even though the subsequent publish itself failed on authorization. Provenance signing (GitHub's generic OIDC/Sigstore mechanism) and npm's Trusted Publisher access grant (who's authorized to publish this specific package) are evidently independent — the former doesn't require the latter to be configured. Worth confirming this holds once Phase 2 makes the actual publish succeed, but it de-risks acceptance criterion "provenance attestation confirmed visible" considerably.
 
 ---
 
