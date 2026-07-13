@@ -1,18 +1,18 @@
 # Plan: "Active Clients" dashboard panel
 
-Adds a fleet-wide "Active Clients" stat panel — how many distinct `client_name` values are actively logging in the selected time range — to both dashboard variants, using the query and two bug fixes already found and verified in [`INVESTIGATE-operator-dashboard-panel.md`](../backlog/INVESTIGATE-operator-dashboard-panel.md).
+Adds a fleet-wide "Active Clients" stat panel — how many distinct `client_name` values are actively logging in the selected time range — to both dashboard variants, using the query and two bug fixes already found and verified in [`INVESTIGATE-operator-dashboard-panel.md`](INVESTIGATE-operator-dashboard-panel.md).
 
 > **IMPLEMENTATION RULES:** Before implementing this plan, read and follow:
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Completed
 
 **Goal**: A working "Active Clients" panel on both `tools/dashboards/sovdev-logger-overview.json` (UIS) and `sovdev-logger-overview-grafana-cloud.json` (Grafana Cloud), validated with an actual live render against both real backends — closing [Q1], the one thing the investigation's API-level checks couldn't cover.
 
 **Last Updated**: 2026-07-13
 
-**Investigation**: [INVESTIGATE-operator-dashboard-panel.md](../backlog/INVESTIGATE-operator-dashboard-panel.md) — [Q2]/[Q3] resolved (title: "Active Clients"; placement: top row, next to "Active Integrations"). [Q1] (live-render confirmation) is this plan's own validation step, not resolved yet.
+**Investigation**: [INVESTIGATE-operator-dashboard-panel.md](INVESTIGATE-operator-dashboard-panel.md) — [Q2]/[Q3] resolved (title: "Active Clients"; placement: top row, next to "Active Integrations"). [Q1] (live-render confirmation) is this plan's own validation step, not resolved yet.
 
 **Query, both bugs already fixed and re-verified in the investigation** (not re-derived here):
 
@@ -51,12 +51,12 @@ Both JSON files re-parsed successfully after the edit (`python3 -m json.tool`-eq
 - [x] 2.5 Confirmed `$service_name` narrows correctly — queried the exact TypeScript service name directly (not the `.+` wildcard) and got the same correct `1`.
 
 - [x] 2.6 **(Maintainer)** Visually confirmed on the real, live UIS dashboard: "Active Clients" renders `1`, positioned exactly as designed — immediately right of "Active Integrations" (also `1`) on the top row, with "Total Operations (cumulative)" correctly narrowed alongside them. Closes the one gap this plan couldn't check itself (no browser access).
-
-**Still open**: the Grafana Cloud variant hasn't been imported anywhere yet — no credential exists in this repo to do it programmatically, it's a manual UI import (Dashboards → New → Import) only the maintainer can do.
+- [x] 2.7 **(Maintainer)** Imported `sovdev-logger-overview-grafana-cloud.json` into the real Grafana Cloud instance via Dashboards → New → Import — datasource UIDs (`grafanacloud-logs`/`grafanacloud-prom`) already matched, no interactive re-mapping needed.
+- [x] 2.8 **A genuinely interesting real finding, not a bug**: right after import, "Active Clients" showed `0` on a "Last 15 minutes" window even though `sovdev-test-company-lookup-typescript-grafana-cloud` clearly had recent activity (visible in "Total Operations"). Checked directly rather than assumed broken: the last client-tagged log line was from `21:16:28Z`, ~18 minutes before the check — just past the 15-minute window. This is exactly the tradeoff the investigation predicted upfront: "Active Clients" respects the dashboard's time picker literally (it counts log lines within the selected range), while "Active Integrations"/"Total Operations" don't — they're Prometheus counter snapshots that persist as long as the series hasn't expired from Prometheus's own retention, independent of the time picker. Generated fresh client-tagged data, confirmed it landed via a direct query, then the maintainer refreshed the dashboard and confirmed "Active Clients" correctly flipped to `1` live.
 
 ### Validation
 
-Real query results through the actual rendering path on both real backends (UIS via datasource-proxy, Grafana Cloud via its own Loki query API), both conditions (clients present → `1`, zero tagged clients with confirmed-real underlying traffic → `0`), `$service_name` narrowing confirmed, **and now a real maintainer-confirmed visual check on the live UIS dashboard** — the panel looks exactly as designed. Only the Grafana Cloud import itself remains.
+Real query results through the actual rendering path on both real backends (UIS via datasource-proxy, Grafana Cloud via its own Loki query API), both conditions (clients present → `1`, zero tagged clients with confirmed-real underlying traffic → `0`), `$service_name` narrowing confirmed, **a real maintainer-confirmed visual check on both live dashboards** — UIS and Grafana Cloud — and a real, live demonstration of the time-window tradeoff the investigation predicted, not just a theoretical caveat.
 
 ---
 
@@ -76,7 +76,7 @@ Diff scoped to exactly: two dashboard JSON files (one new panel + one `gridPos` 
 ## Acceptance Criteria
 
 - [x] "Active Clients" panel exists on both dashboard variants, correct query, correct datasource UID per file.
-- [x] Confirmed correct on both real backends — both the non-zero and zero-client cases — via the real query-execution path each backend actually uses (UIS's datasource-proxy, Grafana Cloud's own Loki query API). Not a literal browser screenshot; see Phase 2's stated limitation.
+- [x] Confirmed correct on both real backends — both the non-zero and zero-client cases — via the real query-execution path each backend actually uses, **and via an actual maintainer-confirmed visual check on both live dashboards** (UIS and Grafana Cloud, including live-witnessing the panel correctly flip from `0` to `1` as fresh data landed).
 - [x] `$service_name` filtering confirmed working for this panel specifically.
 - [x] No disruption to any existing panel — confirmed via `git diff` (nothing else changed) and a live re-check of "Active Integrations"' own query.
 

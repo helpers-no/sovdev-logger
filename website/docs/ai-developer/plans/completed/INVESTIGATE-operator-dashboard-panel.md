@@ -110,4 +110,4 @@ Beyond the single "how many clients total" stat, add a table/graph showing *whic
 ## Next Steps
 
 - [x] Maintainer answers [Q2]/[Q3] — resolved 2026-07-13
-- [x] Create [`PLAN-operator-dashboard-panel.md`](../active/PLAN-operator-dashboard-panel.md) — small scope: add the panel JSON, validate via [Q1]'s live render against both real backends, update `tools/dashboards/README.md` if it documents panel-by-panel purpose
+- [x] Create [`PLAN-operator-dashboard-panel.md`](PLAN-operator-dashboard-panel.md) — small scope: add the panel JSON, validate via [Q1]'s live render against both real backends, update `tools/dashboards/README.md` if it documents panel-by-panel purpose
