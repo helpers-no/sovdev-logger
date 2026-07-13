@@ -1,0 +1,82 @@
+version: 2
+updates:
+  # typescript/ -- the published library itself. OTel's 0.x packages can
+  # break on a minor version bump per semver convention for pre-1.0
+  # packages, so major updates are never grouped and always land as their
+  # own PR for individual review -- only minor/patch bumps are grouped to
+  # cut down on PR noise.
+  - package-ecosystem: "npm"
+    directory: "/typescript"
+    schedule:
+      interval: "weekly"
+    groups:
+      otel-minor-patch:
+        patterns:
+          - "@opentelemetry/*"
+        update-types:
+          - "minor"
+          - "patch"
+      other-minor-patch:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@opentelemetry/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "npm"
+    directory: "/website"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "npm"
+    directory: "/tools/dashboards"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "npm"
+    directory: "/tools/validation"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "npm"
+    directory: "/typescript/test/e2e/company-lookup"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Also covers GitHub Actions version drift (checkout, setup-node, etc.),
+  # found alongside the npm gaps in INVESTIGATE-dependency-upgrade-sweep.md
+  # -- same purpose (automated update PRs instead of silent drift), same file.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
