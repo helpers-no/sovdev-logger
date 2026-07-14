@@ -8,11 +8,11 @@ Whether to bump `eslint` (8→10) and `@typescript-eslint/parser`+`eslint-plugin
 
 ## Status: Backlog
 
-**Goal**: Determine whether `@typescript-eslint` can be bumped to 8.x without also forcing an ESLint major bump, and separately, whether/when to migrate off `.eslintrc.json` to flat config — spun off from [`INVESTIGATE-dependency-upgrade-sweep.md`](INVESTIGATE-dependency-upgrade-sweep.md)'s own [Q3].
+**Goal**: Determine whether `@typescript-eslint` can be bumped to 8.x without also forcing an ESLint major bump, and separately, whether/when to migrate off `.eslintrc.json` to flat config — spun off from [`INVESTIGATE-hold-dependency-upgrade-sweep.md`](INVESTIGATE-hold-dependency-upgrade-sweep.md)'s own [Q3].
 
 **Last Updated**: 2026-07-14
 
-**Relationship to the parent sweep**: `INVESTIGATE-dependency-upgrade-sweep.md` left 3 Dependabot PRs open specifically because of this: #14 (`eslint` 8.57.1→10.7.0), #17 (`@typescript-eslint/parser` 7.18.0→8.64.0, currently failing on a peer-dependency conflict). `eslint-config-prettier`'s own major bump (9→10) already shipped cleanly on its own as PR #16 — no conflict, not discussed further here.
+**Relationship to the parent sweep**: `INVESTIGATE-hold-dependency-upgrade-sweep.md` left 3 Dependabot PRs open specifically because of this: #14 (`eslint` 8.57.1→10.7.0), #17 (`@typescript-eslint/parser` 7.18.0→8.64.0, currently failing on a peer-dependency conflict). `eslint-config-prettier`'s own major bump (9→10) already shipped cleanly on its own as PR #16 — no conflict, not discussed further here.
 
 **Only `typescript/` is in scope.** Checked directly: `website/`, `tools/dashboards/`, and `tools/validation/` have no ESLint config or `eslint` dependency at all — this is purely a `typescript/package.json` + `typescript/.eslintrc.json` question.
 
@@ -83,7 +83,7 @@ Update `typescript/package.json`'s `@typescript-eslint/eslint-plugin` and `@type
 ### Option B: Do the full migration in one pass — ESLint 8→10, flat config, and `@typescript-eslint` 7→8 together
 
 **Pros**: one migration event instead of two; avoids leaving ESLint on an older major indefinitely.
-**Cons**: bundles a real, non-mechanical config rewrite (flat config) with a dependency bump — directly contradicts this sweep's own established pattern of isolating risk (see `INVESTIGATE-dependency-upgrade-sweep.md`'s Option B rationale, and how OTel was deliberately kept separate from routine bumps). Makes it harder to isolate which change caused a regression if `npm run lint` behaves differently afterward.
+**Cons**: bundles a real, non-mechanical config rewrite (flat config) with a dependency bump — directly contradicts this sweep's own established pattern of isolating risk (see `INVESTIGATE-hold-dependency-upgrade-sweep.md`'s Option B rationale, and how OTel was deliberately kept separate from routine bumps). Makes it harder to isolate which change caused a regression if `npm run lint` behaves differently afterward.
 
 ### Option C: Leave everything as-is indefinitely
 

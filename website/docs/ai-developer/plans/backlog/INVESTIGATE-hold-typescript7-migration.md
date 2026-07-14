@@ -8,11 +8,11 @@ Whether and how to move this repo's 5 `package.json` files off `typescript@^5.7.
 
 ## Status: Backlog — [Q1]–[Q5] answered 2026-07-14; recommendation is now **wait**, not migrate
 
-**Goal**: Determine whether TypeScript 7.0.2 can be adopted safely across this repo, what would need to change first, and in what order — spun off from [`INVESTIGATE-dependency-upgrade-sweep.md`](INVESTIGATE-dependency-upgrade-sweep.md)'s own [Q5], which found the naive bump-and-watch approach doesn't work here.
+**Goal**: Determine whether TypeScript 7.0.2 can be adopted safely across this repo, what would need to change first, and in what order — spun off from [`INVESTIGATE-hold-dependency-upgrade-sweep.md`](INVESTIGATE-hold-dependency-upgrade-sweep.md)'s own [Q5], which found the naive bump-and-watch approach doesn't work here.
 
 **Last Updated**: 2026-07-14
 
-**Relationship to the parent sweep**: `INVESTIGATE-dependency-upgrade-sweep.md` deferred 3 Dependabot PRs (#13 `tools/dashboards`, #15 `typescript/`, #19 `website`) rather than merge them blind, after finding `typescript@7.0.2` breaks the build in `tools/validation`. This investigation exists to actually scope the fix, rather than leave those PRs closed indefinitely with no path forward.
+**Relationship to the parent sweep**: `INVESTIGATE-hold-dependency-upgrade-sweep.md` deferred 3 Dependabot PRs (#13 `tools/dashboards`, #15 `typescript/`, #19 `website`) rather than merge them blind, after finding `typescript@7.0.2` breaks the build in `tools/validation`. This investigation exists to actually scope the fix, rather than leave those PRs closed indefinitely with no path forward.
 
 **Update 2026-07-14 — maintainer pushback, correct and decisive**: TypeScript 7.0.2 was published **6 days ago** (`2026-07-08`, confirmed via `npm view typescript time`) — this is a brand-new major release. The maintainer's objection: a lot of the tooling this repo depends on doesn't control its own TS7 support timeline, so there's no reason to absorb migration pain now for a version the ecosystem hasn't caught up to yet. Direct testing below **supports this** — two independent, confirmed hard blockers exist beyond the original Node-globals finding, one of them (`@typescript-eslint`'s peer range) entirely outside this repo's control. **The recommendation below changed from "fix `tools/` now" to "wait and monitor" as a direct result.**
 

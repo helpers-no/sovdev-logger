@@ -6,7 +6,7 @@ Every dependency category in this repo has drifted from current — not just the
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog — everything low-risk shipped; two major-version bumps deliberately deferred pending their own investigation
+## Status: On hold — everything low-risk shipped; blocked on its two spun-off follow-ups resolving (one already has, one still needs the maintainer's answers)
 
 **Goal**: A prioritized, evidence-based picture of every outdated software component across this repo — TypeScript runtime deps, TypeScript dev tooling, the Docusaurus site, the small tooling packages under `tools/`, Python, GitHub Actions, and the DevContainer image — so upgrade work can be sequenced deliberately instead of guessed at.
 

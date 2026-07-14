@@ -71,7 +71,7 @@ Set `onBrokenAnchors: 'throw'` in `docusaurus.config.ts` — a one-line config c
 ### Option B: Full site reorganization now — decide `ai-developer/`'s public status, build the generic developer template, restructure the sidebar
 
 **Pros**: addresses everything in one pass.
-**Cons**: bundles a small, safe config fix with much bigger, judgment-call decisions (should 59 files of internal history be public? what does a generic template even look like before a second real customer exists to design it against?) — repeats the exact mistake `INVESTIGATE-dependency-upgrade-sweep.md` already learned from (don't bundle a critical fix with open-ended design work).
+**Cons**: bundles a small, safe config fix with much bigger, judgment-call decisions (should 59 files of internal history be public? what does a generic template even look like before a second real customer exists to design it against?) — repeats the exact mistake `INVESTIGATE-hold-dependency-upgrade-sweep.md` already learned from (don't bundle a critical fix with open-ended design work).
 
 ### Option C: Do nothing, revisit only if another anchor-link bug actually recurs
 
