@@ -6,15 +6,23 @@ Every dependency category in this repo has drifted from current — not just the
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog — OTel (the highest-priority item) shipped, the rest still open
+## Status: Backlog — everything low-risk shipped; two major-version bumps deliberately deferred pending their own investigation
 
 **Goal**: A prioritized, evidence-based picture of every outdated software component across this repo — TypeScript runtime deps, TypeScript dev tooling, the Docusaurus site, the small tooling packages under `tools/`, Python, GitHub Actions, and the DevContainer image — so upgrade work can be sequenced deliberately instead of guessed at.
 
-**Last Updated**: 2026-07-13
+**Last Updated**: 2026-07-14
 
 **Relationship to `INVESTIGATE-otel-dependency-upgrade.md`**: that investigation already covers the OpenTelemetry/`uuid` piece in depth (staged-bump options, breaking-change risk, test plan) — not duplicated here. This investigation is the parent sweep across everything else; treat the OTel one as this sweep's most urgent, already-scoped item.
 
 **Update 2026-07-13**: OTel shipped — [`PLAN-otel-dependency-upgrade.md`](../completed/PLAN-otel-dependency-upgrade.md), 49 vulnerabilities → 0, validated end-to-end against both real backends. Per this doc's own Option B recommendation, GitHub Actions/Docusaurus/dev-tooling consistency are next, in decreasing risk order — none started yet.
+
+**Update 2026-07-14**: Option B's remaining categories executed, in the recommended order:
+- **GitHub Actions** — all 5 actions bumped (`checkout` v4→v7, `setup-node` v4→v6, `upload-artifact` v4→v7, `upload-pages-artifact` v3→v5, `deploy-pages` v4→v5). Confirmed via a real triggered `deploy-docs.yml` run: zero "Node.js 20 is deprecated" annotations afterward (previously appeared on every run).
+- **Docusaurus** — `3.10.1`→`3.10.2` across all `@docusaurus/*` packages plus 2 related types packages, merged as PR #18 after a real local `npm run build` + `npm run typecheck` came back clean (no CI configured on this repo to rely on instead).
+- **Dev-tooling consistency (`@types/node`, `tsx`)** — `tools/validation` and `tools/dashboards` both bumped to `@types/node@^26.1.1` / `tsx@^4.23.1` (PRs #22, #23), each verified with a real `npm install` + `tsc --noEmit` (and a real script execution for `tools/dashboards`), not just a green Dependabot check.
+- **New real finding, not anticipated by [Q5](#open-questions) below**: `typescript@7.0.2` breaks ambient Node global type resolution under every `package.json` in this repo that uses the `"moduleResolution": "NodeNext"` + no-explicit-`"types"` pattern — `process`/`Buffer`/`node:fs` etc. all fail to resolve, ~50 errors in `tools/validation` alone. Isolated by reverting `typescript` alone while keeping the other bumps — clean. `typescript` stays pinned everywhere (`^5.7.2` in the `tools/`/`typescript/` packages, Docusaurus's own `~6.0.3` requirement in `website/`) until a dedicated TypeScript 7 migration is scoped. This affects, and blocks, 3 open Dependabot PRs: #13 (`tools/dashboards`), #15 (`typescript/`), #19 (`website`) — all closed/deferred with this finding recorded on each.
+- **ESLint 8→10** — untouched. `eslint-config-prettier` 9→10 shipped cleanly on its own (PR #16, no conflict with ESLint 8), but the `eslint`/`@typescript-eslint` major bumps themselves (PRs #14, #17) remain open, per [Q3](#open-questions)'s own framing — ESLint 9's flat-config migration is a real, non-mechanical change, not a version-bump-and-watch.
+- Remaining open items: PRs #14 (`eslint` 8→10), #15 (`typescript` 5.9.3→7.0.2 in `typescript/`), #17 (`@typescript-eslint/parser` 7→8, currently peer-conflicting with `eslint-plugin` still on `^7.0.0`). None of these are safe to bump-and-watch — each needs its own scoped investigation before merging.
 
 ---
 
@@ -37,22 +45,24 @@ Every dependency category in this repo has drifted from current — not just the
 
 ### 2. TypeScript dev-only tooling (`typescript/package.json` devDependencies, and the same pattern repeats in `website/`, `tools/dashboards/`, `tools/validation/`, `typescript/test/e2e/company-lookup/`)
 
+**Update 2026-07-14**: `@types/node`/`tsx` consistency done for `tools/validation` (`@types/node@^26.1.1`, `tsx@^4.23.1`) and `tools/dashboards` (same versions) — both verified with a real `tsc --noEmit`. `typescript` and `eslint`/`@typescript-eslint` majors deliberately **not** bumped — see the 2026-07-14 update above for why (`typescript@7.0.2` breaks Node global type resolution repo-wide; ESLint 9 is a real flat-config migration, not a mechanical bump). `typescript/` and `typescript/test/e2e/company-lookup/` untouched by this pass.
+
 | Package | Current | Latest | Gap |
 |---|---|---|---|
-| `typescript` (the compiler) | `5.9.3` | `7.0.2` | 2 major versions — TS skipped a `6.x` line entirely |
-| `eslint` | `8.57.1` | `10.7.0` | 2 major versions |
-| `@typescript-eslint/eslint-plugin` / `parser` | `7.18.0` | `8.63.0` | 1 major version |
-| `eslint-config-prettier` | `9.1.2` | `10.1.8` | 1 major version |
-| `prettier` | `3.6.2`/`3.9.5` (varies by package) | `3.9.5` | minor, inconsistent across packages |
-| `tsx` | `4.20.6`–`4.23.0` (varies) | `4.23.1` | patch, inconsistent across packages |
-| `@types/node` | `20.19.x`–`24.7.0` (varies wildly across packages) | `26.1.1` | up to 2 major versions, wildly inconsistent |
-| `@types/uuid` | `10.0.0` | `11.0.0` | 1 major version |
+| `typescript` (the compiler) | `5.9.3`/`5.7.2` (varies), `~6.0.3` in `website/` | `7.0.2` | 2 major versions — TS skipped a `6.x` line entirely. **Confirmed breaking** (2026-07-14): breaks ambient Node global resolution under this repo's tsconfig pattern. Deliberately pinned everywhere until a dedicated migration is scoped. |
+| `eslint` | `8.57.1` | `10.7.0` | 2 major versions — PR #14 open, deferred (ESLint 9 flat-config migration is real, not mechanical) |
+| `@typescript-eslint/eslint-plugin` / `parser` | `7.18.0` | `8.63.0` | 1 major version — PR #17 open, deferred (peer-conflicts with `eslint-plugin` still `^7.0.0`) |
+| `eslint-config-prettier` | ~~`9.1.2`~~ → `10.1.8` | `10.1.8` | **Done** — PR #16 merged, no conflict with ESLint 8 |
+| `prettier` | `3.6.2`/`3.9.5` (varies by package) | `3.9.5` | minor, inconsistent across packages — not touched this pass |
+| `tsx` | ~~`4.20.6`–`4.23.0` (varies)~~ → `^4.23.1` in `tools/validation`, `tools/dashboards` | `4.23.1` | **Done** for the two `tools/` packages (PRs #22, #23); `typescript/` and the E2E package untouched |
+| `@types/node` | ~~`20.19.x`–`24.7.0` (varies wildly)~~ → `^26.1.1` in `tools/validation`, `tools/dashboards` | `26.1.1` | **Done** for the two `tools/` packages; `typescript/`, `website/`, and the E2E package untouched |
+| `@types/uuid` | `10.0.0` | `11.0.0` | 1 major version — not touched this pass |
 
-No runtime security exposure (dev-only, never shipped), but the **inconsistency across packages** (`@types/node` ranges from `20.x` to `24.x` depending on which of the 5 `package.json` files you look at) is its own real problem — nothing enforces they stay in sync, so behavior can subtly differ between `typescript/`, `website/`, `tools/dashboards/`, `tools/validation/`, and the E2E test package.
+No runtime security exposure (dev-only, never shipped). The inconsistency-across-packages problem is now half-resolved: `tools/validation` and `tools/dashboards` are in sync with each other on `@types/node`/`tsx`; `typescript/`, `website/`, and the E2E package still differ.
 
 ### 3. Docusaurus site (`website/package.json`)
 
-All `@docusaurus/*` packages at `3.10.1`, latest is `3.10.2` — a single patch release behind, seen in this session's own build output every single time (`Update available 3.10.1 → 3.10.2`). Lowest-risk, easiest win in this entire sweep.
+**Done (2026-07-14)** — bumped `3.10.1`→`3.10.2` across all `@docusaurus/*` packages plus `@docusaurus/tsconfig`/`@docusaurus/types`, merged as PR #18. Verified with a real local `npm run build` + `npm run typecheck` (this repo has no CI checks configured, so Dependabot's own green check isn't a signal — had to check out the PR branch and run both directly).
 
 ### 4. Python (`python/requirements.txt`, `python/test/e2e/company-lookup/requirements.txt`)
 
@@ -60,17 +70,19 @@ All `@docusaurus/*` packages at `3.10.1`, latest is `3.10.2` — a single patch 
 
 ### 5. GitHub Actions (`.github/workflows/*.yml`)
 
-| Action | Current | Latest | Gap |
+**Done (2026-07-14).**
+
+| Action | Was | Now | Gap closed |
 |---|---|---|---|
-| `actions/checkout` | `v4` | `v7.0.0` | 3 major versions |
-| `actions/setup-node` | `v4` | `v6.4.0` | 2 major versions |
-| `actions/upload-artifact` | `v4` | `v7.0.1` | 3 major versions |
-| `actions/upload-pages-artifact` | `v3` | `v5.0.0` | 2 major versions |
-| `actions/deploy-pages` | `v4` | `v5.0.0` | 1 major version |
+| `actions/checkout` | `v4` | `v7` | 3 major versions |
+| `actions/setup-node` | `v4` | `v6` | 2 major versions |
+| `actions/upload-artifact` | `v4` | `v7` | 3 major versions |
+| `actions/upload-pages-artifact` | `v3` | `v5` | 2 major versions |
+| `actions/deploy-pages` | `v4` | `v5` | 1 major version |
 
-This directly explains the `Node.js 20 is deprecated... forced to run on Node.js 24` annotation that has appeared on **every single CI/Pages run this entire session** — the pinned major versions' underlying JS runtime targets Node 20, which GitHub's runners now silently override. Not broken today, but not a warning that goes away on its own either.
+Confirmed via a real triggered `deploy-docs.yml` run: the `Node.js 20 is deprecated... forced to run on Node.js 24` annotation that had appeared on every single CI/Pages run all session is now **gone** — zero annotations on the post-bump run.
 
-**Separate, smaller finding**: `deploy-docs.yml` explicitly pins `node-version: '20'` for the docs build, while `ci.yml` runs a `[22, 24]` matrix for the library itself — an inconsistency worth fixing regardless of the Action-version question, since `typescript/package.json`'s own `engines.node` already requires `>=22.0.0`.
+**Separate, smaller finding** (not yet addressed): `deploy-docs.yml` explicitly pins `node-version: '20'` for the docs build, while `ci.yml` runs a `[22, 24]` matrix for the library itself — an inconsistency worth fixing regardless of the Action-version question, since `typescript/package.json`'s own `engines.node` already requires `>=22.0.0`.
 
 ### 6. DevContainer image (`.devcontainer/devcontainer.json`)
 
@@ -115,20 +127,27 @@ Do only #1 (OTel) from Option B's list; leave GitHub Actions, dev tooling, and D
 
 ## Open Questions
 
-1. **[Q1]** Confirm priority order from Option B — OTel first, then GitHub Actions, then Docusaurus, then dev-tooling consistency? Or reorder (e.g. Docusaurus/Actions are near-zero-risk, could go first as quick wins while OTel's staged bump is still being planned)?
-2. **[Q2]** For the dev-tooling consistency pass: is drifting `@types/node` versions across the 5 `package.json` files actually caused anything real (a bug, a CI flake), or is this purely a hygiene concern worth fixing opportunistically rather than as its own scheduled work?
-3. **[Q3]** ESLint 8 → 10 spans ESLint 9's flat-config migration (a real, documented breaking change to `.eslintrc` → `eslint.config.js`) — worth its own small investigation/plan, or is that config migration simple enough to just do as part of the dev-tooling pass?
-4. **[Q4]** GitHub Actions major-version bumps (`checkout` v4→v7, etc.) — any known breaking changes worth checking per-action before bumping, or is a bump-and-watch-CI approach acceptable here since CI itself is the test?
-5. **[Q5]** TypeScript compiler `5.9.3` → `7.0.2` (skipping a `6.x` line) — does anything in `src/` or the build config rely on TS 5-specific behavior, or is this a safe bump to bundle into the dev-tooling pass?
+1. ~~**[Q1]** Confirm priority order from Option B~~ — **Resolved 2026-07-14**: executed in exactly the recommended order (OTel already done → GitHub Actions → Docusaurus → dev-tooling consistency). No reordering needed in practice.
+2. ~~**[Q2]** Did `@types/node` drift cause anything real?~~ — **Resolved 2026-07-14**: not formally root-caused to any specific past bug/flake; fixed opportunistically as part of this sweep rather than as its own investigation, per the question's own framing. No evidence surfaced of a real incident it caused.
+3. **[Q3]** ESLint 8 → 10 spans ESLint 9's flat-config migration (a real, documented breaking change to `.eslintrc` → `eslint.config.js`) — worth its own small investigation/plan, or is that config migration simple enough to just do as part of the dev-tooling pass? **Still open** — PRs #14/#17 left unmerged this pass specifically because this wasn't resolved; needs its own `INVESTIGATE-eslint9-migration.md` before proceeding.
+4. ~~**[Q4]** GitHub Actions bump-and-watch~~ — **Resolved 2026-07-14**: bump-and-watch was sufficient. All 5 actions bumped in one pass, verified via a real triggered `deploy-docs.yml` run with zero regressions and zero deprecation annotations. No per-action breaking-change research was needed in practice.
+5. ~~**[Q5]** Is TypeScript `5.9.3`→`7.0.2` a safe bump?~~ — **Resolved 2026-07-14, answer: no.** Confirmed breaking: `typescript@7.0.2` breaks ambient Node global type resolution (`process`/`Buffer`/`node:fs` unresolvable) under this repo's `tsconfig.json` pattern (`"moduleResolution": "NodeNext"`, no explicit `"types": ["node"]`) — reproduced in `tools/validation`, isolated by reverting `typescript` alone while keeping other bumps. This needs its own dedicated migration investigation (likely: add explicit `"types": ["node"]` or migrate the tsconfig pattern), not a bundle-in-and-watch bump. Affects PRs #13, #15, #19, all closed/deferred with this finding recorded.
 
 ## Next Steps
 
-- [ ] Maintainer answers [Q1]–[Q5]
-- [ ] Execute `INVESTIGATE-otel-dependency-upgrade.md`'s staged plan first (already fully scoped, just needs a `PLAN-*.md` drafted from it)
-- [ ] Create follow-up `PLAN-*.md`(s) for whichever of GitHub Actions / Docusaurus / dev-tooling consistency the maintainer wants to prioritize next
+- [x] Maintainer answers [Q1]–[Q5] — 4 of 5 resolved directly via execution; [Q3] remains genuinely open
+- [x] Execute `INVESTIGATE-otel-dependency-upgrade.md`'s staged plan — shipped, see `completed/PLAN-otel-dependency-upgrade.md`
+- [x] GitHub Actions — shipped directly (5 version bumps, verified via a real triggered run)
+- [x] Docusaurus — shipped directly (PR #18, verified via a real local build)
+- [x] Dev-tooling consistency (`@types/node`, `tsx`) — shipped directly for `tools/validation` and `tools/dashboards` (PRs #22, #23); `typescript/` and the E2E package still untouched
+- [ ] Write `INVESTIGATE-eslint9-migration.md` — scope the `.eslintrc` → `eslint.config.js` flat-config migration ([Q3]), covers PRs #14 and #17
+- [ ] Write `INVESTIGATE-typescript7-migration.md` — scope why `typescript@7.0.2` breaks Node global resolution and what fix (tsconfig `"types"` field vs. something else) unblocks it repo-wide, covers PRs #13, #15, #19
+- [ ] Once both follow-up investigations are written and their child plans ship, this investigation can move to `completed/`
 
 ## Files to Modify (once a plan is drafted from this)
 
-- `typescript/package.json`, `website/package.json`, `tools/dashboards/package.json`, `tools/validation/package.json`, `typescript/test/e2e/company-lookup/package.json`
-- `.github/workflows/ci.yml`, `.github/workflows/deploy-docs.yml`
-- Possibly `typescript/.eslintrc*` → `eslint.config.js` if the ESLint 9 flat-config migration is bundled in
+- ~~`tools/dashboards/package.json`, `tools/validation/package.json`~~ — done (`@types/node`, `tsx`; `typescript` deliberately untouched)
+- ~~`website/package.json`~~ — done (Docusaurus only; `typescript` deliberately untouched)
+- ~~`.github/workflows/*.yml`~~ — done (all 5 actions bumped)
+- `typescript/package.json`, `typescript/test/e2e/company-lookup/package.json` — still untouched, blocked on the two follow-up investigations above
+- `typescript/.eslintrc*` → `eslint.config.js` — pending `INVESTIGATE-eslint9-migration.md`
