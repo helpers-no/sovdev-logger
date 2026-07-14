@@ -45,16 +45,11 @@ jobs:
       - name: Build TypeScript
         run: npm run build
 
-      # There is no separate unit/integration test tier: `npm run test:unit`
-      # and `npm run test:integration` were never implemented for any
-      # language (see website/docs/contributor/06-test-scenarios.md — test/e2e/company-lookup/
-      # is the only REQUIRED test path). The project's actual correctness gate
-      # is the E2E company-lookup test verified against a real OTLP backend
-      # (Loki/Tempo/Prometheus), which needs a live Kubernetes cluster CI
-      # doesn't have — see contributor/testing/uis.md. Run it locally via
-      # `dct-exec` and `tools/validation/uis/compare-with-master.sh`.
-      # - name: Run E2E tests
-      #   run: npm run test:e2e
+      # The real E2E-against-a-live-backend correctness gate now runs for
+      # real, in the grafana-cloud-consistency job below (added 2026-07-14) —
+      # it doesn't need a live Kubernetes cluster the way the UIS-backed
+      # version does, since Grafana Cloud is reachable from any CI runner.
+      # See tools/validation/grafana-cloud/README.md.
 
       - name: Verify build artifacts
         run: |
@@ -138,10 +133,96 @@ jobs:
           console.log('✅ All required package.json fields present');
           "
 
+  grafana-cloud-consistency:
+    name: Grafana Cloud Consistency Check
+    runs-on: ubuntu-latest
+    # Real end-to-end proof, not just a build check: writes to a local log
+    # file (ground truth), validates the file's format, then reads back from
+    # Loki/Prometheus/Tempo and diffs each response against that same file,
+    # field by field. Uses sovdev-ci-ingest/sovdev-ci-verify — dedicated CI
+    # credentials, LBAC-scoped to sovdev-ci-company-lookup* only, entirely
+    # separate from the maintainer's personal dev keys or any customer's.
+    # See tools/validation/grafana-cloud/README.md and
+    # contributor/testing/grafana-cloud.md's "CI's own consistency check"
+    # section for the full setup story.
+    env:
+      OTEL_SERVICE_NAME: sovdev-ci-company-lookup
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: https://otlp-gateway-prod-eu-west-0.grafana.net/otlp/v1/logs
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: https://otlp-gateway-prod-eu-west-0.grafana.net/otlp/v1/metrics
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: https://otlp-gateway-prod-eu-west-0.grafana.net/otlp/v1/traces
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      LOG_TO_FILE: "true"
+      LOG_TO_CONSOLE: "true"
+      GRAFANA_CLOUD_INGEST_TOKEN: ${{ secrets.SOVDEV_CI_INGEST_TOKEN }}
+      GRAFANA_CLOUD_VERIFY_TOKEN: ${{ secrets.SOVDEV_CI_VERIFY_TOKEN }}
+      # Stack-wide constants, not secrets -- already published in plain text
+      # in using/onboarding/index.md and the .env.example files.
+      GRAFANA_CLOUD_OTLP_ENDPOINT: https://otlp-gateway-prod-eu-west-0.grafana.net/otlp
+      GRAFANA_CLOUD_OTLP_INSTANCE_ID: "484308"
+      GRAFANA_CLOUD_LOKI_URL: https://logs-prod-eu-west-0.grafana.net
+      GRAFANA_CLOUD_LOKI_INSTANCE_ID: "333665"
+      GRAFANA_CLOUD_PROMETHEUS_URL: https://prometheus-prod-01-eu-west-0.grafana.net
+      GRAFANA_CLOUD_PROMETHEUS_INSTANCE_ID: "669389"
+      GRAFANA_CLOUD_TEMPO_URL: https://tempo-eu-west-0.grafana.net
+      GRAFANA_CLOUD_TEMPO_INSTANCE_ID: "330178"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python validator dependencies
+        run: pip install jsonschema
+
+      - name: Install and build typescript
+        working-directory: ./typescript
+        run: |
+          npm ci
+          npm run build
+
+      - name: Compute OTLP Basic Auth header
+        run: |
+          HEADER=$(echo -n "${GRAFANA_CLOUD_OTLP_INSTANCE_ID}:${GRAFANA_CLOUD_INGEST_TOKEN}" | base64 -w0)
+          echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic ${HEADER}" >> "$GITHUB_ENV"
+
+      # Fail fast: this is the exact tool a new customer runs to verify their
+      # own connection (see contributor/testing/selftest-cli.md). No point
+      # spending ~2 minutes on the full E2E test below if a basic write+
+      # read-back against this same backend doesn't even work.
+      - name: Quick connection check (sovdev-selftest)
+        working-directory: ./typescript
+        run: node dist/cli/selftest.js --backend grafana-cloud
+
+      - name: Install E2E test dependencies
+        working-directory: ./typescript/test/e2e/company-lookup
+        run: npm ci
+
+      - name: Install validation tool dependencies
+        working-directory: ./tools/validation/grafana-cloud
+        run: npm ci
+
+      - name: Run full consistency check
+        working-directory: ./tools/validation/grafana-cloud
+        run: |
+          chmod +x ./full-consistency-check.sh
+          # .env.ci deliberately doesn't exist in the checked-out repo --
+          # run-test.sh falls back to the already-exported env vars above,
+          # exactly matching how a real consumer's own CI would use this.
+          ./full-consistency-check.sh --env-file .env.ci
+
   # This job will be used later when we have multiple languages
   summary:
     name: CI Summary
-    needs: [test-typescript, code-quality]
+    needs: [test-typescript, code-quality, grafana-cloud-consistency]
     runs-on: ubuntu-latest
     if: always()
 
@@ -164,13 +245,19 @@ jobs:
             echo "❌ **Code Quality**: Failed" >> $GITHUB_STEP_SUMMARY
           fi
 
+          if [[ "${{ needs.grafana-cloud-consistency.result }}" == "success" ]]; then
+            echo "✅ **Grafana Cloud Consistency**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Grafana Cloud Consistency**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "_Note: This workflow is designed to support multi-language testing in the future_" >> $GITHUB_STEP_SUMMARY
 
       - name: Set final status
         run: |
-          if [[ "${{ needs.test-typescript.result }}" == "success" && "${{ needs.code-quality.result }}" == "success" ]]; then
+          if [[ "${{ needs.test-typescript.result }}" == "success" && "${{ needs.code-quality.result }}" == "success" && "${{ needs.grafana-cloud-consistency.result }}" == "success" ]]; then
             echo "✅ All checks passed!"
             exit 0
           else

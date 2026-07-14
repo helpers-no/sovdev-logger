@@ -110,6 +110,38 @@ Each pipes Grafana Cloud's response to the matching `tools/validation/validators
 
 Confirmed passing against real E2E test output: Loki 17/17, Tempo 4/4 (may need a retry — traces can take a few seconds to become searchable after ingestion, same as UIS), Prometheus 5/5.
 
+## CI's own consistency check
+
+As of 2026-07-14, `.github/workflows/ci.yml`'s `grafana-cloud-consistency` job runs a two-stage check automatically, on every push/PR — not just a build/lint check, real proof against real Grafana Cloud data:
+
+1. **Fail fast**: [`sovdev-selftest --backend grafana-cloud`](selftest-cli.md) — the exact tool a real customer runs to verify their own connection. If a basic write+read-back against this backend doesn't work, there's no point spending ~2 minutes on the full E2E test below.
+2. **Full consistency check**: the "write to file, validate the file, read back, diff against the file" sequence from steps 6–7 above, only if step 1 passes.
+
+This is the gate `PLANS.md` refers to: a change to `typescript/src/**.ts` doesn't get merged unless both stages pass for real.
+
+**Dedicated CI-only credentials, not the maintainer's personal ones.** Same reasoning as every other Access Policy in this project (one per system, least-privilege): CI got its own pair, entirely separate from `sovdev-logger-ingest`/`sovdev-logger-verify` above.
+
+1. **`sovdev-ci-ingest`** — `logs:write`, `metrics:write`, `traces:write`, no read at all. Same shape as any other ingest policy.
+2. **`sovdev-ci-verify`** — `logs:read`, `metrics:read`, `traces:read`, **LBAC-scoped** with a label selector:
+   ```
+   service_name=~"^sovdev-ci-company-lookup.*"
+   ```
+   **Use the regex operator (`=~`), not exact-match (`=`).** Confirmed the hard way: an exact-match selector on `sovdev-ci-company-lookup` alone won't match anything with a suffix, and this project's E2E test's own service name is used as-is (no suffix today, but the regex form is what the Access Policy's own "Label selectors" section expects for prefix-style matching — see the ⚠️ below for where this control actually lives in the portal). Also confirmed live: label selectors only apply to `logs`/`metrics` reads, never `traces` — Grafana Cloud's own UI states this directly ("Available only with read permissions for metrics and logs"). `traces:read` on this policy stays stack-wide; accepted as a known, non-blocking gap.
+
+   ⚠️ **The "Add label selector" control doesn't appear until scopes are checked, and it's collapsed by default.** After checking `logs:read`/`metrics:read`, look for a collapsed **"Label selectors (0)"** section below the Scopes table — not a per-checkbox button next to each row, as you might expect. Click it to expand, then **Add label selector**.
+
+CI's E2E test run uses a dedicated `service_name` too — `sovdev-ci-company-lookup`, distinct from the maintainer's own manual test runs (`sovdev-test-company-lookup-typescript-grafana-cloud`) — so the two never mix in the shared dashboard, and the LBAC selector above stays meaningfully scoped.
+
+**Stored as two individual GitHub Actions secrets**, not one bundled file: `SOVDEV_CI_INGEST_TOKEN` and `SOVDEV_CI_VERIFY_TOKEN`. Everything else the workflow needs (the stack-wide OTLP/Loki/Prometheus/Tempo URLs and Instance IDs from step 3 above) is hardcoded directly in `ci.yml` — those aren't secrets, they're already published in plain text in this very doc and in `.env.example`. Deliberately not one blob secret: rotating a single token shouldn't require re-pasting values that didn't change, and GitHub secrets are opaque once saved (you can't view or diff them again, only overwrite) — bundling increases the blast radius of a copy-paste mistake, not reduces it.
+
+**To rotate**: mint a new token on the same Access Policy (or a fresh Access Policy, if rotating the policy itself) in the portal, then:
+```bash
+echo -n "<new-token>" | gh secret set SOVDEV_CI_INGEST_TOKEN --repo helpers-no/sovdev-logger
+echo -n "<new-token>" | gh secret set SOVDEV_CI_VERIFY_TOKEN --repo helpers-no/sovdev-logger
+```
+
+**To test the CI flow locally before trusting it in GitHub Actions**: see [`tools/validation/grafana-cloud/README.md`](https://github.com/helpers-no/sovdev-logger/tree/main/tools/validation/grafana-cloud)'s `full-consistency-check.sh` section — it accepts `--env-file` so you can point the E2E test step at any credentials, including a local copy of CI's own (kept in `terchris/sovdev-ci-grafana.env`, gitignored, not part of this repo).
+
 ## Troubleshooting
 
 - **Access policy / token creation**: has to be done by a human — see step 2.
