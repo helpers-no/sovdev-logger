@@ -36,7 +36,7 @@ This step doesn't get delegated to an AI agent: minting credentials and touching
 
 ### 3. Create a second Access Policy + token — read-only, scoped to just this system
 
-This one is new as of 2026-07-14, needed to run [`sovdev-selftest`](../../contributor/testing/selftest-cli.md) (step 5) without handing every customer a credential that can read every *other* customer's data too.
+This one is new as of 2026-07-14, needed to run [`sovdev-selftest`](../../contributor/testing/selftest-cli.md) (step 4) without handing every customer a credential that can read every *other* customer's data too.
 
 Grafana Cloud portal → **Security → Access Policies → Create access policy** (same page as step 2 — **https://grafana.com/orgs/urbalurba/access-policies**):
 
@@ -51,72 +51,28 @@ Grafana Cloud portal → **Security → Access Policies → Create access policy
   - **Label selectors don't cover `traces`** — Grafana Cloud's own UI says so directly ("Available only with read permissions for metrics and logs"). The `traces:read` checkbox on this policy stays stack-wide regardless of the selector above — a known, accepted gap, not something to try to work around here.
 - Click **Create access policy**, then **Add token** on the resulting card, name it to match, and copy the value immediately — same one-time-reveal behavior as step 2. (The policy card shows "0 tokens" until you do this — the policy alone doesn't do anything without an actual token.)
 
-### 4. Find the OTLP endpoint and its Instance ID
+### 4. Run `onboard-system.sh` — verifies the tokens and writes the handover file in one step
 
-From your stack's management page (**https://grafana.com/orgs/urbalurba/stacks/484308** — the number in that URL is Grafana's own stack ID, and it's the same number as the Instance ID below, confirmed), click **Configure** on the **OpenTelemetry** card. That page (`.../stacks/484308/otlp-info`) shows exactly what you need:
-
-- **OTLP Endpoint** — one endpoint handles all three signals: `https://otlp-gateway-prod-eu-west-0.grafana.net/otlp` for this stack (region varies by stack, don't assume `eu-west-0`)
-- **Instance ID** — shown directly on this page (`484308` for this stack)
-
-This Instance ID is specific to OTLP ingestion; it's a *different* Instance ID than Loki, Tempo, or Prometheus each have on their own connection pages (reachable from the same stack management page, one card per signal) — confirmed non-uniform, don't assume a shared pattern or reuse another signal's ID here.
-
-The same page also offers to generate a token directly ("Password / API Token — Generate now") — that's a separate, simpler path than the Access Policy in step 2, but skip it: it doesn't give you the scoped, independently-named, independently-revocable token this recipe is built around. Use the Access Policy token from step 2 as the password instead.
-
-### 5. Configure the new system — the standard env var set
-
-Two groups of variables, covering both consumption points every new customer needs. **This is the canonical template — the same one for every system, third or hundredth.**
-
-**Group 1 — the application's own OTLP export** (six standard OpenTelemetry variables, the same regardless of language or framework):
+As of 2026-07-14, this replaces hand-finding the OTLP endpoint, hand-computing the Basic Auth header, hand-copying eight env var names, and running a separate validation step — one command does all four, and **it's mechanically impossible to hand over credentials that don't actually work**: the output file is only ever written by the same run that just proved these exact values pass a real write+read-back check.
 
 ```bash
-OTEL_SERVICE_NAME=<service-name>
-OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=<otlp-endpoint>/v1/logs
-OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=<otlp-endpoint>/v1/metrics
-OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=<otlp-endpoint>/v1/traces
-OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <base64(instance-id:token)>"
-OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+cd tools/validation/grafana-cloud
+cp raw-input.env.example /tmp/<service-name>-raw.env
+# fill in SERVICE_NAME, INGEST_TOKEN (step 2), VERIFY_TOKEN (step 3)
+./onboard-system.sh /tmp/<service-name>-raw.env /tmp/<service-name>-handover.env
 ```
 
-Compute the Basic Auth value with the OTLP Instance ID from step 4 and the **ingest** token from step 2:
+It builds the library fresh, runs the real [`sovdev-selftest`](../../contributor/testing/selftest-cli.md) check against these exact values, and — only if all four checks (write-log, write-metric, read-log, read-metric) pass — writes the finished handover file: both the application's own OTLP env vars and `sovdev-selftest`'s own `GRAFANA_CLOUD_*` vars, in one place, ready to send onward. **If verification fails, the script exits non-zero and the handover file is never created** — there's nothing to accidentally hand over broken. This is exactly how a real, live mistake was caught in this project: a label selector was first set up with exact-match instead of regex, and this exact check surfaced the read-back failure immediately — before anything was ever handed to anyone.
 
-```bash
-echo -n "<otlp-instance-id>:<service-name-ingest-token>" | base64
-```
+The stack-wide constants (OTLP/Loki/Prometheus/Tempo endpoints and Instance IDs — each genuinely different from the others, confirmed non-uniform, don't assume a shared pattern) are filled in automatically; they're the same for every system on this stack. Only override them (see `raw-input.env.example`'s `OVERRIDE_*` fields) if this system is ever on a genuinely different stack.
 
-The header value **must stay quoted** wherever it's stored or sourced — `Authorization=Basic <token>` contains a space, and anything that word-splits on spaces (bash's `source`, for one) silently truncates it after the space, producing a confusing `401` with no useful error about why.
+### 5. Treat every credential as a real secret
 
-**Group 2 — `sovdev-selftest`'s own config** (for the customer to self-verify their setup on demand, per [Quick check: sovdev-selftest](../../contributor/testing/selftest-cli.md)). Exact variable names required by the shipped CLI (`typescript/src/cli/backend-config.ts`) — get these wrong and the tool fails fast with a "missing env vars" message rather than silently misbehaving:
+The handover file `onboard-system.sh` just produced contains real credentials (`OTEL_EXPORTER_OTLP_HEADERS`, `GRAFANA_CLOUD_INGEST_TOKEN`, `GRAFANA_CLOUD_VERIFY_TOKEN`). Send the whole file to whoever owns the new system's deploy through a secure channel — never in plain chat or email. Once there, they split it the same way every system does: the token-bearing lines go wherever their own deploy pipeline keeps real secrets; the plain identifiers (`OTEL_SERVICE_NAME`, the various `*_URL`/`*_INSTANCE_ID` values) can live as ordinary env vars/config.
 
-```bash
-GRAFANA_CLOUD_INGEST_TOKEN=<same ingest token as Group 1, un-base64'd>
-GRAFANA_CLOUD_VERIFY_TOKEN=<the verify token from step 3>
-GRAFANA_CLOUD_OTLP_ENDPOINT=<otlp-endpoint>
-GRAFANA_CLOUD_OTLP_INSTANCE_ID=<otlp-instance-id>
-GRAFANA_CLOUD_LOKI_URL=<Loki query host, e.g. https://logs-prod-eu-west-0.grafana.net>
-GRAFANA_CLOUD_LOKI_INSTANCE_ID=<Loki's own Instance ID>
-GRAFANA_CLOUD_PROMETHEUS_URL=<Prometheus/Mimir query host>
-GRAFANA_CLOUD_PROMETHEUS_INSTANCE_ID=<Prometheus's own Instance ID>
-```
+### 6. Verify it shows up in the real system
 
-Loki's and Prometheus's Instance IDs are each **different** from the OTLP one and from each other — find them on their own connection pages, reachable from the same stack management page as step 4 (one card per signal). Don't assume they match the OTLP Instance ID just because this stack's OTLP Instance ID happens to equal the stack ID.
-
-Both groups contain real credentials (`OTEL_EXPORTER_OTLP_HEADERS`, `GRAFANA_CLOUD_INGEST_TOKEN`, `GRAFANA_CLOUD_VERIFY_TOKEN`) — see step 7.
-
-### 6. Validate the tokens actually work — before wiring anything into the real system
-
-Don't skip this. A portal saying "access policy created" and an SDK printing "flushed successfully" both prove nothing on their own — this project already found a real bug once where console output claimed success while data silently never arrived (see [`INVESTIGATE-long-running-server-flush.md`](../../ai-developer/plans/completed/INVESTIGATE-long-running-server-flush.md)). The only real proof is a readback that actually finds the data.
-
-With both groups of variables from step 5 in place, run [`sovdev-selftest`](../../contributor/testing/selftest-cli.md) (bundled with the npm package, `npx sovdev-selftest --backend grafana-cloud`) — it writes a disposable, uniquely-marked log and metric under `<service-name>-selftest`, then reads both back automatically, reporting a clean pass/fail per signal rather than one opaque result. This uses the customer's own `<service-name>-verify` token from step 3, not a shared maintainer credential — every customer's self-test stays isolated to their own data, matching the whole point of minting a separate verify policy per system.
-
-Confirm all four checks (write-log, write-metric, read-log, read-metric) pass — not just that the command exits without a stack trace — before moving on.
-
-### 7. Treat every credential as a real secret
-
-`OTEL_EXPORTER_OTLP_HEADERS`, `GRAFANA_CLOUD_INGEST_TOKEN`, and `GRAFANA_CLOUD_VERIFY_TOKEN` all contain tokens from steps 2–3. Store all three in whatever secret manager the new system's own deploy pipeline already uses for real secrets — never as plain environment variables alongside identifiers like `OTEL_SERVICE_NAME` or the various `*_URL`/`*_INSTANCE_ID` values, which are plain identifiers and can live as ordinary env vars/config.
-
-### 8. Verify it shows up in the real system
-
-Once the new system is actually wired up (not the throwaway validation from step 6) and has generated at least one real log call, open the dashboard — the new `service_name` appears automatically in the `$service_name` picker (multi-select, "All" selected by default) and in every panel's legend. Nothing about the dashboard changes: this is exactly what its template variable and per-peer-service panels were built for. See [Dashboard walkthrough](../dashboard-walkthrough/index.md) for what each panel means once you're looking at it.
+Once the new system is actually wired up (not the disposable `-selftest` data from step 4) and has generated at least one real log call, open the dashboard — the new `service_name` appears automatically in the `$service_name` picker (multi-select, "All" selected by default) and in every panel's legend. Nothing about the dashboard changes: this is exactly what its template variable and per-peer-service panels were built for. See [Dashboard walkthrough](../dashboard-walkthrough/index.md) for what each panel means once you're looking at it.
 
 ## What you're *not* doing
 
@@ -136,4 +92,4 @@ Real systems that have gone through this recipe, with the exact snippets that ma
 - [Dashboard walkthrough](../dashboard-walkthrough/index.md) — what each panel shows once data arrives
 - [Observability architecture](../observability-architecture.md) — the local-UIS side of dashboard setup
 - [Testing against Grafana Cloud](../../contributor/testing/grafana-cloud.md) — how sovdev-logger's own E2E tests use this same stack, for verification rather than a production system
-- [Quick check: sovdev-selftest](../../contributor/testing/selftest-cli.md) — the CLI used in step 6, and the full design behind it
+- [Quick check: sovdev-selftest](../../contributor/testing/selftest-cli.md) — the CLI `onboard-system.sh` runs internally in step 4, and the full design behind it

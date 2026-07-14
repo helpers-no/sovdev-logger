@@ -28,7 +28,11 @@ Grafana Cloud's ingestion and query sides use separate credentials. In the Cloud
 1. **`sovdev-logger-ingest`** — scopes: `metrics:write`, `logs:write`, `traces:write`. Used by the app under test to push OTLP telemetry.
 2. **`sovdev-logger-verify`** — scopes: `metrics:read`, `logs:read`, `traces:read`. Used by the query tooling below to read it back.
 
-The "Create new access policy" form, confirmed against a real one: **Display name** and a separate **Name** field ("used as a unique identifier") — set both the same, no reason for them to differ. **Realms** is a multi-select dropdown (not free text) — pick your one stack specifically. **Scopes** is a table: rows are resources (`metrics`, `logs`, `traces`, `profiles`, `alerts`, `rules`, `accesspolicies`), columns are `Read`/`Write`/`Delete` checkboxes — check only the cells you actually need (e.g. just `Write` for `metrics`/`logs`/`traces` on the ingest policy). On each policy, click **Add token**, name it to match the policy, and copy the value immediately — it's shown once.
+The "Create new access policy" form, confirmed against a real one: **Display name** and a separate **Name** field ("used as a unique identifier") — set both the same, no reason for them to differ. **Realms** is a multi-select dropdown (not free text) — pick your one stack specifically; this scopes the policy to *which stack* it applies to, a separate concept from the **Scopes** table's `Read`/`Write`/`Delete` checkboxes (which resource *actions* are allowed) and from label selectors below (*which data within that stack*, read-only — see the next section). **Scopes** is a table: rows are resources (`metrics`, `logs`, `traces`, `profiles`, `alerts`, `rules`, `accesspolicies`), columns are `Read`/`Write`/`Delete` checkboxes — check only the cells you actually need (e.g. just `Write` for `metrics`/`logs`/`traces` on the ingest policy).
+
+Click **Create access policy**, then on the resulting policy card click **Add token**, name it to match the policy, and copy the value immediately — it's shown once. **The policy card shows "0 tokens" until you do this — creating the Access Policy alone doesn't produce a usable credential**, the token is a separate object minted on top of it.
+
+**If you want this verify token scoped to just one system's data** (rather than the stack-wide, unrestricted `sovdev-logger-verify` this step produces by default) — e.g. for a new customer's own token, or CI's — see "CI's own consistency check" below for the exact label-selector steps (the "Label selectors" section, the regex-vs-exact-match gotcha, and the traces limitation) — the same steps apply regardless of whose token it is, not just CI's.
 
 **Creating the access policies and generating tokens is something you have to do yourself.** Two separate Claude Code instances both independently declined to click "Create"/"Add token" on our behalf, even with explicit authorization — modifying access controls and minting long-lived credentials is treated as a hard line, not an "are you sure" prompt. Budget for doing this step by hand.
 
@@ -131,7 +135,7 @@ As of 2026-07-14, `.github/workflows/ci.yml`'s `grafana-cloud-consistency` job r
 
 This is the gate `PLANS.md` refers to: a change to `typescript/src/**.ts` doesn't get merged unless both stages pass for real.
 
-**Dedicated CI-only credentials, not the maintainer's personal ones.** Same reasoning as every other Access Policy in this project (one per system, least-privilege): CI got its own pair, entirely separate from `sovdev-logger-ingest`/`sovdev-logger-verify` above.
+**Dedicated CI-only credentials, not the maintainer's personal ones.** Same reasoning as every other Access Policy in this project (one per system, least-privilege): CI got its own pair, entirely separate from `sovdev-logger-ingest`/`sovdev-logger-verify` above. The label-selector mechanics below (points 1–2) are general-purpose — the same steps apply to scoping *any* system's verify token, not just CI's; this is just where they're written down in full, since CI's own setup is where they were first worked out in practice.
 
 1. **`sovdev-ci-ingest`** — `logs:write`, `metrics:write`, `traces:write`, no read at all. Same shape as any other ingest policy.
 2. **`sovdev-ci-verify`** — `logs:read`, `metrics:read`, `traces:read`, **LBAC-scoped** with a label selector:

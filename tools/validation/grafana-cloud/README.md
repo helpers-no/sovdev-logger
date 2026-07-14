@@ -24,7 +24,8 @@ For the local UIS equivalent (bash, `kubectl` instead of HTTP), see [`../uis/`](
 | [**check-connection.ts**](check-connection.ts) | Quick connectivity/credential smoke test, no comparison | `npx tsx check-connection.ts` |
 | [**probe-otlp-ingest.ts**](probe-otlp-ingest.ts), [**probe-tempo-prometheus.ts**](probe-tempo-prometheus.ts) | One-off debugging probes used while first mapping this stack's endpoints — see `INVESTIGATE-grafana-cloud-validator.md` | ad hoc |
 | [**generate-e2e-env.ts**](generate-e2e-env.ts) | Generates `typescript/test/e2e/company-lookup/.env.grafana-cloud` from this directory's `.env` | `npx tsx generate-e2e-env.ts` |
-| [**full-consistency-check.sh**](full-consistency-check.sh) | **The single command for "does this actually work end-to-end."** Runs the E2E test, validates the log file, then runs all three `--compare-with` checks in sequence — see below. | `./full-consistency-check.sh [--env-file PATH]` |
+| [**full-consistency-check.sh**](full-consistency-check.sh) | **The single command for "does the library itself actually work end-to-end."** Runs the E2E test, validates the log file, then runs all three `--compare-with` checks in sequence — see below. | `./full-consistency-check.sh [--env-file PATH]` |
+| [**onboard-system.sh**](onboard-system.sh) | **The single command for "does this new system's credentials actually work" — and writes its handover file only if they do.** See below. | `./onboard-system.sh <raw-input-file> <output-handover-file>` |
 
 **Common flags on all three query scripts:** `--json`, `--compare-with FILE` (the strongest check — cross-checks every entry against a log file by `trace_id`/`event_id`, real mismatches fail loudly), `--limit N`, `--time-range R`.
 
@@ -45,6 +46,20 @@ Matches how this project's maintainer originally verified changes by hand: write
 Exit code 0 only if every step passes. **This is the gate referenced in `PLANS.md`: before a change to `typescript/src/**.ts` is pushed to main, this script must exit 0** — it now runs for real in CI too, see below.
 
 By default it uses your own personal dev credentials (`.env` in this directory, `.env.grafana-cloud` in the E2E test directory). The `GRAFANA_CLOUD_*` env vars must already be present in the environment before calling it — it never sources a `.env` file itself, so it can't silently override credentials you set up on purpose. Use `--env-file PATH` to point the E2E test step at different application credentials (e.g. CI's own).
+
+## `onboard-system.sh` — verify a new system's credentials, then write its handover file (only if they pass)
+
+Different job than `full-consistency-check.sh` above: that one validates the *library's* own correctness against your personal dev credentials; this one validates a *new system's freshly-created* credentials, and produces the actual file you hand over.
+
+```bash
+cp raw-input.env.example /tmp/<system>-raw.env
+# fill in SERVICE_NAME, INGEST_TOKEN, VERIFY_TOKEN
+./onboard-system.sh /tmp/<system>-raw.env /tmp/<system>-handover.env
+```
+
+Builds the library fresh, runs the real [`sovdev-selftest`](../../../website/docs/contributor/testing/selftest-cli.md) write+read-back check against those exact values, and **only if all 4 checks pass**, writes the handover file (both the app's own OTLP vars and `sovdev-selftest`'s own `GRAFANA_CLOUD_*` vars). If verification fails, exits non-zero and **never writes the output file** — confirmed directly, including the negative case (a deliberately broken token correctly produces no output file at all, not a partial/wrong one).
+
+The point: the handover file's existence *is* the proof it works. There's no separate "now go test it" step to forget — generating the file and verifying it are the same act, by construction, not by discipline.
 
 ## CI's own consistency check
 

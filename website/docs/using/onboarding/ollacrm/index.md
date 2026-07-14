@@ -126,8 +126,59 @@ Once the real env var values are in place:
 2. Trigger a request that hits the converted code path (or just `/health`, as the simplest smoke test that the SDK initializes without error).
 3. Open the shared dashboard — `ollacrm-api` appears as a new option in the `$service_name` picker within a few seconds. No dashboard changes needed — this is exactly what [Onboarding a new system](../index.md) describes.
 
+## Upgrade: 2026-07-14 — `sovdev-logger@1.0.2` + self-verification setup
+
+Two things changed since the original integration above. One is urgent; the other is optional but recommended.
+
+### 1. Upgrade to `1.0.2` — fixes a real crash-on-load bug
+
+If `ollacrm-api` is running `sovdev-logger@1.0.1`, it is very likely failing to start at all. A dependency (`uuid`) shipped a version that dropped Node's CommonJS module support entirely — `sovdev-logger`'s compiled output does `require('uuid')`, which now throws `ERR_REQUIRE_ESM` the moment anything tries to `import`/`require` the package, before any application code even runs.
+
+```bash
+cd services/api
+npm install sovdev-logger@1.0.2
+```
+
+No code change needed — this is purely a dependency-version bump. `1.0.2` replaces the internal `uuid` usage with Node's own built-in `crypto.randomUUID()`, removing the dependency (and the whole class of bug) entirely rather than just pinning around it.
+
+**Verify the upgrade actually took**: deploy, then confirm the service starts and logs at all (even a `/health` hit is enough) — if it's currently crash-looping on `1.0.1`, this alone should visibly fix it.
+
+### 2. Set up self-verification (recommended, not required)
+
+New since the original integration: `sovdev-selftest`, a command bundled with the npm package (`npx sovdev-selftest`, no separate install) that writes one marker log + one marker metric and reads both back, confirming the connection actually works end-to-end — not just that the SDK didn't throw on startup.
+
+This needs a **second credential** you don't have yet — a read-only token, scoped to only `ollacrm-api`'s own data (separate from your existing write-only ingest token, same least-privilege reasoning as everything else in this recipe). Your maintainer will share the actual token value with you through a secure channel separately — **it should never appear in this doc, in chat, or in any other unencrypted channel**.
+
+Once you have it, add these to your deploy config the same way as your existing OTLP vars (plain identifiers via `--update-env-vars`, the token via `--set-secrets`):
+
+```bash
+GRAFANA_CLOUD_INGEST_TOKEN=<same token already in your OTEL_EXPORTER_OTLP_HEADERS, decoded>
+GRAFANA_CLOUD_VERIFY_TOKEN=<the new read-only token your maintainer sends you>
+GRAFANA_CLOUD_OTLP_ENDPOINT=https://otlp-gateway-prod-eu-west-0.grafana.net/otlp
+GRAFANA_CLOUD_OTLP_INSTANCE_ID=484308
+GRAFANA_CLOUD_LOKI_URL=https://logs-prod-eu-west-0.grafana.net
+GRAFANA_CLOUD_LOKI_INSTANCE_ID=333665
+GRAFANA_CLOUD_PROMETHEUS_URL=https://prometheus-prod-01-eu-west-0.grafana.net
+GRAFANA_CLOUD_PROMETHEUS_INSTANCE_ID=669389
+```
+
+The four `_URL`/`_INSTANCE_ID` values above aren't secrets — they're the same shared stack's connection details already used elsewhere in this recipe, safe to commit as plain config.
+
+Then run:
+
+```bash
+npx sovdev-selftest --backend grafana-cloud
+```
+
+A clean run prints four checks — `write-log`, `write-metric`, `read-log`, `read-metric` — all `✅`. This is the same tool your maintainer's own CI now runs on every change to the library itself, so it's a well-exercised path, not a one-off script.
+
+### 3. Also new, entirely optional
+
+`service_principal`/`acting_user` context fields, set via `sovdev_set_context()`, if you ever want to attribute a log line to a specific caller identity or acting user. Not required for anything above — only worth adopting if it's useful for your own debugging/audit needs.
+
 ## See also
 
 - [Onboarding a new system](../index.md) — the generic recipe this example follows
 - [Why Consistent Logging Across Systems](../../../general/why-consistent-logging.md) — why this scales to system #3, #4, ... #100
 - [Dashboard walkthrough](../../dashboard-walkthrough/index.md) — what each panel means once ollacrm's data arrives
+- [Quick check: sovdev-selftest](../../../contributor/testing/selftest-cli.md) — the full design behind the self-test command above
