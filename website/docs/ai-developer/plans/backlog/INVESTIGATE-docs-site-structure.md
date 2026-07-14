@@ -6,13 +6,15 @@ Whether the current Docusaurus setup and docs organization actually serve their 
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Backlog — Option A (onBrokenAnchors) shipped 2026-07-14
 
 **Goal**: A grounded, evidence-based picture of the documentation site's real structural health — not a redesign for its own sake — so any follow-up work targets genuine gaps rather than guessed ones.
 
-**Last Updated**: 2026-07-14
+**Last Updated**: 2026-07-14 — folded in [`INVESTIGATE-developer-first-onboarding.md`](../completed/INVESTIGATE-developer-first-onboarding.md)'s one remaining open item (Option E1), since it's the same underlying "developer-facing docs/verification experience" question this investigation already covers. That investigation is now fully retired to `completed/` — see its own banner for what shipped.
 
 **Trigger**: retiring [`PLAN-onboarding-docs-split.md`](../completed/PLAN-onboarding-docs-split.md) (superseded, never built as designed) surfaced a real, still-unmet gap — no generic developer-quickstart template exists, only ollacrm's own specific page. Separately, this session found a real, live bug class: a heading-derived hash anchor (`#upgrade-2026-07-14--sovdev-logger102--self-verification-setup`) that would have silently broken the moment its heading's wording changed, with no build failure to catch it. Both prompted a broader look rather than two narrow fixes.
+
+**Option A done**: `onBrokenAnchors: 'throw'` added to `docusaurus.config.ts`, verified with a real deliberately-broken anchor causing a real build failure, then reverted the test. See git history (`e494bc7`) for the exact change.
 
 ---
 
@@ -51,11 +53,15 @@ From the retired `PLAN-onboarding-docs-split.md`: `using/onboarding/ollacrm/inde
 
 `@easyops-cn/docusaurus-search-local` is configured; `npm run build` genuinely produces `build/search-index.json` and a `build/search/` route. Not a gap.
 
+### 7. Folded in from `INVESTIGATE-developer-first-onboarding.md`: the public dashboard verification link (Option E1) still isn't built
+
+That investigation's every other option shipped (docs rewrite, `onboard-system.sh` automation, the self-test CLI) — only **Option E1** remains: Grafana Cloud's built-in "Share externally" feature, set up on the shared dashboard, pre-filtered to a developer's own `service_name` via URL query param. Already decided, not just proposed — confirmed as the *only* verification path that doesn't assume Grafana Cloud portal access a developer (confirmed, for ollacrm) doesn't have. No code changes, no library work — a Grafana Cloud portal setting plus confirming the resulting URL pattern (`?var-service_name=<name>`) actually works. Full research (Sentry/Datadog/Azure/GCP comparison) preserved in the retired investigation's own file, not repeated here.
+
 ---
 
 ## Options
 
-### Option A: Fix `onBrokenAnchors` immediately, treat everything else as separate follow-up work
+### Option A: Fix `onBrokenAnchors` immediately, treat everything else as separate follow-up work — **done**
 
 Set `onBrokenAnchors: 'throw'` in `docusaurus.config.ts` — a one-line config change, directly closes the exact fragility class already found once. Leave the content-organization questions (Tier/audience split, `ai-developer/` publication question) for a later, separate decision.
 
@@ -86,10 +92,12 @@ Set `onBrokenAnchors: 'throw'` in `docusaurus.config.ts` — a one-line config c
 2. **[Q2]** Is a generic `developer-quickstart.md` template worth building now, speculatively, or only once a second real customer (after ollacrm) actually onboards — matching this project's own repeated preference for building from evidence, not anticipation (see `INVESTIGATE-developer-first-onboarding.md`'s Option D deferral for the same reasoning)?
 3. **[Q3]** Now that `ai-developer/` alone is 59 files, has `sidebars.ts`'s own stated threshold ("once the docs tree grows complex enough") been reached? If [Q1] answers "keep `ai-developer/` public," does it need its own manually-curated sidebar grouping (e.g. collapsing `completed/` by default, since it's historical record rather than active reference)?
 4. **[Q4]** Any other Docusaurus config worth auditing while in here — e.g. is `onBrokenMarkdownLinks` (a related, distinct setting for raw markdown-style links vs. resolved anchor links) also at a safe default? Not checked yet, worth a direct look before closing this investigation.
+5. **[Q5]** (Folded in from `INVESTIGATE-developer-first-onboarding.md`) Set up Grafana Cloud's "Share externally" on the shared dashboard, confirm the pre-filtered `?var-service_name=<name>` URL pattern actually works (Option E1) — already decided, just not executed yet. Small enough to do directly, no `PLAN-*.md` needed.
 
 ## Next Steps
 
-- [ ] Implement Option A: set `onBrokenAnchors: 'throw'` in `docusaurus.config.ts`, verify with a real build that it actually catches a deliberately-broken anchor (don't just trust the config value) — small enough to execute directly, no `PLAN-*.md` needed
+- [x] Implement Option A: set `onBrokenAnchors: 'throw'` in `docusaurus.config.ts`, verified with a real build that it actually catches a deliberately-broken anchor — done 2026-07-14
+- [ ] Set up Option E1 ([Q5]) — the single highest-value, lowest-cost remaining action across both this investigation and the one it absorbed
 - [ ] Maintainer answers [Q1]–[Q3] — these are genuine judgment calls this investigation can't resolve on its own
 - [ ] Check [Q4] directly before considering this investigation closed
 

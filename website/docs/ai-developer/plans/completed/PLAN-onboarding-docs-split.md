@@ -13,7 +13,7 @@ Splits `using/onboarding/index.md` into a short landing page plus two audience-s
 
 ## Status: Superseded 2026-07-14 — Option A shipped differently, this exact 3-file design was never built
 
-**Investigation**: [INVESTIGATE-developer-first-onboarding.md](../backlog/INVESTIGATE-developer-first-onboarding.md) — Option A, accepted
+**Investigation**: [INVESTIGATE-developer-first-onboarding.md](INVESTIGATE-developer-first-onboarding.md) — Option A, accepted
 
 **Goal**: `using/onboarding/` reads as three clearly separated audiences — developer, operator, and (already existing elsewhere) contributor — with no doc asking a customer developer to read infrastructure steps that were never theirs to do.
 

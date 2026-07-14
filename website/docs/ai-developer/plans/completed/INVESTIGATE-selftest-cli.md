@@ -141,7 +141,7 @@ Option A is the intended direction given the maintainer's explicit call this ses
 
 ## See also
 
-- [`INVESTIGATE-developer-first-onboarding.md`](../backlog/INVESTIGATE-developer-first-onboarding.md) — the parent investigation; Option E3 is what this document works out in detail
+- [`INVESTIGATE-developer-first-onboarding.md`](INVESTIGATE-developer-first-onboarding.md) — the parent investigation; Option E3 is what this document works out in detail
 - `tools/validation/grafana-cloud/lib/grafana-cloud-client.ts` — the existing HTTP query client this CLI's shared Loki/Prometheus/Tempo client would generalize from
 - `tools/dashboards/push-dashboard.ts` — this project's own existing precedent for `GRAFANA_URL`/`GRAFANA_USER`/`GRAFANA_PASSWORD`-based Basic Auth against local UIS, the same credential shape the datasource-proxy approach reuses
 - `tools/validation/uis/query-loki.sh` and siblings — the older `kubectl run` + disposable-curl-pod pattern this CLI's UIS connection replaces entirely (no `kubectl` at all — see "UIS is reachable over plain HTTP" above)

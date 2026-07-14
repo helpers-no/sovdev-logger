@@ -6,7 +6,9 @@ The current onboarding recipe was written for someone wearing two hats at once �
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog — [Q1]–[Q5], [Q9] answered 2026-07-14; A + B (TS-only) + E1 all decided, ready for PLAN(s); D deferred
+## Status: Completed 2026-07-14 — folded into [`INVESTIGATE-docs-site-structure.md`](../backlog/INVESTIGATE-docs-site-structure.md)
+
+Every option here shipped except Option E1 (the public dashboard verification link), which moved to the newer investigation above since it's the same underlying "developer-facing docs/verification experience" question. See that doc's own [Q5] and Next Steps for E1's current status. Kept here in full as the historical record of the research and decisions — nothing below is stale, it's just no longer the doc to check for current status.
 
 **Goal**: A developer who has never heard of OTLP, Grafana, or access policies can go from "I want to log from my code" to "it's working, confirmed by an actual read-back, not just a hopeful console message" using only: one secret they were handed, three function calls, and one self-test command.
 
@@ -47,7 +49,7 @@ This changes the shape of Option E: the choice isn't "build a self-test tool or 
 
 ### Azure and GCP — forward-looking reference, not a decision needed now
 
-Sovdev-logger doesn't connect to either backend today ([`INVESTIGATE-external-backend-verification.md`](INVESTIGATE-external-backend-verification.md), Tier 4, covers whether/when to add them). Checked directly anyway, so this is on hand for that future work rather than researched twice:
+Sovdev-logger doesn't connect to either backend today ([`INVESTIGATE-external-backend-verification.md`](../backlog/INVESTIGATE-external-backend-verification.md), Tier 4, covers whether/when to add them). Checked directly anyway, so this is on hand for that future work rather than researched twice:
 
 - **Azure Application Insights already ships Option B, for real, at Microsoft scale.** A single `APPLICATIONINSIGHTS_CONNECTION_STRING` env var bundles the ingestion endpoint, instrumentation key, Live Metrics endpoint, and Application ID into one opaque string that their SDK parses internally — this is a second major vendor (after Sentry's DSN) independently landing on "one bundled secret, not several env vars," which is exactly Option B's shape. ([Connection strings in Application Insights](https://learn.microsoft.com/en-us/azure/azure-monitor/app/connection-strings))
 - **Azure's read-back path is a real, official CLI, not a bespoke tool** — `az monitor app-insights query --app <name> --analytics-query "traces | where timestamp > ago(30m) | ..."` runs a Kusto (KQL) query against the ingested data directly from the command line. That's the same shape as Option E2 (wrap the vendor's own CLI rather than build one) — for an eventual Azure backend, E2 could point at `az monitor app-insights query` instead of `logcli`/`promtool`. ([az monitor app-insights](https://learn.microsoft.com/en-us/cli/azure/monitor/app-insights))
