@@ -37,6 +37,8 @@ OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 
 The endpoint, Instance ID, and token come from following [Onboarding a new system](../index.md)'s recipe first (a dedicated `ollacrm-ingest` access policy, independent from sovdev-logger's own).
 
+**Not yet wired into ollacrm's own deploy pipeline** (as of 2026-07-14): the recipe's step 3/5 also now covers a second, read-only `ollacrm-verify` access policy (LBAC-scoped to just `ollacrm-api`'s own data) and its own `GRAFANA_CLOUD_*` env vars, so ollacrm can run [`sovdev-selftest`](../../../contributor/testing/selftest-cli.md) to self-check their own setup. The policy itself has been created in the real portal; adding its vars to `.github/workflows/deploy.yml` (matching the pattern below) is a follow-up, not yet done.
+
 ollacrm's Cloud Run deploy (`.github/workflows/deploy.yml`) already distinguishes plain identifiers (`--update-env-vars`) from real secrets (`--set-secrets`, mounted from Secret Manager — the pattern its existing `VAPID_PRIVATE_KEY` already uses). `OTEL_EXPORTER_OTLP_HEADERS` contains a credential, so it follows the secret path; the other five are identifiers:
 
 ```yaml
