@@ -61,6 +61,8 @@ Examples:
 
 **Cluster naming:** `INVESTIGATE-<id><nn>-<topic>.md` — when several investigations belong to one programme, they share a short cluster id plus a two-digit number: `INVESTIGATE-api01-redcross-api-plan.md`, `INVESTIGATE-api02-taxonomy.md`, … The id groups the family in every file listing and gives each member a short stable handle ("api07") for cross-references and discussion. Numbers are allocated in creation order, are **identity not sequence** (execution order lives in the umbrella's plan), and are **never reused or renumbered**. The first cluster is `api` — the Red Cross API programme, with `api01` as its umbrella.
 
+**Hold naming:** `INVESTIGATE-hold-<topic>.md` — when an investigation is genuinely blocked on an external prerequisite (someone else's release, someone else's decision), not just deprioritized, prefix the filename with `hold-` and place it in `1PRIORITY.md`'s Tier 3. This makes the block visible directly in a file listing, not only inside the triage doc. Rename back to plain `INVESTIGATE-<topic>.md` the moment the prerequisite lands and it's promoted out of Tier 3 — the prefix describes current status, not history, so it shouldn't linger once the block is gone.
+
 **What makes a good investigation:**
 
 - **Research best practices** — use web search to find how others have solved similar problems, what patterns exist, what pitfalls to avoid

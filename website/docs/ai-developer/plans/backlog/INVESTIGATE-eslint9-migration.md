@@ -40,7 +40,7 @@ Dependabot's PR #17 bumps `@typescript-eslint/parser` alone to `8.64.0`, leaving
 
 `eslint: "^8.57.0 || ^9.0.0 || ^10.0.0"` — **this repo's current `eslint@^8.57.0` already satisfies that range.** Bumping `@typescript-eslint/eslint-plugin` + `@typescript-eslint/parser` together to `8.64.0` requires **no ESLint version change at all** and therefore **no flat-config migration** to unblock PR #17. The two upgrades (`@typescript-eslint` 7→8, and `eslint` 8→10) are independent, not sequential — the parent sweep's framing of "ESLint 9 migration blocks the `@typescript-eslint` bump" was an assumption, not a confirmed fact; it doesn't hold up.
 
-(Cross-reference: the same peer-dependency check found `@typescript-eslint/eslint-plugin@8.64.0` caps `typescript` at `<6.1.0` — relevant to `INVESTIGATE-typescript7-migration.md`'s own finding that `typescript/` can't adopt TS7 until `@typescript-eslint` supports it.)
+(Cross-reference: the same peer-dependency check found `@typescript-eslint/eslint-plugin@8.64.0` caps `typescript` at `<6.1.0` — relevant to `INVESTIGATE-hold-typescript7-migration.md`'s own finding that `typescript/` can't adopt TS7 until `@typescript-eslint` supports it.)
 
 ## Current State
 
