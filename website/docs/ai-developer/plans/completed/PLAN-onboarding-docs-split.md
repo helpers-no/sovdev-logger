@@ -11,13 +11,17 @@ Splits `using/onboarding/index.md` into a short landing page plus two audience-s
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Superseded 2026-07-14 — Option A shipped differently, this exact 3-file design was never built
 
-**Investigation**: [INVESTIGATE-developer-first-onboarding.md](INVESTIGATE-developer-first-onboarding.md) — Option A, accepted
+**Investigation**: [INVESTIGATE-developer-first-onboarding.md](../backlog/INVESTIGATE-developer-first-onboarding.md) — Option A, accepted
 
 **Goal**: `using/onboarding/` reads as three clearly separated audiences — developer, operator, and (already existing elsewhere) contributor — with no doc asking a customer developer to read infrastructure steps that were never theirs to do.
 
-**Last Updated**: 2026-07-11
+**Last Updated**: 2026-07-14
+
+**What actually happened instead**: `using/onboarding/index.md` stayed as one operator recipe (gained a new automated `onboard-system.sh` verification step instead of being split), and `using/onboarding/ollacrm/index.md` was rewritten from a historical worked example into a clean, ollacrm-specific 4-step checklist — not the generic `operator-setup.md`/`developer-quickstart.md` split this plan specified. Never activated, no phase started.
+
+**What's still a real, unmet gap**: there's no generic, reusable developer-quickstart template for the *next* customer after ollacrm — only ollacrm's own specific page exists. Carried forward into a broader documentation/Docusaurus-structure investigation rather than resurrecting this plan's exact 3-file design.
 
 ---
 

@@ -23,6 +23,7 @@ const config: Config = {
   projectName: GITHUB_REPO,
 
   onBrokenLinks: 'throw',
+  onBrokenAnchors: 'throw',
 
   i18n: {
     defaultLocale: 'en',
