@@ -140,9 +140,9 @@ Do only #1 (OTel) from Option B's list; leave GitHub Actions, dev tooling, and D
 - [x] GitHub Actions — shipped directly (5 version bumps, verified via a real triggered run)
 - [x] Docusaurus — shipped directly (PR #18, verified via a real local build)
 - [x] Dev-tooling consistency (`@types/node`, `tsx`) — shipped directly for `tools/validation` and `tools/dashboards` (PRs #22, #23); `typescript/` and the E2E package still untouched
-- [ ] Write `INVESTIGATE-eslint9-migration.md` — scope the `.eslintrc` → `eslint.config.js` flat-config migration ([Q3]), covers PRs #14 and #17
-- [ ] Write `INVESTIGATE-typescript7-migration.md` — scope why `typescript@7.0.2` breaks Node global resolution and what fix (tsconfig `"types"` field vs. something else) unblocks it repo-wide, covers PRs #13, #15, #19
-- [ ] Once both follow-up investigations are written and their child plans ship, this investigation can move to `completed/`
+- [x] Write [`INVESTIGATE-eslint9-migration.md`](INVESTIGATE-eslint9-migration.md) — scope the `.eslintrc` → `eslint.config.js` flat-config migration ([Q3]), covers PRs #14 and #17. Written 2026-07-14 — found the ESLint major bump and the `@typescript-eslint` major bump are actually independent (current `eslint@^8.57.0` already satisfies `@typescript-eslint@8.x`'s peer range), so PR #17 can likely unblock without any flat-config work at all.
+- [x] Write [`INVESTIGATE-typescript7-migration.md`](INVESTIGATE-typescript7-migration.md) — scope why `typescript@7.0.2` breaks Node global resolution and what fix (tsconfig `"types"` field vs. something else) unblocks it repo-wide, covers PRs #13, #15, #19. Written 2026-07-14 — found a second, independent blocker for `typescript/` specifically: `@typescript-eslint`'s own peer range caps `typescript` below 7.0 entirely, regardless of the Node-globals fix.
+- [ ] Once both follow-up investigations' child plans ship, this investigation can move to `completed/`
 
 ## Files to Modify (once a plan is drafted from this)
 
