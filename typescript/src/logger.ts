@@ -36,7 +36,7 @@ import { BatchSpanProcessor, BasicTracerProvider } from '@opentelemetry/sdk-trac
 import { metrics, Counter, Histogram, UpDownCounter } from '@opentelemetry/api';
 import { trace, Span, SpanStatusCode, context } from '@opentelemetry/api';
 import { logs, SeverityNumber } from '@opentelemetry/api-logs';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'node:crypto';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
