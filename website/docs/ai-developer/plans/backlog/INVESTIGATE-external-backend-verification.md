@@ -6,13 +6,15 @@ Local UIS verification (Loki/Tempo/Prometheus via `kubectl run curlimages/curl` 
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog — research complete, sequencing/priority decision pending
+## Status: Backlog — 2 of 4 backends done, Azure/GCP sequencing still pending
 
-**Goal**: Decide which external OTLP backend(s) beyond local UIS to build verification tooling and documentation for, and in what order — driven by two distinct motivations that pull in different directions (see [Q2](#questions-to-answer)):
-1. A **low-friction on-ramp** for people who don't want to run Kubernetes locally just to try the library (Grafana Cloud's free tier).
-2. **Proof against the real production target** — `website/docs/using/azure-integration.md` already documents Azure Monitor/Application Insights as sovdev-logger's actual intended production backend, not a hypothetical.
+**Real verification status, checked directly (2026-07-14)**: **UIS** (local) and **Grafana Cloud** both have real, working verification tooling today — `sovdev-selftest --backend uis`, `sovdev-selftest --backend grafana-cloud`, and the fuller `tools/validation/grafana-cloud/full-consistency-check.sh`. **Azure Monitor** and **Google Cloud** remain research-only — no OTLP export or verification tooling exists for either; `sovdev-selftest` has no `--backend azure`/`--backend gcp` option at all. The only real open question is Azure vs. GCP sequencing, not "verify 3 backends" as this doc's title implies.
 
-**Last Updated**: 2026-07-09 (research complete via five parallel investigations — three per-backend, two on SDK tooling; sequencing and tooling language not yet confirmed by maintainer)
+**Goal**: Decide whether/when to build Azure Monitor and/or Google Cloud verification tooling and documentation, and in what order — driven by two distinct motivations that pull in different directions (see [Q2](#questions-to-answer)):
+1. A **low-friction on-ramp** for people who don't want to run Kubernetes locally just to try the library (Grafana Cloud's free tier — already shipped, this motivation is satisfied).
+2. **Proof against the real production target** — `website/docs/using/azure-integration.md` already documents Azure Monitor/Application Insights as sovdev-logger's actual intended production backend, not a hypothetical. This motivation is still unmet.
+
+**Last Updated**: 2026-07-14
 
 **Referenced by**: [`INVESTIGATE-context-propagation.md`](../completed/INVESTIGATE-context-propagation.md)'s **[Q12]** (shipped — see `PLAN-context-propagation.md`) — the `client_name` context field is emitted backend-agnostically, since Azure Monitor and Google Cloud (this doc's scope) are on the roadmap for the same fleet-wide filtering need, not just Grafana Cloud/UIS.
 

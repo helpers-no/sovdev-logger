@@ -69,7 +69,7 @@ Separately, two more things shipped in the same session: (1) a real Grafana Clou
 
 ## Tier 4 — investigated, undecided
 
-- [`INVESTIGATE-external-backend-verification.md`](INVESTIGATE-external-backend-verification.md) — whether to verify sovdev-logger against Grafana Cloud, Azure Monitor, and/or Google Cloud beyond local UIS, and in what order. Research complete (query APIs, auth models, cost/retention per backend, and TypeScript-vs-bash tooling choice); sequencing is a maintainer values call (cheapest-first vs. production-target-first), not a technical one — see [Q2] in the doc.
+- [`INVESTIGATE-external-backend-verification.md`](INVESTIGATE-external-backend-verification.md) — verification status across all four backends this investigation covers: **UIS** (local, done — `sovdev-selftest --backend uis`) and **Grafana Cloud** (done — `sovdev-selftest --backend grafana-cloud`, plus the fuller `full-consistency-check.sh`) both have real, working verification tooling. **Azure Monitor** and **Google Cloud** are still just research (query APIs, auth models, cost/retention, TypeScript-vs-bash tooling choice) — no OTLP export or verification tooling built for either, `sovdev-selftest` has no `--backend azure`/`--backend gcp` option at all. Remaining open question is narrower than it looks: not "verify 3 backends," just "build Azure and/or GCP support, in what order" — a maintainer values call (cheapest-first vs. production-target-first), not a technical one — see [Q2] in the doc.
 
 ## Tier 5 — raw ideas
 
