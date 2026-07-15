@@ -84,7 +84,7 @@ Once the new system is actually wired up (not the disposable `-selftest` data fr
 
 Real systems that have gone through this recipe, with the exact snippets that made it concrete:
 
-- [ollacrm](ollacrm/index.md) — a TypeScript/Hono service on Cloud Run, sovdev-logger's first external consumer
+- [ollacrm](ollacrm/index.md) — a TypeScript/Hono service on Cloud Run, sovdev-logger's first external consumer. See also its [logging conventions](ollacrm/conventions.md) — real field-mapping and log-level patterns across ~90 production call sites.
 
 ## See also
 

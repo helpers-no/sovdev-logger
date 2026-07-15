@@ -65,6 +65,7 @@ For the exact API — `sovdev_log`, `sovdev_set_context`, spans, job-status logg
 
 ## See also
 
+- [Logging conventions](conventions.md) — how ollacrm actually uses the library in production: field mapping, log-level semantics, and per-layer patterns across ~90 call sites
 - [Onboarding a new system](../index.md) — the generic recipe, for standing up a system's Grafana Cloud credentials from scratch
 - [Quick check: sovdev-selftest](../../../contributor/testing/selftest-cli.md) — the full design behind the self-test command above
 - [Dashboard walkthrough](../../dashboard-walkthrough/index.md) — what each panel means once data arrives
