@@ -24,6 +24,31 @@ Every dependency category in this repo has drifted from current — not just the
 - **ESLint 8→10** — untouched. `eslint-config-prettier` 9→10 shipped cleanly on its own (PR #16, no conflict with ESLint 8), but the `eslint`/`@typescript-eslint` major bumps themselves (PRs #14, #17) remain open, per [Q3](#open-questions)'s own framing — ESLint 9's flat-config migration is a real, non-mechanical change, not a version-bump-and-watch.
 - Remaining open items: PRs #14 (`eslint` 8→10), #15 (`typescript` 5.9.3→7.0.2 in `typescript/`), #17 (`@typescript-eslint/parser` 7→8, currently peer-conflicting with `eslint-plugin` still on `^7.0.0`). None of these are safe to bump-and-watch — each needs its own scoped investigation before merging.
 
+**Update 2026-09-09**: the mechanical remainder of this sweep shipped — PRs #28 (`actions/setup-node` 6→7), #29 (`actions/setup-python` 5→7), #35 (`website` minor-patch), #36 (`tools/dashboards`) and #37 (`tools/validation`), each verified by a real run rather than a Dependabot tick. Three findings from that pass are escalated to the maintainer and are **not** dependency questions: Dependabot PRs show a permanent false red on `Grafana Cloud Consistency Check` (no secrets on Dependabot PRs), `main` has no branch protection or rulesets at all, and that consistency check intermittently fails on Tempo span indexing. See the tasks filed on the fleet bus.
+
+### PR #30 (`@types/node` 20.19.43 → 26.1.1 in `typescript/`) — scoped 2026-09-09: mechanical, **not** gated
+
+This was the one open Dependabot PR in neither the authorized-mechanical list nor the gated group. **Decision: it is mechanical, and it does not belong with #14/#15/#17/#31.** It is the last unshipped item of this doc's own dev-tooling consistency row, which already records `typescript/` as *untouched*, not *blocked* — the "blocked" note attaches to the `typescript`/`eslint` majors, not to the types package.
+
+Checked directly on the PR head (Node 22.23.1), not assumed:
+
+| Check | Result |
+|---|---|
+| `npm ci` | exit 0 |
+| `npx tsc --noEmit` | exit 0 — and `--listFiles` confirms all **13** project files really checked, `strict: true` |
+| `npm run build` | exit 0, including the `postbuild` `require('./dist/index.js')` |
+| `npm run lint` | exit 0 (`eslint` + `prettier --check`) |
+
+Why the TS7 finding above does **not** apply: that break is in the *compiler* under the `"moduleResolution": "NodeNext"` + no-explicit-`"types"` pattern. `typescript/tsconfig.json` uses `"moduleResolution": "node"`, and #30 does not touch `typescript` at all — it stays `^5.7.2`. `@types/node@26.1.1`'s `typesVersions` only downlevels for TS `<=5.6`/`<=5.7`, so the installed `typescript@5.9.3` consumes the current types directly. Verified compatible, not inferred.
+
+Two arguments for taking it, and one that turned out to be wrong:
+
+- **Consistency.** `tools/validation` and `tools/dashboards` moved to `@types/node@^26` in July (and to `^26.1.2` in #36/#37), so `typescript/` on `^20.0.0` is now the outlier.
+- **The types are older than the engine floor.** `typescript/package.json` sets `engines.node: ">=22.0.0"` while typing the Node 20 API surface, so any API added after 20.19 is simply invisible to the compiler.
+- **Not a reason:** `process.loadEnvFile()` — wanted by [`INVESTIGATE-ollacrm-onboarding-usability.md`](INVESTIGATE-ollacrm-onboarding-usability.md)'s Option A — types fine under `@types/node@20.19.43` too (the API landed in Node 20.12). Tested both ways; #30 does not unblock that fix, and it should not be argued as if it does.
+
+**Not merged.** The 2026-09-09 authorization was explicitly for #38 and the five mechanical PRs only, and was not a standing authorization to merge on `main`. #30 stays open for the next sweep, where it can be taken as mechanical on this evidence. `typescript/test/e2e/company-lookup/package.json` remains the other untouched package.
+
 ---
 
 ## Current State (checked directly — `npm outdated`, `npm audit`, `pip list` + PyPI, `gh api` for Action releases — not assumed from any prior count)
@@ -55,7 +80,7 @@ Every dependency category in this repo has drifted from current — not just the
 | `eslint-config-prettier` | ~~`9.1.2`~~ → `10.1.8` | `10.1.8` | **Done** — PR #16 merged, no conflict with ESLint 8 |
 | `prettier` | `3.6.2`/`3.9.5` (varies by package) | `3.9.5` | minor, inconsistent across packages — not touched this pass |
 | `tsx` | ~~`4.20.6`–`4.23.0` (varies)~~ → `^4.23.1` in `tools/validation`, `tools/dashboards` | `4.23.1` | **Done** for the two `tools/` packages (PRs #22, #23); `typescript/` and the E2E package untouched |
-| `@types/node` | ~~`20.19.x`–`24.7.0` (varies wildly)~~ → `^26.1.1` in `tools/validation`, `tools/dashboards` | `26.1.1` | **Done** for the two `tools/` packages; `typescript/`, `website/`, and the E2E package untouched |
+| `@types/node` | ~~`20.19.x`–`24.7.0` (varies wildly)~~ → `^26.1.2` in `tools/validation`, `tools/dashboards` | `26.1.2` | **Done** for the two `tools/` packages (`^26.1.1` in July, `^26.1.2` via #36/#37). `typescript/` **scoped 2026-09-09 as mechanical, not gated** — PR #30, see the update above; still open. `website/` and the E2E package untouched |
 | `@types/uuid` | `10.0.0` | `11.0.0` | 1 major version — not touched this pass |
 
 No runtime security exposure (dev-only, never shipped). The inconsistency-across-packages problem is now half-resolved: `tools/validation` and `tools/dashboards` are in sync with each other on `@types/node`/`tsx`; `typescript/`, `website/`, and the E2E package still differ.
